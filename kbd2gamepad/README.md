@@ -1,8 +1,8 @@
-# keyboard2gamepad
+# kbd2gamepad
 
 A ghetto (initially proof-of-concept) keyboard input demultiplexer script
 for use in  masquerading a keyboard as  a USB gamepad device,  for use on
-the Vircon32 fantasy console.
+the Vircon32 fantasy console with my `v32kbd` driver.
 
 ## OVERVIEW
 
