@@ -1,3 +1,15 @@
+//
+// getkey.c - custom keyboard input and processing tool, based heavily on
+//            the showkey(1) program as found in the kbd package.
+//
+//            modifications to better suit the needs of kbd2gamepad.
+//
+// getkey.c, like the showkey.c it is based on, is licensed under the GNU
+// General Public License  (GPL), version 2, or at your  option any later
+// version.
+//
+//////////////////////////////////////////////////////////////////////////////
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

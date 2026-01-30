@@ -40,7 +40,7 @@ state, so that we can set each button ON or OFF as needed.
 ### PACKAGES
 
 Make  sure  the   `kbd`  package  is  installed  (to  make   use  of  the
-`showkeys(1)` tool).
+`showkey(1)` tool).
 
 ### HARDWARE
 
@@ -54,7 +54,7 @@ However, it turns  out the `RPi zero`  only has ONE USB data  port. So it
 can serve  as a gadget, but  then there's no way  to plug in a  wired USB
 keyboard. A  bluetooth-equipped `RPi  zero` could  work with  a bluetooth
 keyboard, however  (hopefully bluetooth  keyboard input and  USB keyboard
-input both go through the same kernel interface that `showkeys(1)` uses.
+input both go through the same kernel interface that `showkey(1)` uses.
 
 Other  options   are  being   explored,  with  the   following  scenarios
 potentially identified as viable:
