@@ -1,0 +1,348 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <linux/kd.h>
+#include <linux/keyboard.h>
+#include <sys/ioctl.h>
+#include "getfd.h"
+#include "nls.h"
+#include "version.h"
+
+#define  TRUE  1
+#define  FALSE 0
+
+typedef struct termios TermIOS;
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// Global variables
+//
+int32_t  tmp;        // for debugging
+int32_t  fd;
+int32_t  oldkbmode;
+TermIOS  old;
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// get_mode(): determine the kbmode
+//
+// version 0.81 of showkey would restore kbmode unconditionally to XLATE,
+// thus making the console unusable when it was called under X.
+//
+static void get_mode (void)
+{
+    int8_t *mode   = NULL;
+    if (ioctl (fd, KDGKBMODE, &oldkbmode))
+    {
+        perror ("KDGKBMODE");
+        exit (1);
+    }
+
+    switch (oldkbmode)
+    {
+      case K_RAW:
+          mode     = "RAW";
+          break;
+
+      case K_XLATE:
+          mode     = "XLATE";
+          break;
+
+      case K_MEDIUMRAW:
+          mode     = "MEDIUMRAW";
+          break;
+
+      case K_UNICODE:
+          mode     = "UNICODE";
+          break;
+
+      default:
+          mode     = _("?UNKNOWN?");
+          break;
+    }
+
+    fprintf(stdout, _("kb mode was %s\n"), mode);
+
+    if (oldkbmode != K_XLATE)
+    {
+        fprintf (stdout, _("[ if you are trying this under X, it might not work\n"
+                           "since the X server is also reading /dev/console ]\n"));
+    }
+
+    fprintf (stdout, "\n");
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// clean_up(): restore the session
+//
+static void clean_up (void)
+{
+    if (ioctl (fd, KDSKBMODE, oldkbmode))
+    {
+        perror ("KDSKBMODE");
+        exit (1);
+    }
+
+    if (tcsetattr (fd, 0, &old) == -1)
+    {
+        perror("tcsetattr");
+    }
+
+    close (fd);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// die(): process signal (clean up and terminate)
+//
+static void die (int32_t  signum)
+{
+    fprintf (stdout, _("caught signal %d, cleaning up...\n"), signum);
+    clean_up ();
+    exit (1);
+}
+
+static void watch_dog (int32_t  x)
+{
+    clean_up ();
+    exit (0);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// usage(): display usage information
+//
+static void display_usage (void)
+{
+    fprintf (stderr, _("showkey version %s\n\n"), VERSION);
+    fprintf (stderr, _("usage: showkey [options...]\n\n"));
+    fprintf (stderr, _("valid options are:\n\n"));
+    fprintf (stderr, _("  -h, --help       display this help text\n"));
+    fprintf (stderr, _("  -a, --ascii      display the decimal/octal/hex values of the keys\n"));
+    fprintf (stderr, _("  -s, --scancodes  display raw scan-codes\n"));
+    fprintf (stderr, _("  -k, --keycodes   display interpreted keycodes\n\n"));
+    fprintf (stderr, _("NOTE: default is to display interpreted keycodes\n\n"));
+
+    exit (1);
+}
+
+int32_t  main (int32_t  argc, char **argv)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize local variables
+    //
+    int8_t  *short_opts              = "haskV";
+    int32_t  index                   = 0;
+    int32_t  num_bytes               = 0;
+    int32_t  option                  = 0;
+    int32_t  print_ascii             = FALSE;
+    int32_t  show_keycodes           = TRUE;
+    TermIOS  new;
+    uint8_t  char buffer[16];
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Establish long option to short option mappings for getopt(3)
+    //
+    const struct option long_opts[]  = {
+        { "help",      no_argument, NULL, 'h' },
+        { "ascii",     no_argument, NULL, 'a' },
+        { "scancodes", no_argument, NULL, 's' },
+        { "keycodes",  no_argument, NULL, 'k' },
+        { "version",   no_argument, NULL, 'V' },
+        { NULL,        0,           NULL,  0  }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Initialize locale and i18n functionality
+    //
+    set_progname (argv[0]);
+    setlocale (LC_ALL, "");
+    bindtextdomain (PACKAGE, LOCALEDIR);
+    textdomain (PACKAGE);
+
+    option                           = getopt_long (argc, argv,
+                                                    short_opts,
+                                                    long_opts,
+                                                    NULL);
+    while (option                   != -1)
+    {
+        switch (option)
+        {
+            case 's':
+                show_keycodes        = FALSE;
+                break;
+
+            case 'k':
+                show_keycodes        = TRUE;
+                break;
+            case 'a':
+                print_ascii          = TRUE;
+                break;
+
+            case 'V':
+                //display_version ();
+                break;
+
+            case 'h':
+            case '?':
+                display_usage ();
+                break;
+        }
+        option                       = getopt_long (argc, argv,
+                                                    short_opts,
+                                                    long_opts,
+                                                    NULL);
+    }
+
+    if (option_index                <  argc)
+    {
+        display_usage ();
+    }
+
+    if (print_ascii                 == TRUE)
+    {
+        /* no mode and signal and timer stuff - just read stdin */
+        fd                           = 0;
+        if (tcgetattr (fd, &old)    == -1)
+        {
+            perror ("tcgetattr");
+        }
+
+        if (tcgetattr (fd, &new)    == -1)
+        {
+            perror ("tcgetattr");
+        }
+
+        new.c_lflag                  = new.c_lflag & (~ (ICANON | ISIG));
+        new.c_lflag                  = new.c_lflag | (ECHO | ECHOCTL);
+        new.c_iflag                  = 0;
+        new.c_cc[VMIN]               = 1;
+        new.c_cc[VTIME]              = 0;
+        if (tcsetattr (fd, TCSAFLUSH, &new) == -1)
+        {
+            perror ("tcgetattr");
+        }
+
+        fprintf (stdout, _("\nPress any keys - "
+                 "Ctrl-D will terminate this program\n\n"));
+        while (1)
+        {
+            num_bytes =  read (fd, buffer, 1);
+            if (num_bytes = = 1)
+                printf(" \t%3d 0%03o 0x%02x\n",
+                       buffer[0], buffer[0], buffer[0]);
+            if ((num_bytes          != 1) ||
+                (buffer[0]          == 04))
+            {
+                break;
+            }
+        }
+        if (tcsetattr (fd, 0, &old) == -1)
+        {
+            perror ("tcsetattr");
+        }
+        exit (0);
+    }
+
+    fd                               = getfd (NULL);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // watchdog: terminate program after 10 seconds of inactivity (no input)
+    //
+    signal (SIGALRM,   watch_dog);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // any other signal of note: receiving a signal instigates a nice exit, where
+    // the keyboard needs to be restored to a usable mode
+    //
+    signal (SIGHUP,    die);
+    signal (SIGINT,    die);
+    signal (SIGQUIT,   die);
+    signal (SIGILL,    die);
+    signal (SIGTRAP,   die);
+    signal (SIGABRT,   die);
+    signal (SIGIOT,    die);
+    signal (SIGFPE,    die);
+    signal (SIGKILL,   die);
+    signal (SIGUSR1,   die);
+    signal (SIGSEGV,   die);
+    signal (SIGUSR2,   die);
+    signal (SIGPIPE,   die);
+    signal (SIGTERM,   die);
+#ifdef SIGSTKFLT
+    signal (SIGSTKFLT, die);
+#endif
+    signal (SIGCHLD,   die);
+    signal (SIGCONT,   die);
+    signal (SIGSTOP,   die);
+    signal (SIGTSTP,   die);
+    signal (SIGTTIN,   die);
+    signal (SIGTTOU,   die);
+
+    get_mode ();
+
+    if (tcgetattr (fd, &old)        == -1)
+    {
+        perror ("tcgetattr");
+    }
+
+    if (tcgetattr (fd, &new)        == -1)
+    {
+        perror ("tcgetattr");
+    }
+    new.c_lflag                      = new.c_lflag & (~ (ICANON | ECHO | ISIG));
+    new.c_iflag                      = 0;
+    new.c_cc[VMIN]                   = sizeof (buffer);
+    new.c_cc[VTIME]                  = 1;  // 0.1 sec intercharacter timeout
+
+    if (tcsetattr (fd, TCSAFLUSH, &new) == -1)
+    {
+        perror ("tcsetattr");
+    }
+
+    if (ioctl (fd, KDSKBMODE, show_keycodes ? K_MEDIUMRAW : K_RAW)) {
+    {
+        perror ("KDSKBMODE");
+        exit(1);
+    }
+
+    fprintf (stdout, _("press any key (program terminates 10s after last keypress)...\n"));
+
+    while (1)
+    {
+        alarm (10);
+        num_bytes                    = read (fd, buffer, sizeof (buffer));
+        for (index                   = 0;
+             index                  <  num_bytes;
+             index                   = index + 1)
+        {
+            if (show_keycodes       == FALSE)
+            {
+                fprintf (stdout, "0x%02x ", buffer[index]);
+            }
+            else
+                fprintf (stdout, _("keycode %3d %s\n"),
+                    buffer[index] & 0x7f,
+                    buffer[index] & 0x80 ? _("release")
+                                         : _("press"));
+        }
+
+        if (show_keycodes           == FALSE)
+        {
+            fprintf (stdout, "\n");
+        }
+    }
+    clean_up ();
+    exit (0);
+}
