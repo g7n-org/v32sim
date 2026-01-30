@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 #include <getopt.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -9,9 +10,6 @@
 #include <linux/kd.h>
 #include <linux/keyboard.h>
 #include <sys/ioctl.h>
-#include "getfd.h"
-#include "nls.h"
-#include "version.h"
 
 #define  TRUE  1
 #define  FALSE 0
@@ -26,6 +24,14 @@ int32_t  tmp;        // for debugging
 int32_t  fd;
 int32_t  oldkbmode;
 TermIOS  old;
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// function prototypes
+//
+int32_t  is_a_console   (int32_t);
+int32_t  open_a_console (int8_t *);
+int32_t  getfd          (int8_t *);
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -62,16 +68,16 @@ static void get_mode (void)
           break;
 
       default:
-          mode     = _("?UNKNOWN?");
+          mode     = "?UNKNOWN?";
           break;
     }
 
-    fprintf(stdout, _("kb mode was %s\n"), mode);
+    fprintf(stdout, "kb mode was %s\n", mode);
 
     if (oldkbmode != K_XLATE)
     {
-        fprintf (stdout, _("[ if you are trying this under X, it might not work\n"
-                           "since the X server is also reading /dev/console ]\n"));
+        fprintf (stdout, "[ if you are trying this under X, it might not work\n"
+                         "since the X server is also reading /dev/console ]\n");
     }
 
     fprintf (stdout, "\n");
@@ -103,7 +109,7 @@ static void clean_up (void)
 //
 static void die (int32_t  signum)
 {
-    fprintf (stdout, _("caught signal %d, cleaning up...\n"), signum);
+    fprintf (stdout, "caught signal %d, cleaning up...\n", signum);
     clean_up ();
     exit (1);
 }
@@ -120,14 +126,14 @@ static void watch_dog (int32_t  x)
 //
 static void display_usage (void)
 {
-    fprintf (stderr, _("showkey version %s\n\n"), VERSION);
-    fprintf (stderr, _("usage: showkey [options...]\n\n"));
-    fprintf (stderr, _("valid options are:\n\n"));
-    fprintf (stderr, _("  -h, --help       display this help text\n"));
-    fprintf (stderr, _("  -a, --ascii      display the decimal/octal/hex values of the keys\n"));
-    fprintf (stderr, _("  -s, --scancodes  display raw scan-codes\n"));
-    fprintf (stderr, _("  -k, --keycodes   display interpreted keycodes\n\n"));
-    fprintf (stderr, _("NOTE: default is to display interpreted keycodes\n\n"));
+    fprintf (stderr, "showkey\n\n");
+    fprintf (stderr, "usage: showkey [options...]\n\n");
+    fprintf (stderr, "valid options are:\n\n");
+    fprintf (stderr, "  -h, --help       display this help text\n");
+    fprintf (stderr, "  -a, --ascii      display the decimal/octal/hex values of the keys\n");
+    fprintf (stderr, "  -s, --scancodes  display raw scan-codes\n");
+    fprintf (stderr, "  -k, --keycodes   display interpreted keycodes\n\n");
+    fprintf (stderr, "NOTE: default is to display interpreted keycodes\n\n");
 
     exit (1);
 }
@@ -138,14 +144,14 @@ int32_t  main (int32_t  argc, char **argv)
     //
     // Declare and initialize local variables
     //
-    int8_t  *short_opts              = "haskV";
+    int8_t  *short_opts              = "hask";
     int32_t  index                   = 0;
     int32_t  num_bytes               = 0;
     int32_t  option                  = 0;
     int32_t  print_ascii             = FALSE;
     int32_t  show_keycodes           = TRUE;
     TermIOS  new;
-    uint8_t  char buffer[16];
+    uint8_t  buffer[16];
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -156,18 +162,8 @@ int32_t  main (int32_t  argc, char **argv)
         { "ascii",     no_argument, NULL, 'a' },
         { "scancodes", no_argument, NULL, 's' },
         { "keycodes",  no_argument, NULL, 'k' },
-        { "version",   no_argument, NULL, 'V' },
         { NULL,        0,           NULL,  0  }
     };
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Initialize locale and i18n functionality
-    //
-    set_progname (argv[0]);
-    setlocale (LC_ALL, "");
-    bindtextdomain (PACKAGE, LOCALEDIR);
-    textdomain (PACKAGE);
 
     option                           = getopt_long (argc, argv,
                                                     short_opts,
@@ -188,10 +184,6 @@ int32_t  main (int32_t  argc, char **argv)
                 print_ascii          = TRUE;
                 break;
 
-            case 'V':
-                //display_version ();
-                break;
-
             case 'h':
             case '?':
                 display_usage ();
@@ -203,7 +195,7 @@ int32_t  main (int32_t  argc, char **argv)
                                                     NULL);
     }
 
-    if (option_index                <  argc)
+    if (optind                      <  argc)
     {
         display_usage ();
     }
@@ -232,20 +224,24 @@ int32_t  main (int32_t  argc, char **argv)
             perror ("tcgetattr");
         }
 
-        fprintf (stdout, _("\nPress any keys - "
-                 "Ctrl-D will terminate this program\n\n"));
+        fprintf (stdout, "\nPress any keys - "
+                 "Ctrl-D will terminate this program\n\n");
         while (1)
         {
-            num_bytes =  read (fd, buffer, 1);
-            if (num_bytes = = 1)
+            num_bytes                =  read (fd, buffer, 1);
+            if (num_bytes           == 1)
+            {
                 printf(" \t%3d 0%03o 0x%02x\n",
                        buffer[0], buffer[0], buffer[0]);
+            }
+
             if ((num_bytes          != 1) ||
                 (buffer[0]          == 04))
             {
                 break;
             }
         }
+
         if (tcsetattr (fd, 0, &old) == -1)
         {
             perror ("tcsetattr");
@@ -301,6 +297,7 @@ int32_t  main (int32_t  argc, char **argv)
     {
         perror ("tcgetattr");
     }
+
     new.c_lflag                      = new.c_lflag & (~ (ICANON | ECHO | ISIG));
     new.c_iflag                      = 0;
     new.c_cc[VMIN]                   = sizeof (buffer);
@@ -317,7 +314,7 @@ int32_t  main (int32_t  argc, char **argv)
         exit(1);
     }
 
-    fprintf (stdout, _("press any key (program terminates 10s after last keypress)...\n"));
+    fprintf (stdout, "press any key (program terminates 10s after last keypress)...\n");
 
     while (1)
     {
@@ -332,10 +329,12 @@ int32_t  main (int32_t  argc, char **argv)
                 fprintf (stdout, "0x%02x ", buffer[index]);
             }
             else
-                fprintf (stdout, _("keycode %3d %s\n"),
-                    buffer[index] & 0x7f,
-                    buffer[index] & 0x80 ? _("release")
-                                         : _("press"));
+            {
+                fprintf (stdout, "keycode %3d %s\n",
+                                  buffer[index] & 0x7f,
+                                  buffer[index] & 0x80 ? "release"
+                                                       : "press");
+            }
         }
 
         if (show_keycodes           == FALSE)
@@ -344,5 +343,112 @@ int32_t  main (int32_t  argc, char **argv)
         }
     }
     clean_up ();
-    exit (0);
+    return (0);
+}
+}
+
+int32_t  is_a_console (int32_t  fd)
+{
+    int8_t  arg   = 0;
+    return ((ioctl (fd, KDGKBTYPE, &arg) == 0) &&
+           ((arg == KB_101) ||
+            (arg == KB_84)));
+}
+
+int32_t  open_a_console (int8_t *filename)
+{
+    int32_t  fd  = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // for ioctl purposes an fd is needed. Permissions do not matter.
+    //
+    // NOTE: setfont:activatemap() performs a write.
+    //
+    fd           = open (filename, O_RDWR);
+    if ((fd     <  0) &&
+        (errno  == EACCES))
+    {
+        fd       = open (filename, O_WRONLY);
+    }
+
+    if ((fd     <  0) &&
+        (errno  == EACCES))
+    {
+        fd       = open (filename, O_RDONLY);
+    }
+
+    if (fd      <  0)
+    {
+        return (-1);
+    }
+
+    if (!is_a_console (fd))
+    {
+        close (fd);
+        return (-1);
+    }
+
+    return (fd);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// getfd(): get a file descriptor  (fd) for use with kbd/console ioctls.
+//          Different   methods   are   tried  because  the  opening  of
+//          /dev/console will fail  if  an  X session  has  taken  place
+//          (as  it does  a  chown  on /dev/console).
+//
+int32_t  getfd (int8_t *filename)
+{
+    int32_t  fd   = 0;
+    if (filename == NULL)
+    {
+        fd        = open_a_console (filename);
+        if (fd   >= 0)
+        {
+            return (fd);
+        }
+
+        fprintf (stderr, "Couldnt open %s\n", filename);
+        exit (1);
+    }
+
+    fd            = open_a_console ("/dev/tty");
+    if (fd       >= 0)
+    {
+        return (fd);
+    }
+
+    fd            = open_a_console ("/dev/tty0");
+    if (fd       >= 0)
+    {
+        return (fd);
+    }
+
+    fd            = open_a_console ("/dev/vc/0");
+    if (fd       >= 0)
+    {
+        return (fd);
+    }
+
+    fd            = open_a_console ("/dev/console");
+    if (fd       >= 0)
+    {
+        return (fd);
+    }
+
+    for (fd       = 0;
+         fd      <  3;
+         fd       = fd + 1)
+    {
+        if (is_a_console (fd))
+        {
+            return (fd);
+        }
+    }
+
+    fprintf (stderr, "Couldnt get a file descriptor referring to the console\n");
+
+    exit (1);        /* total failure */
 }
