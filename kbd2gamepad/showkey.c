@@ -52,23 +52,23 @@ static void get_mode (void)
     switch (oldkbmode)
     {
       case K_RAW:
-          mode     = "RAW";
+          mode     = (int8_t *) "RAW";
           break;
 
       case K_XLATE:
-          mode     = "XLATE";
+          mode     = (int8_t *) "XLATE";
           break;
 
       case K_MEDIUMRAW:
-          mode     = "MEDIUMRAW";
+          mode     = (int8_t *) "MEDIUMRAW";
           break;
 
       case K_UNICODE:
-          mode     = "UNICODE";
+          mode     = (int8_t *) "UNICODE";
           break;
 
       default:
-          mode     = "?UNKNOWN?";
+          mode     = (int8_t *) "?UNKNOWN?";
           break;
     }
 
@@ -144,7 +144,7 @@ int32_t  main (int32_t  argc, char **argv)
     //
     // Declare and initialize local variables
     //
-    int8_t  *short_opts              = "hask";
+    int8_t  *short_opts              = (int8_t *) "hask";
     int32_t  index                   = 0;
     int32_t  num_bytes               = 0;
     int32_t  option                  = 0;
@@ -166,7 +166,7 @@ int32_t  main (int32_t  argc, char **argv)
     };
 
     option                           = getopt_long (argc, argv,
-                                                    short_opts,
+                                                    (const char *) short_opts,
                                                     long_opts,
                                                     NULL);
     while (option                   != -1)
@@ -190,7 +190,7 @@ int32_t  main (int32_t  argc, char **argv)
                 break;
         }
         option                       = getopt_long (argc, argv,
-                                                    short_opts,
+                                                    (const char *) short_opts,
                                                     long_opts,
                                                     NULL);
     }
@@ -365,17 +365,17 @@ int32_t  open_a_console (int8_t *filename)
     //
     // NOTE: setfont:activatemap() performs a write.
     //
-    fd           = open (filename, O_RDWR);
+    fd           = open ((const char *) filename, O_RDWR);
     if ((fd     <  0) &&
         (errno  == EACCES))
     {
-        fd       = open (filename, O_WRONLY);
+        fd       = open ((const char *) filename, O_WRONLY);
     }
 
     if ((fd     <  0) &&
         (errno  == EACCES))
     {
-        fd       = open (filename, O_RDONLY);
+        fd       = open ((const char *) filename, O_RDONLY);
     }
 
     if (fd      <  0)
@@ -414,25 +414,25 @@ int32_t  getfd (int8_t *filename)
         exit (1);
     }
 
-    fd            = open_a_console ("/dev/tty");
+    fd            = open_a_console ((int8_t *) "/dev/tty");
     if (fd       >= 0)
     {
         return (fd);
     }
 
-    fd            = open_a_console ("/dev/tty0");
+    fd            = open_a_console ((int8_t *) "/dev/tty0");
     if (fd       >= 0)
     {
         return (fd);
     }
 
-    fd            = open_a_console ("/dev/vc/0");
+    fd            = open_a_console ((int8_t *) "/dev/vc/0");
     if (fd       >= 0)
     {
         return (fd);
     }
 
-    fd            = open_a_console ("/dev/console");
+    fd            = open_a_console ((int8_t *) "/dev/console");
     if (fd       >= 0)
     {
         return (fd);
