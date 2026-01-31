@@ -832,6 +832,8 @@ int32_t  main (int argc, char **argv)
                             break;
 
                         case V32_MEMC:
+                            word              = get_word (line, index, WORD_LITTLE);
+                            fprintf (stdout, "size: %.5X ", word);
                             break;    
                     }
 
