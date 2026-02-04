@@ -77,7 +77,7 @@ will,  during the  `VBIN` section  instruction decode,  also display  the
 binary of the instruction word,  color-coded (if enabled), and spaced out
 by section.
 
-![v32cat binary](screenshots/v32cat_binary.jpg)
+![v32cat binary](screenshots/v32cat_binary.png)
 
 ### raw
 
