@@ -431,6 +431,7 @@ int32_t  main (int argc, char **argv)
                         case 'B': // V-B-IN
                             headertype        = V32_VBIN;
                             dataflag          = 1;
+							offset            = 0x21;
                             break;
 
                         case 'S': // V-S-ND
