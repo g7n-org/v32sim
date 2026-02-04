@@ -60,7 +60,10 @@ struct string_data
 };
 typedef struct string_data String_data;
 
-Node *list;
+Node    *list;
+uint8_t  binaryflag;
+uint8_t  fancyflag;
+uint8_t  haltflag;
  
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -73,6 +76,7 @@ void      display_usage  (int8_t *);
 uint32_t  get_word       (Byte *,   int32_t, uint8_t);
 uint8_t  *get_str_word   (Byte *,   int32_t);
 void      rev_word       (Byte *,   Byte *,  uint8_t);
+void      show_binary    (uint32_t);
 
 int32_t  main (int argc, char **argv)
 {
@@ -86,7 +90,6 @@ int32_t  main (int argc, char **argv)
     uint8_t   headerflag           = 0;
     uint8_t   headertype           = 0;
     uint8_t   dataflag             = 0;
-    uint8_t   fancyflag            = FANCY_DEFAULT;
     uint8_t   lineflag             = 0;
     uint8_t   skipflag             = 0;
     uint8_t   wordflag             = WORD_CLEAR;
@@ -118,6 +121,9 @@ int32_t  main (int argc, char **argv)
     Node     *tmp                  = NULL;
     int8_t    HEADER[]             = { 'V', '3', '2', '-' };
 
+    binaryflag                     = 0;
+    fancyflag                      = FANCY_DEFAULT;
+    haltflag                       = 0;
     list                           = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +132,7 @@ int32_t  main (int argc, char **argv)
     //
     struct option long_options[]   = {
        { "address",  required_argument, 0, 'a' },
+       { "binary",   no_argument,       0, 'b' },
        { "colors",   no_argument,       0, 'c' },
        { "column",   no_argument,       0, '1' },
        { "decode",   no_argument,       0, 'd' },
@@ -148,7 +155,7 @@ int32_t  main (int argc, char **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long (argc, argv,
-                                                  "a:1cdfFmr:Rs:S:vW:w:h",
+                                                  "a:b1cdfFmr:Rs:S:vW:w:h",
                                                   long_options,
                                                   &option_index);
     while (opt                    != -1)
@@ -162,6 +169,10 @@ int32_t  main (int argc, char **argv)
             case 'a':
                 offset             = strtol (optarg, NULL, 16);
                 add_node (offset);
+                break;
+
+            case 'b':
+                binaryflag         = 1;
                 break;
 
             case 'c':
@@ -247,7 +258,7 @@ int32_t  main (int argc, char **argv)
                 break;
         }
         opt                        = getopt_long (argc, argv,
-                                                  "a:1cdfr:Rs:S:vW:w:h",
+                                                  "a:b1cdfFmr:Rs:S:vW:w:h",
                                                   long_options,
                                                   &option_index);
     }
@@ -1028,6 +1039,7 @@ int32_t  main (int argc, char **argv)
                 if (skipflag                     == 0)
                 {
                     decode (word, immval);
+
                     if (immflag                  == 1)
                     {
                         skipflag                  = 1;
@@ -1138,6 +1150,7 @@ void  display_usage (int8_t *argv)
     fprintf (stdout, "Mandatory arguments to long options are mandatory for ");
     fprintf (stdout, "short options too.\n\n");
     fprintf (stdout, "  -a, --address=ADDR         highlight WORD at ADDR\n");
+    fprintf (stdout, "  -b, --binary               display binary in decode mode\n");
     fprintf (stdout, "  -1, --column               force one WORD column output\n");
     fprintf (stdout, "  -d, --decode               decode instructions in-line\n");
     fprintf (stdout, "  -f, --fancy                enable fancy content rendering\n");
@@ -1316,7 +1329,11 @@ void  decode (uint32_t word, uint32_t immediate_value)
     uint8_t   flag       = 0;
     uint8_t   category   = 0;
     uint8_t   attribute  = 0;
+    uint8_t   is_halt    = 0;
     uint16_t  portnum    = 0;
+    int32_t   count      = 0;        // temp variable (binary display)
+    uint32_t  value      = 0;        // temp variable (binary display)
+    uint32_t  mask       = 0;        // masking variable (binary display)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1491,7 +1508,30 @@ void  decode (uint32_t word, uint32_t immediate_value)
     //
     // display the obtained instruction
     //
-    fprintf (stdout, "%-5s ", opcodes[opcode].name);
+    is_halt                     = strcmp ("HLT", opcodes[opcode].name);
+    if (is_halt                == 0)
+    {
+        if (word               == 0x00000000)
+        {
+            if (haltflag       == 0)
+            {
+                fprintf (stdout, "%-5s ", opcodes[opcode].name);
+            }
+            else
+            {
+                fprintf (stdout, "'\\0'");
+            }
+        }
+        else
+        {
+            fprintf (stdout, "'%c'",  word);
+            haltflag            = 1;
+        }
+    }
+    else
+    {
+        fprintf (stdout, "%-5s ",     opcodes[opcode].name);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1664,6 +1704,69 @@ void  decode (uint32_t word, uint32_t immediate_value)
     }
 
     fprintf (stdout, "\n");
+
+    if (binaryflag             == 1)
+    {
+        fprintf (stdout, "%27s", " ");
+        mask                    = 0x80000000;
+        for (count              = 31;
+             count             >= 0;
+             count              = count - 1)
+        {
+            value               = (word & mask) >> count;
+
+            if (count          >= 26)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;31m");
+                }
+            }
+            else if (count     == 25)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;33m");
+                }
+            }
+            else if (count     >= 21)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;32m");
+                }
+            }
+            else if (count     >= 17)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;36m");
+                }
+            }
+            else if (count     >= 14)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;34m");
+                }
+            }
+            else
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;35m");
+                }
+            }
+
+            fprintf (stdout, "%hhd", value);
+            mask                = mask >> 1;
+            if (fancyflag      != FANCY_NEVER)
+            {
+                fprintf (stdout, "\e[m");
+            }
+        }
+        fprintf (stdout, "\n");
+    }
 }
 
 void  rev_word (Byte *line, Byte *line2, uint8_t  size)
