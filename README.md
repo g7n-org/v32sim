@@ -70,6 +70,13 @@ code:
 
 ![v32cat decode](screenshots/v32cat_decode.jpg)
 
+### decode with binary
+
+With the  `--binary` option (in conjunction  with `--decode`), **v32cat**
+will,  during the  `VBIN` section  instruction decode,  also display  the
+binary of the instruction word,  color-coded (if enabled), and spaced out
+by section.
+
 ### raw
 
 With all this fanciness, we may occasionally want to see everything as it
