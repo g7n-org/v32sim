@@ -1506,6 +1506,98 @@ void  decode (uint32_t word, uint32_t immediate_value)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // check to see if we may be beyond the last instruction and onto variable data
+    //
+    is_halt                     = strcmp ("HLT", opcodes[opcode].name);
+    if (is_halt                == 0)
+    {
+        if (word               != 0x00000000)
+        {
+            haltflag            = 1;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // if binary mode is enabled, display the instruction in binary
+    //
+    if ((binaryflag            == 1) &&
+        (haltflag              == 0))
+    {
+        mask                    = 0x80000000;
+        for (count              = 31;
+             count             >= 0;
+             count              = count - 1)
+        {
+            value               = (word & mask) >> count;
+
+            if (count          >= 26)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;31m");
+                }
+            }
+            else if (count     == 25)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;33m");
+                }
+            }
+            else if (count     >= 21)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;32m");
+                }
+            }
+            else if (count     >= 17)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;36m");
+                }
+            }
+            else if (count     >= 14)
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;34m");
+                }
+            }
+            else
+            {
+                if (fancyflag  != FANCY_NEVER)
+                {
+                    fprintf (stdout, "\e[1;35m");
+                }
+            }
+
+            fprintf (stdout, "%hhd", value);
+            mask                = mask >> 1;
+            if (fancyflag      != FANCY_NEVER)
+            {
+                fprintf (stdout, "\e[m");
+            }
+
+            switch (count)
+            {
+                case 26:
+                case 25:
+                case 21:
+                case 17:
+                case 14:
+                    fprintf (stdout, " ");
+                    break;
+            }
+        }
+        fprintf (stdout, "\n");
+        fprintf (stdout, "%27s", " ");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // display the obtained instruction
     //
     is_halt                     = strcmp ("HLT", opcodes[opcode].name);
@@ -1525,7 +1617,6 @@ void  decode (uint32_t word, uint32_t immediate_value)
         else
         {
             fprintf (stdout, "'%c'",  word);
-            haltflag            = 1;
         }
     }
     else
@@ -1704,80 +1795,6 @@ void  decode (uint32_t word, uint32_t immediate_value)
     }
 
     fprintf (stdout, "\n");
-
-    if (binaryflag             == 1)
-    {
-        fprintf (stdout, "%27s", " ");
-        mask                    = 0x80000000;
-        for (count              = 31;
-             count             >= 0;
-             count              = count - 1)
-        {
-            value               = (word & mask) >> count;
-
-            if (count          >= 26)
-            {
-                if (fancyflag  != FANCY_NEVER)
-                {
-                    fprintf (stdout, "\e[1;31m");
-                }
-            }
-            else if (count     == 25)
-            {
-                if (fancyflag  != FANCY_NEVER)
-                {
-                    fprintf (stdout, "\e[1;33m");
-                }
-            }
-            else if (count     >= 21)
-            {
-                if (fancyflag  != FANCY_NEVER)
-                {
-                    fprintf (stdout, "\e[1;32m");
-                }
-            }
-            else if (count     >= 17)
-            {
-                if (fancyflag  != FANCY_NEVER)
-                {
-                    fprintf (stdout, "\e[1;36m");
-                }
-            }
-            else if (count     >= 14)
-            {
-                if (fancyflag  != FANCY_NEVER)
-                {
-                    fprintf (stdout, "\e[1;34m");
-                }
-            }
-            else
-            {
-                if (fancyflag  != FANCY_NEVER)
-                {
-                    fprintf (stdout, "\e[1;35m");
-                }
-            }
-
-            fprintf (stdout, "%hhd", value);
-            mask                = mask >> 1;
-            if (fancyflag      != FANCY_NEVER)
-            {
-                fprintf (stdout, "\e[m");
-            }
-
-            switch (count)
-            {
-                case 26:
-                case 25:
-                case 21:
-                case 17:
-                case 14:
-                    fprintf (stdout, " ");
-                    break;
-            }
-        }
-        fprintf (stdout, "\n");
-    }
 }
 
 void  rev_word (Byte *line, Byte *line2, uint8_t  size)
