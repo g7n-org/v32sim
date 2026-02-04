@@ -1764,6 +1764,17 @@ void  decode (uint32_t word, uint32_t immediate_value)
             {
                 fprintf (stdout, "\e[m");
             }
+
+            switch (count)
+            {
+                case 26:
+                case 25:
+                case 21:
+                case 17:
+                case 14:
+                    fprintf (stdout, " ");
+                    break;
+            }
         }
         fprintf (stdout, "\n");
     }
