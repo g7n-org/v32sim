@@ -60,11 +60,12 @@ struct string_data
 };
 typedef struct string_data String_data;
 
-Node    *list;
-uint8_t  binaryflag;
-uint8_t  fancyflag;
-uint8_t  haltflag;
-uint8_t  offsetfixflag;
+Node     *list;
+uint8_t   binaryflag;
+uint8_t   fancyflag;
+uint8_t   haltflag;
+uint8_t   offsetfixflag;
+uint32_t  offsetmask;
  
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -106,7 +107,6 @@ int32_t  main (int argc, char **argv)
     int32_t   incomplete           = -1;
     uint32_t  lineaddr             = 0;        // start of line address
     uint32_t  offset               = 0;        // count of input bytes
-    uint32_t  offsetmask           = 0;        // mask to apply to current offset
     uint32_t  start                = 0;        // starting address
     uint32_t  stop                 = 0;        // ending address
     uint32_t  bound                = 0;
@@ -126,6 +126,7 @@ int32_t  main (int argc, char **argv)
     fancyflag                      = FANCY_DEFAULT;
     haltflag                       = 0;
     offsetfixflag                  = 0;
+    offsetmask                     = 0;        // mask to apply to current offset
     list                           = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -1524,13 +1525,20 @@ void  decode (uint32_t word, uint32_t immediate_value)
     // Still  an issue,  but trying to be more specific about what is
     // an offset versus arbitrary immediate data.
     //
-    if (offsetfixflag          == 1)
+    if (offsetfixflag              == 1)
     {
-        mask                    = 0xF8000000;
-        value                   = immediate_value & mask;
-        if (value              == 0x20000000)
+        mask                        = 0xF8000000;
+        value                       = immediate_value & mask;
+        if (value                  == 0x20000000)
         {
-            immediate_value     = immediate_value + 0x23;
+            if (offsetmask         == 0x00000000)
+            {
+                immediate_value     = immediate_value + 0x03;
+            }
+            else
+            {
+                immediate_value     = immediate_value + 0x23;
+            }
         }
     }
 
@@ -1538,12 +1546,12 @@ void  decode (uint32_t word, uint32_t immediate_value)
     //
     // check to see if we may be beyond the last instruction and onto variable data
     //
-    is_halt                     = strcmp ("HLT", opcodes[opcode].name);
-    if (is_halt                == 0)
+    is_halt                         = strcmp ("HLT", opcodes[opcode].name);
+    if (is_halt                    == 0)
     {
-        if (word               != 0x00000000)
+        if (word                   != 0x00000000)
         {
-            haltflag            = 1;
+            haltflag                = 1;
         }
     }
 
@@ -1551,62 +1559,47 @@ void  decode (uint32_t word, uint32_t immediate_value)
     //
     // if binary mode is enabled, display the instruction in binary
     //
-    if ((binaryflag            == 1) &&
-        (haltflag              == 0))
+    if ((binaryflag                == 1) &&
+        (haltflag                  == 0))
     {
-        mask                    = 0x80000000;
-        for (count              = 31;
-             count             >= 0;
-             count              = count - 1)
+        mask                        = 0x80000000;
+        for (count                  = 31;
+             count                 >= 0;
+             count                  = count - 1)
         {
-            value               = (word & mask) >> count;
+            value                   = (word & mask) >> count;
 
-            if (count          >= 26)
+            if (fancyflag          != FANCY_NEVER)
             {
-                if (fancyflag  != FANCY_NEVER)
+                if (count          >= 26)
                 {
                     fprintf (stdout, "\e[1;31m");
                 }
-            }
-            else if (count     == 25)
-            {
-                if (fancyflag  != FANCY_NEVER)
+                else if (count     == 25)
                 {
                     fprintf (stdout, "\e[1;33m");
                 }
-            }
-            else if (count     >= 21)
-            {
-                if (fancyflag  != FANCY_NEVER)
+                else if (count     >= 21)
                 {
                     fprintf (stdout, "\e[1;32m");
                 }
-            }
-            else if (count     >= 17)
-            {
-                if (fancyflag  != FANCY_NEVER)
+                else if (count     >= 17)
                 {
                     fprintf (stdout, "\e[1;36m");
                 }
-            }
-            else if (count     >= 14)
-            {
-                if (fancyflag  != FANCY_NEVER)
+                else if (count     >= 14)
                 {
                     fprintf (stdout, "\e[1;34m");
                 }
-            }
-            else
-            {
-                if (fancyflag  != FANCY_NEVER)
+                else
                 {
                     fprintf (stdout, "\e[1;35m");
                 }
             }
 
             fprintf (stdout, "%hhd", value);
-            mask                = mask >> 1;
-            if (fancyflag      != FANCY_NEVER)
+            mask                    = mask >> 1;
+            if (fancyflag          != FANCY_NEVER)
             {
                 fprintf (stdout, "\e[m");
             }
@@ -1630,12 +1623,12 @@ void  decode (uint32_t word, uint32_t immediate_value)
     //
     // display the obtained instruction
     //
-    is_halt                     = strcmp ("HLT", opcodes[opcode].name);
-    if (is_halt                == 0)
+    is_halt                         = strcmp ("HLT", opcodes[opcode].name);
+    if (is_halt                    == 0)
     {
-        if (word               == 0x00000000)
+        if (word                   == 0x00000000)
         {
-            if (haltflag       == 0)
+            if (haltflag           == 0)
             {
                 fprintf (stdout, "%-5s ", opcodes[opcode].name);
             }
