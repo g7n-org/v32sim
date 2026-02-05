@@ -64,6 +64,7 @@ Node    *list;
 uint8_t  binaryflag;
 uint8_t  fancyflag;
 uint8_t  haltflag;
+uint8_t  offsetfixflag;
  
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -124,6 +125,7 @@ int32_t  main (int argc, char **argv)
     binaryflag                     = 0;
     fancyflag                      = FANCY_DEFAULT;
     haltflag                       = 0;
+    offsetfixflag                  = 0;
     list                           = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -131,23 +133,24 @@ int32_t  main (int argc, char **argv)
     // getopt(3) long options and mapping to short options
     //
     struct option long_options[]   = {
-       { "address",  required_argument, 0, 'a' },
-       { "binary",   no_argument,       0, 'b' },
-       { "colors",   no_argument,       0, 'c' },
-       { "column",   no_argument,       0, '1' },
-       { "decode",   no_argument,       0, 'd' },
-       { "fancy",    no_argument,       0, 'f' },
-       { "file",     no_argument,       0, 'F' },
-       { "memory",   no_argument,       0, 'm' },
-       { "range",    required_argument, 0, 'r' },
-       { "raw",      no_argument,       0, 'R' },
-       { "start",    required_argument, 0, 's' },
-       { "stop",     required_argument, 0, 'S' },
-       { "verbose",  no_argument,       0, 'v' },
-       { "width",    required_argument, 0, 'W' },
-       { "wordsize", required_argument, 0, 'w' },
-       { "help",     no_argument,       0, 'h' },
-       { 0,          0,                 0,  0  }
+       { "address",        required_argument, 0, 'a' },
+       { "adjust-offsets", no_argument,       0, 'A' },
+       { "binary",         no_argument,       0, 'b' },
+       { "colors",         no_argument,       0, 'c' },
+       { "column",         no_argument,       0, '1' },
+       { "decode",         no_argument,       0, 'd' },
+       { "fancy",          no_argument,       0, 'f' },
+       { "file",           no_argument,       0, 'F' },
+       { "memory",         no_argument,       0, 'm' },
+       { "range",          required_argument, 0, 'r' },
+       { "raw",            no_argument,       0, 'R' },
+       { "start",          required_argument, 0, 's' },
+       { "stop",           required_argument, 0, 'S' },
+       { "verbose",        no_argument,       0, 'v' },
+       { "width",          required_argument, 0, 'W' },
+       { "wordsize",       required_argument, 0, 'w' },
+       { "help",           no_argument,       0, 'h' },
+       { 0,                0,                 0,  0  }
     };
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +158,7 @@ int32_t  main (int argc, char **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long (argc, argv,
-                                                  "a:b1cdfFmr:Rs:S:vW:w:h",
+                                                  "a:Ab1cdfFmr:Rs:S:vW:w:h",
                                                   long_options,
                                                   &option_index);
     while (opt                    != -1)
@@ -169,6 +172,10 @@ int32_t  main (int argc, char **argv)
             case 'a':
                 offset             = strtol (optarg, NULL, 16);
                 add_node (offset);
+                break;
+
+            case 'A':
+                offsetfixflag      = 1;
                 break;
 
             case 'b':
@@ -258,7 +265,7 @@ int32_t  main (int argc, char **argv)
                 break;
         }
         opt                        = getopt_long (argc, argv,
-                                                  "a:b1cdfFmr:Rs:S:vW:w:h",
+                                                  "a:Ab1cdfFmr:Rs:S:vW:w:h",
                                                   long_options,
                                                   &option_index);
     }
@@ -1150,6 +1157,7 @@ void  display_usage (int8_t *argv)
     fprintf (stdout, "Mandatory arguments to long options are mandatory for ");
     fprintf (stdout, "short options too.\n\n");
     fprintf (stdout, "  -a, --address=ADDR         highlight WORD at ADDR\n");
+    fprintf (stdout, "  -A, --adjust-offsets       render offsets from CART origin\n");
     fprintf (stdout, "  -b, --binary               display binary in decode mode\n");
     fprintf (stdout, "  -1, --column               force one WORD column output\n");
     fprintf (stdout, "  -d, --decode               decode instructions in-line\n");
@@ -1503,6 +1511,28 @@ void  decode (uint32_t word, uint32_t immediate_value)
 
     category                    = (portnum & 0x00000700) >> 8;
     attribute                   = (portnum & 0x000000FF);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // If offsetfixflag is set, adjust the immediate value to correct
+    // looking in-cartridge offsets.
+    //
+    // NOTE: non-offset, large immediate values could then get caught
+    // up in this and inappropriately updated. Further checks will be
+    // needed to prevent this
+    //
+    // Still  an issue,  but trying to be more specific about what is
+    // an offset versus arbitrary immediate data.
+    //
+    if (offsetfixflag          == 1)
+    {
+        mask                    = 0xF8000000;
+        value                   = immediate_value & mask;
+        if (value              == 0x20000000)
+        {
+            immediate_value     = immediate_value + 0x23;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
