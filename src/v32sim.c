@@ -23,11 +23,14 @@ int32_t  main (int8_t  argc,  uint8_t **argv)
 			 index     <  wordsize;
 			 index      = index + 1)
 		{
+			word        = word | (*(data+index) << (8*index));
 			fprintf (stdout, "%.2hhX ", *(data+index));
 		}
+		fprintf (stdout, "word: %.8X ", word);
 		fprintf (stdout, "\n");
 		offset          = offset + 1;
 		fread (data, sizeof (uint8_t), wordsize, program);
+		word            = 0x00000000;
 	}
 	
 	return (0);
