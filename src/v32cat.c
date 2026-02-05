@@ -110,6 +110,7 @@ int32_t  main (int argc, char **argv)
     uint32_t  start                = 0;        // starting address
     uint32_t  stop                 = 0;        // ending address
     uint32_t  bound                = 0;
+    uint32_t  value                = 0;
     int32_t   index                = 0;
     int32_t   opt                  = 0;
     int32_t   wordsize             = 4;        // Vircon32 CPU word size (in bytes)
@@ -450,7 +451,10 @@ int32_t  main (int argc, char **argv)
                         case 'B': // V-B-IN
                             headertype        = V32_VBIN;
                             dataflag          = 1;
-                            offset            = 0x22 * wordsize;
+                            if (offsetmask   >  0x00000000)
+                            {
+                                offset        = 0x22 * wordsize;
+                            }
                             break;
 
                         case 'S': // V-S-ND
@@ -1041,23 +1045,38 @@ int32_t  main (int argc, char **argv)
         //
         else
         {
-            if ((headertype                      == V32_VBIN) &&
-                ((offset / wordsize)             >  0x23))
+            if (headertype                       == V32_VBIN)
             {
-                if (skipflag                     == 0)
+                if (offsetmask                   == 0x00000000)
                 {
-                    decode (word, immval);
+                    value                         = 0x03;
+                }
+                else
+                {
+                    value                         = 0x23;
+                }
 
-                    if (immflag                  == 1)
+                if ((offset / wordsize)          >  value)
+                {
+                    if (skipflag                 == 0)
                     {
-                        skipflag                  = 1;
+                        decode (word, immval);
+
+                        if (immflag              == 1)
+                        {
+                            skipflag              = 1;
+                        }
+                    }
+                    else
+                    {
+                        fprintf (stdout, "\n");
+                        immflag                   = 0;
+                        skipflag                  = 0;
                     }
                 }
                 else
                 {
                     fprintf (stdout, "\n");
-                    immflag                       = 0;
-                    skipflag                      = 0;
                 }
             }
             else
