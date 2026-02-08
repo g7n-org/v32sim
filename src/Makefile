@@ -8,10 +8,13 @@ all: gcc
 
 debug: CFLAGS += -DDEBUG -g
 debug: DEBUG = debug
-debug: gcc
+debug: gcc-debug
 
 gcc:
 	@make -f Makefile.gcc
+
+gcc-debug:
+	@make -f Makefile.gcc debug
 
 cscript:
 	@make -f Makefile.cscript

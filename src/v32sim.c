@@ -3,74 +3,104 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define  FLAG_NONE  0
-#define  FLAG_SHOW  1 
+#define  NUM_REGISTERS 19
 
-#define  HLT        0x00
-#define  MOV        0x13
-#define  OUT        0x18
+#define  R0            0
+#define  R1            1
+#define  R2            2
+#define  R3            3
+#define  R4            4
+#define  R5            5
+#define  R6            6
+#define  R7            7
+#define  R8            8
+#define  R9            9
+#define  R10           10
+#define  R11           11
+#define  R12           12
+#define  R13           13
+#define  R14           14
+#define  R15           15
+#define  IP            16
+#define  IV            17
+#define  PC            18
+
+#define  FLAG_NONE     0
+#define  FLAG_SHOW     1 
+
+#define  HLT           0x00
+#define  MOV           0x13
+#define  OUT           0x18
 
 uint8_t  *data;
 uint32_t  offset;
+int32_t  *memory;
+int32_t  *reg;
 uint8_t   wordsize;
-
 
 uint32_t  get_word (FILE *, uint8_t);
 
 int32_t   main (int8_t  argc,  uint8_t **argv)
 {
-    FILE     *program          = NULL;
-    int32_t   index            = 0;
-    uint8_t   param            = 0;
-    uint32_t  immediate        = 0x00000000;
-    uint8_t   opcode           = 0x00;
-    uint8_t   dstreg           = 0x00;
-    uint8_t   srcreg           = 0x00;
-    uint16_t  port             = 0x0000;
-    uint32_t  word             = 0x00000000;
-    uint32_t  rom_offset       = 0x00000000;
-    uint32_t  vbinoffset       = 0x00000000;
-    uint32_t  vtexoffset       = 0x00000000;
-    uint32_t  vsndoffset       = 0x00000000;
+    FILE     *program              = NULL;
+    int32_t   index                = 0;
+    size_t    len                  = 0;
+    uint8_t   param                = 0;
+    uint8_t   opcode               = 0x00;
+    uint8_t   dstreg               = 0x00;
+    uint8_t   srcreg               = 0x00;
+    uint8_t   addr                 = 0x00;
+    uint16_t  port                 = 0x0000;
+    uint32_t  immediate            = 0x00000000;
+    uint32_t  rom_offset           = 0x00000000;
+    uint32_t  vbinoffset           = 0x00000000;
+    uint32_t  vtexoffset           = 0x00000000;
+    uint32_t  vsndoffset           = 0x00000000;
+    uint32_t  word                 = 0x00000000;
 
-    wordsize                   = 4;
-    data                       = (uint8_t *) malloc (sizeof (uint8_t) * wordsize);
-    offset                     = 0x20000000;
-    program                    = fopen (argv[1], "r");
+    wordsize                       = 4;
+    len                            = sizeof (uint8_t) * wordsize;
+    data                           = (uint8_t *) malloc (len);
+    len                            = sizeof (int32_t) * 1024 * 1024 * wordsize;
+    memory                         = (int32_t *) malloc (len);
+    len                            = sizeof (int32_t) * NUM_REGISTERS;
+    reg                            = (int32_t *) malloc (len);
+    offset                         = 0x20000000;
+    program                        = fopen (argv[1], "r");
 
     fread (data, sizeof (uint8_t), wordsize, program);
-    index                      = strncmp (data, "V32-", 4);
-    if (index                 != 0)
+    index                          = strncmp (data, "V32-", 4);
+    if (index                     != 0)
     {
         fprintf (stderr, "[ERROR] Provided file is NOT a Vircon32 file\n");
         exit (1);
     }
 
     fread (data, sizeof (uint8_t), wordsize, program);
-    index                      = strncmp (data, "CART", 4);
-    if (index                 != 0)
+    index                          = strncmp (data, "CART", 4);
+    if (index                     != 0)
     {
         fprintf (stderr, "[ERROR] Provided file is NOT a Vircon32 cartridge\n");
         exit (2);
     }
 
     fseek (program, 22 * wordsize, SEEK_CUR);
-    offset                     = offset + 23;
+    offset                         = offset + 23;
 
-    vbinoffset                 = get_word (program, FLAG_NONE) / wordsize;
-    word                       = get_word (program, FLAG_NONE);
-    vtexoffset                 = get_word (program, FLAG_NONE) / wordsize;
-    word                       = get_word (program, FLAG_NONE);
-    vsndoffset                 = get_word (program, FLAG_NONE) / wordsize;
+    vbinoffset                     = get_word (program, FLAG_NONE) / wordsize;
+    word                           = get_word (program, FLAG_NONE);
+    vtexoffset                     = get_word (program, FLAG_NONE) / wordsize;
+    word                           = get_word (program, FLAG_NONE);
+    vsndoffset                     = get_word (program, FLAG_NONE) / wordsize;
     
-    for (index                 = 0;
-         index                <  6;
-         index                 = index + 1)
+    for (index                     = 0;
+         index                    <  6;
+         index                     = index + 1)
     {
-        word                   = get_word (program, FLAG_NONE);
+        word                       = get_word (program, FLAG_NONE);
     }
 
-    rom_offset                 = 0x20000000;
+    rom_offset                     = 0x20000000;
 
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
@@ -79,25 +109,86 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
     while (!feof (program))
     {
-        word                   = get_word (program, FLAG_SHOW);
+        word                       = get_word (program, FLAG_SHOW);
         if (!feof (program))
         {
             fprintf (stdout, "word: %.8X ", word);
-            rom_offset         = rom_offset + 1;
-            opcode             = (word & 0xFC000000) >> 26;
+            rom_offset             = rom_offset + 1;
+            opcode                 = (word & 0xFC000000) >> 26;
             switch (opcode)
             {
                 case HLT:
-                    if (word  == 0x00000000)
+                    if (word      == 0x00000000)
                     {
                         fprintf (stdout, "%5s ", "HLT");
                     }
-                    param      = 0;
+                    param          = 0;
                     break;
 
                 case MOV:
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // Identify instruction
+                    //
                     fprintf (stdout, "%5s ", "MOV");
-                    param      = 2;
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // Obtain instruction parameters from instruction word
+                    //
+                    dstreg                 = (word & 0x01E00000) >> 21;
+                    srcreg                 = (word & 0x001E0000) >> 17;
+                    addr                   = (word & 0x0001C000) >> 14;
+
+                    switch (addr)
+                    {
+                        case 00: // MOV DSTREG, Immediate
+                            immediate      = get_word (program, FLAG_NONE);
+                            *(reg+dstreg)  = immediate;
+							fprintf (stdout, "R%u, 0x%.8X", dstreg, immediate);
+                            break;
+
+                        case 01: // MOV DSTREG, SRCREG
+                            *(reg+dstreg)  = srcreg;
+							fprintf (stdout, "R%u, R%u", dstreg, srcreg);
+                            break;
+
+                        case 02: // MOV DSTREG, [Immediate]
+                            immediate      = get_word (program, FLAG_NONE);
+                            *(reg+dstreg)  = *(memory+immediate);
+							fprintf (stdout, "R%u, [0x%.8X]", dstreg, immediate);
+                            break;
+
+                        case 03: // MOV DSTREG, [SRCREG]
+                            *(reg+dstreg)  = *(memory+*(reg+srcreg));
+							fprintf (stdout, "R%u, [R%u]", dstreg, srcreg);
+                            break;
+
+                        case 04: // MOV DSTREG, [SRCREG+Immediate]
+                            immediate      = get_word (program, FLAG_NONE);
+                            *(reg+dstreg)  = *(memory+(*(reg+srcreg)+immediate));
+							fprintf (stdout, "R%u, [R%u+0x%.8X]", dstreg, srcreg, immediate);
+                            break;
+
+                        case 05: // MOV [Immediate], SRCREG
+                            immediate      = get_word (program, FLAG_NONE);
+                            *(memory+immediate)  = *(reg+srcreg);
+							fprintf (stdout, "[0x%.8X], R%u", immediate, srcreg);
+                            break;
+
+                        case 06: // MOV [DSTREG], SRCREG
+                            *(memory+*(reg+dstreg))  = *(reg+srcreg);
+							fprintf (stdout, "[R%u], R%u", dstreg, srcreg);
+                            break;
+
+                        case 07: // MOV [DSTREG+Immediate], SRCREG
+                            immediate      = get_word (program, FLAG_NONE);
+                            *(memory+(*(reg+dstreg)+immediate))  = *(reg+srcreg);
+							fprintf (stdout, "[R%u+0x%.8X], R%u", dstreg, immediate, srcreg);
+                            break;
+                    }
+                    param          = 0;
                     break;
 
                 case OUT:
@@ -115,20 +206,21 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                         fprintf (stdout, "R%u", dstreg);
                     }
 
-                    param      = 0;
+                    param          = 0;
                     break;
             }
 
-            if (param         >= 1)
+            if (param             >= 1)
             {
-                dstreg         = (word & 0x01E00000) >> 21;
+                dstreg             = (word & 0x01E00000) >> 21;
                 fprintf (stdout, "R%u, ", dstreg);
 
-                immediate      = word & 0x02000000;
-                if (immediate >  0x00000000)
+                immediate          = word & 0x02000000;
+                if (immediate     >  0x00000000)
                 {
-                    immediate  = get_word (program, FLAG_NONE);
+                    immediate      = get_word (program, FLAG_NONE);
                     fprintf (stdout, "0x%.8X", immediate);
+                    *(reg+dstreg)  = immediate;
                 }
             }
 
