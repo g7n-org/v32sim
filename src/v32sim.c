@@ -44,6 +44,7 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 {
     FILE     *program              = NULL;
     int32_t   index                = 0;
+    int32_t   value                = 0;
     size_t    len                  = 0;
     uint8_t   param                = 0;
     uint8_t   opcode               = 0x00;
@@ -161,7 +162,8 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                             break;
 
                         case 03: // MOV DSTREG, [SRCREG]
-                            *(reg+dstreg)  = *(memory+*(reg+srcreg));
+							value          = *(reg+dstreg);
+                            *(reg+dstreg)  = *(memory+value);
 							fprintf (stdout, "R%u, [R%u]", dstreg, srcreg);
                             break;
 
