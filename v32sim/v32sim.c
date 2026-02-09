@@ -105,10 +105,12 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
     time_t     current_time_raw;
     uint8_t   *destination             = NULL;
     uint8_t   *source                  = NULL;
+    uint8_t   *input                   = NULL;
     uint8_t    immflag                 = FALSE;
+    uint8_t    runflag                 = FALSE;
     uint8_t    opcode                  = 0x00;
-    uint8_t    dst                  = 0x00;
-    uint8_t    src                  = 0x00;
+    uint8_t    dst                     = 0x00;
+    uint8_t    src                     = 0x00;
     uint8_t    addr                    = 0x00;
     uint16_t   port                    = 0x0000;
     uint32_t   immediate               = 0x00000000;
@@ -135,6 +137,8 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
     len                                = sizeof (uint8_t) * 17;
     destination                        = (uint8_t *) malloc (len);
     source                             = (uint8_t *) malloc (len);
+    len                                = sizeof (uint8_t) * 256;
+    input                              = (uint8_t *) malloc (len);
     len                                = sizeof (uint8_t) * wordsize;
     data                               = (uint8_t *) malloc (len);
     len                                = sizeof (int32_t) * 1024 * 1024 * wordsize;
@@ -188,6 +192,30 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
     while (!feof (program))
     {
+        if (runflag                   == FALSE)
+        {
+            do
+            {
+                fprintf (stdout, "v32> ");
+                fscanf  (stdin,  "%s", input);
+                if (strcmp (input, "regs") == 0)
+                {
+                    for (index = 0; index < 16; index++)
+                    {
+                        sprintf (source, "R%u:", index);
+                        fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
+                    }
+                }
+                //else if (strcmp (input, "regs") == 0)
+            //    {
+            //        for (index = 0; index < 16; index++)
+            //        {
+            //            fprintf (stdout, "R%u: 0x%.8X\n", index, (reg+index) -> i32);
+            //        }
+            //    }
+            }
+            while (strcmp (input, "step") != 0);
+        }
         (reg+PC) -> i32                = offset; // location
         word                           = get_word (program);
         put_word (word, FLAG_SHOW);
