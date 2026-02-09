@@ -3,28 +3,21 @@
 A set  of handy  Vircon32 tools,  for a variety  of debugging  and fringe
 purposes.
 
-There are tools for binary/data analysis like `v32cat` and `v32ls`, along
-with obscene peripheral hacks like `keyboard2gamepad` and `v32kbd`, which
-attempts to  allow the  use of  a standard  computer keyboard  within the
-Vircon32 environment.
+There are tools  for binary/data analysis, obscene  peripheral hacks, and
+simulators/debuggers.
 
 ## BUILDING
 
-To build  the v32tools, change into  the `src/` directory and  run `make`
-with one of two options:
-
-  * `make gcc` - compiles the C code to binary form
-  * `make cscript` - creates `tcc` interpreted C scripts
+To build the v32tools, change into the respective tool's subdirectory and
+run `make`
 
 Executable files will be stored in `bin/`.
 
 ## INSTALL
 
-To install,  also from the `src/`  directory, run `make` with  one of two
-options:
+To install, also from the tool's subdirectory, run `make install`
 
-  * `make install` - copies executable files into your user's `~/bin/`
-  * `make sysinstall` - copies executables into `/usr/local/bin/`
+Tool will install into current user's `~/bin/` directory.
 
 ## v32cat
 
@@ -118,3 +111,45 @@ the file): each V32 header, and its starting offset.
 
 With the inclusion of the `-l`, `-v`, or `--verbose` argument, additional
 V32 header information will be displayed.
+
+## v32sim
+
+This is an attempt at a  Vircon32 simulator, meant for debugging assembly
+code programs written for the system.
+
+It has a simple text interface,  aiming to really only target a debugging
+interface similar to that of `gdb`.
+
+With  it,  one can  single-step  through  a running  program,  displaying
+various  registers and  memory locations,  watching as  they change  from
+instruction to instruction.
+
+## v32kbd
+
+This is an attempt at a  Vircon32 in-game "driver" for receiving keyboard
+keystrokes from an  external keyboard communicating with the  system as a
+gamepad.
+
+It  requires the  host  system to  be interfaced  with  the USB  "gadget"
+presenting the keyboard as a gamepad.
+
+Very much a work  in progress: while I believe the  code compiles, it has
+yet to be tested.
+
+The idea  is that  this will  be an  `#include`'ed file  in a  Vircon32 C
+program (the  driver/library/API is in  a file called  `keyboard.h`). The
+probe/read  function is  run every  few  frames to  check the  designated
+gamepad  for  values,  which  will  then be  demultiplexed  into  a  byte
+corresponding with a keyboard input.
+
+## kbd2pad
+
+This is a program to be run on  the Linux host configured to act as a USB
+device, translating keyboard inputs into gamepad buttons.
+
+Very much  a work  in progress:  still in the  midst of  establishing the
+configuration of USB gadgets in Linux, and still need to adapt `getkey.c`
+to fully meet the intended needs of `v32kbd`.
+
+This isn't functional yet, it doesn't really do anything yet. Good things
+come to those who wait.

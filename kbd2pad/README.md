@@ -1,4 +1,4 @@
-# kbd2gamepad
+# kbd2pad
 
 A ghetto (initially proof-of-concept) keyboard input demultiplexer script
 for use in  masquerading a keyboard as  a USB gamepad device,  for use on
