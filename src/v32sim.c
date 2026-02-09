@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define  TRUE          1
+#define  FALSE         0
+
 #define  NUM_REGISTERS 19
 
 #define  R0            0
@@ -29,10 +32,19 @@
 #define  FLAG_SHOW     1 
 
 #define  HLT           0x00
+#define  JMP           0x02
+#define  JT            0x05
+#define  JF            0x06
+#define  IEQ           0x07
 #define  IGT           0x09
 #define  MOV           0x13
 #define  IN            0x17
 #define  OUT           0x18
+#define  IADD          0x26
+#define  ISUB          0x27
+#define  IMUL          0x28
+#define  IDIV          0x29
+#define  IMOD          0x2A
 
 uint8_t  *data;
 uint32_t  offset;
@@ -41,7 +53,7 @@ int32_t  *reg;
 uint8_t   wordsize;
 
 uint32_t  get_word (FILE *);
-void      showword (uint32_t, uint8_t);
+void      put_word (uint32_t, uint8_t);
 
 int32_t   main (int8_t  argc,  uint8_t **argv)
 {
@@ -49,8 +61,9 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
     int32_t   index                = 0;
     int32_t   value                = 0;
     size_t    len                  = 0;
-    uint8_t   immflag              = 0;
-    uint8_t   param                = 0;
+    uint8_t  *destination          = NULL;
+    uint8_t  *source               = NULL;
+    uint8_t   immflag              = FALSE;
     uint8_t   opcode               = 0x00;
     uint8_t   dstreg               = 0x00;
     uint8_t   srcreg               = 0x00;
@@ -64,6 +77,9 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
     uint32_t  word                 = 0x00000000;
 
     wordsize                       = 4;
+    len                            = sizeof (uint8_t) * 17;
+    destination                    = (uint8_t *) malloc (len);
+    source                         = (uint8_t *) malloc (len);
     len                            = sizeof (uint8_t) * wordsize;
     data                           = (uint8_t *) malloc (len);
     len                            = sizeof (int32_t) * 1024 * 1024 * wordsize;
@@ -90,7 +106,6 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
     }
 
     fseek (program, 22 * wordsize, SEEK_CUR);
-    offset                         = offset + 23;
 
     vbinoffset                     = get_word (program) / wordsize;
     word                           = get_word (program);
@@ -118,20 +133,21 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
     {
         *(reg+PC)                  = offset;
         word                       = get_word (program);
-        showword (word, FLAG_SHOW);
+        put_word (word, FLAG_SHOW);
         *(reg+IP)                  = word;
         offset                     = offset + 1;
+        rom_offset                 = rom_offset + 1;
 
         immediate                  = word & 0x02000000;
         if (immediate             == 0x02000000)
         {
             immediate              = get_word (program);
-            immflag                = 1;
+            immflag                = TRUE;
         }
         else
         {
             immediate              = 0x00000000;
-            immflag                = 0;
+            immflag                = FALSE;
         }
 
         *(reg+IV)                  = immediate;
@@ -142,7 +158,7 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
         //
         // Obtain instruction parameters from instruction word
         //
-        rom_offset             = rom_offset + 1;
+        //rom_offset             = rom_offset + 1;
         opcode                 = (word & 0xFC000000) >> 26;
         dstreg                 = (word & 0x01E00000) >> 21;
         srcreg                 = (word & 0x001E0000) >> 17;
@@ -156,133 +172,285 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                 {
                     fprintf (stdout, "%-5s ", "HLT");
                 }
-                param          = 0;
+                break;
+
+            case JMP:
+                if (immflag           == TRUE)
+                {
+                    if (*(reg+dstreg) == TRUE)
+                    {
+                        *(reg+PC)      = immediate;
+                    }
+                    sprintf (destination, "0x%.8X", immediate);
+                }
+                else
+                {
+                    if (*(reg+dstreg) == TRUE)
+                    {
+                        *(reg+PC    )  = *(reg+srcreg);
+                    }
+                    sprintf (destination, "R%u",    srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s", "JMP", destination);
+                break;
+
+            case JT:
+                sprintf (destination, "R%u,", dstreg);
+                if (immflag           == TRUE)
+                {
+                    if (*(reg+dstreg) == TRUE)
+                    {
+                        *(reg+PC)      = immediate;
+                    }
+                    sprintf (source, "0x%.8X", immediate);
+                }
+                else
+                {
+                    if (*(reg+dstreg) == TRUE)
+                    {
+                        *(reg+PC    )  = *(reg+srcreg);
+                    }
+                    sprintf (source, "R%u",    srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s %-16s", "JT", destination, source);
+                break;
+
+            case JF:
+                sprintf (destination, "R%u,", dstreg);
+                if (immflag           == TRUE)
+                {
+                    if (*(reg+dstreg) == FALSE)
+                    {
+                        *(reg+PC)      = immediate;
+                    }
+                    sprintf (source, "0x%.8X", immediate);
+                }
+                else
+                {
+                    if (*(reg+dstreg) == FALSE)
+                    {
+                        *(reg+PC    )  = *(reg+srcreg);
+                    }
+                    sprintf (source, "R%u",    srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s %-16s", "JF", destination, source);
+                break;
+
+            case IEQ:
+
+                if (immflag           == TRUE)
+                {
+                    if (*(reg+dstreg) == immediate)
+                    {
+                        *(reg+dstreg)  = TRUE;
+                    }
+                    else
+                    {
+                        *(reg+dstreg)  = FALSE;
+                    }
+                    sprintf (source, "0x%.8X", immediate);
+                }
+                else
+                {
+                    if (*(reg+dstreg) == *(reg+srcreg))
+                    {
+                        *(reg+dstreg)  = TRUE;
+                    }
+                    else
+                    {
+                        *(reg+dstreg)  = FALSE;
+                    }
+                    sprintf (source, "R%u",    srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s %-16s", "IEQ", destination, source);
                 break;
 
             case IGT:
 
-                ////////////////////////////////////////////////////////////////////
-                //
-                // Identify instruction
-                //
-                fprintf (stdout, "%-5s R%u, ", "IGT", dstreg);
-                if (immflag           == 1)
+                if (immflag           == TRUE)
                 {
                     if (*(reg+dstreg) >  immediate)
                     {
-                        *(reg+dstreg)  = 1;
+                        *(reg+dstreg)  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = 0;
+                        *(reg+dstreg)  = FALSE;
                     }
-                    fprintf (stdout, "0x%.8X", immediate);
+                    sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
                     if (*(reg+dstreg) >  *(reg+srcreg))
                     {
-                        *(reg+dstreg)  = 1;
+                        *(reg+dstreg)  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = 0;
+                        *(reg+dstreg)  = FALSE;
                     }
-                    fprintf (stdout, "R%u",    srcreg);
+                    sprintf (source, "R%u",    srcreg);
                 }
+                fprintf (stdout,      "%-5s %-16s %-16s", "IGT", destination, source);
                 break;
 
             case MOV:
-
-                ////////////////////////////////////////////////////////////////////
-                //
-                // Identify instruction
-                //
-                fprintf (stdout, "%-5s ", "MOV");
 
                 switch (addr)
                 {
                     case 00: // MOV DSTREG, Immediate
                         *(reg+dstreg)  = immediate;
-                        fprintf (stdout, "R%u, 0x%.8X", dstreg, immediate);
+                        sprintf (destination, "R%u,",          dstreg);
+                        sprintf (source,      "0x%.8X",        immediate);
                         break;
 
                     case 01: // MOV DSTREG, SRCREG
                         *(reg+dstreg)  = srcreg;
-                        fprintf (stdout, "R%u, R%u", dstreg, srcreg);
+                        sprintf (destination, "R%u,",          dstreg);
+                        sprintf (source,      "R%u",           srcreg);
                         break;
 
                     case 02: // MOV DSTREG, [Immediate]
                         *(reg+dstreg)  = *(memory+immediate);
-                        fprintf (stdout, "R%u, [0x%.8X]", dstreg, immediate);
+                        sprintf (destination, "R%u,",          dstreg);
+                        sprintf (source,      "[0x%.8X]",      immediate);
                         break;
 
                     case 03: // MOV DSTREG, [SRCREG]
                         value          = *(reg+dstreg);
                         *(reg+dstreg)  = *(memory+value);
-                        fprintf (stdout, "R%u, [R%u]", dstreg, srcreg);
+                        sprintf (destination, "R%u,",          dstreg);
+                        sprintf (source,      "[R%u]",         srcreg);
                         break;
 
                     case 04: // MOV DSTREG, [SRCREG+Immediate]
                         *(reg+dstreg)  = *(memory+(*(reg+srcreg)+immediate));
-                        fprintf (stdout, "R%u, [R%u+0x%.8X]", dstreg, srcreg, immediate);
+                        sprintf (destination, "R%u,",          dstreg);
+                        sprintf (source,      "[R%u+0x%.8X]",  srcreg, immediate);
                         break;
 
                     case 05: // MOV [Immediate], SRCREG
                         *(memory+immediate)  = *(reg+srcreg);
-                        fprintf (stdout, "[0x%.8X], R%u", immediate, srcreg);
+                        sprintf (destination, "[0x%.8X],",     immediate);
+                        sprintf (source,      "R%u",           srcreg);
                         break;
 
                     case 06: // MOV [DSTREG], SRCREG
                         *(memory+*(reg+dstreg))  = *(reg+srcreg);
-                        fprintf (stdout, "[R%u], R%u", dstreg, srcreg);
+                        sprintf (destination, "[R%u],",        dstreg);
+                        sprintf (source,      "R%u",           srcreg);
                         break;
 
                     case 07: // MOV [DSTREG+Immediate], SRCREG
                         *(memory+(*(reg+dstreg)+immediate))  = *(reg+srcreg);
-                        fprintf (stdout, "[R%u+0x%.8X], R%u", dstreg, immediate, srcreg);
+                        sprintf (destination, "[R%u+0x%.8X],", dstreg, immediate);
+                        sprintf (source,      "R%u",           srcreg);
                         break;
                 }
-                param          = 0;
+                fprintf (stdout,      "%-5s %-16s %-16s", "MOV", destination, source);
                 break;
 
             case IN:
-                fprintf (stdout, "%-5s R%u, 0x%.8X", "IN", dstreg, port);
-                param          = 0;
+                sprintf (destination, "R%u,",         dstreg);
+                sprintf (source,      "0x%.3X",       port);
+                fprintf (stdout,      "%-5s %-16s %-16s", "IN", destination, source);
                 break;
 
             case OUT:
-                fprintf (stdout, "%-5s 0x%.3X, ", "OUT", port);
-                if (immflag   == 1)
+                sprintf (destination, "0x%.3X,",      port);
+                if (immflag   == TRUE)
                 {
-                    fprintf (stdout, "0x%.8X", immediate);
+                    sprintf (source,  "0x%.3X",       port);
                 }
                 else
                 {
-                    fprintf (stdout, "R%u", dstreg);
+                    sprintf (source,  "R%u",          dstreg);
                 }
+                fprintf (stdout,      "%-5s %-16s %-16s", "OUT", destination, source);
+                break;
 
-                param          = 0;
+            case IADD:
+                sprintf (destination, "R%u,",         dstreg);
+                if (immflag           == TRUE)
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) + immediate;
+                    sprintf (source,  "0x%.8X",       immediate);
+                }
+                else
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) + srcreg;
+                    sprintf (source,  "R%u",          srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s %-16s", "IADD", destination, source);
+                break;
+
+            case ISUB:
+                sprintf (destination, "R%u,",         dstreg);
+                if (immflag           == TRUE)
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) - immediate;
+                    sprintf (source,  "0x%.8X",       immediate);
+                }
+                else
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) - srcreg;
+                    sprintf (source,  "R%u",          srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s %-16s", "ISUB", destination, source);
+                break;
+
+            case IMUL:
+                sprintf (destination, "R%u,",         dstreg);
+                if (immflag           == TRUE)
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) * immediate;
+                    sprintf (source,  "0x%.8X",       immediate);
+                }
+                else
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) * srcreg;
+                    sprintf (source,  "R%u",          srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s %-16s", "IMUL", destination, source);
+                break;
+
+            case IDIV:
+                sprintf (destination, "R%u,",         dstreg);
+                if (immflag           == TRUE)
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) / immediate;
+                    sprintf (source,  "0x%.8X",       immediate);
+                }
+                else
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) / srcreg;
+                    sprintf (source,  "R%u",          srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s %-16s", "IDIV", destination, source);
+                break;
+
+            case IMOD:
+                sprintf (destination, "R%u,",         dstreg);
+                if (immflag           == TRUE)
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) % immediate;
+                    sprintf (source,  "0x%.8X",       immediate);
+                }
+                else
+                {
+                    *(reg+dstreg)      = *(reg+dstreg) % srcreg;
+                    sprintf (source,  "R%u",          srcreg);
+                }
+                fprintf (stdout,      "%-5s %-16s %-16s", "IMOD", destination, source);
                 break;
         }
 
-        if (param             >= 1)
-        {
-            dstreg             = (word & 0x01E00000) >> 21;
-            fprintf (stdout, "R%u, ", dstreg);
-
-            immediate          = word & 0x02000000;
-            if (immflag       == 1)
-            {
-                fprintf (stdout, "0x%.8X", immediate);
-                *(reg+dstreg)  = immediate;
-            }
-        }
-
         fprintf (stdout, "\n");
-        if (immflag           == 1)
+        if (immflag           == TRUE)
         {
-            showword (*(reg+IV), FLAG_SHOW);
+            put_word (*(reg+IV), FLAG_SHOW);
+            offset             = offset + 1;
+            rom_offset         = rom_offset + 1;
             fprintf (stdout, "\n");
         }
     }
@@ -339,7 +507,7 @@ uint32_t  get_word (FILE *program)
     return (word);
 }
 
-void      showword (uint32_t  word, uint8_t  flag)
+void      put_word (uint32_t  word, uint8_t  flag)
 {
     //////////////////////////////////////////////////////////////////////////
     //
