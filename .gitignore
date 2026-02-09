@@ -54,6 +54,57 @@ dkms.conf
 # debug information files
 *.dwo
 
-# repository-specific data
-bin/*
-carts/*
+# config folders
+.obsidian/
+
+# git repositories
+*.git
+
+# temporary files
+*.tmp
+*.bak
+*.swp
+*.pyc
+*.out
+*.old
+*.tally
+.nfs*
+*.raw
+errors
+.DS_Store
+*.bin
+*.core
+*.save
+*~
+*.db
+
+# Compiler byproducts
+*.class
+
+# Vircon32
+*.memc
+*.vtex
+*.vbin
+*.vsnd
+*.v32
+
+# archives
+*.gz
+*.rle
+*.tar
+*.zip
+*.xz
+*.bz2
+
+# images
+*.bmp
+*.pnm
+*.png
+*.jpg
+
+# audio files
+*.mp3
+*.wav
+
+# TIC-80
+*.tic
