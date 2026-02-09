@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define  TRUE          1
 #define  FALSE         0
@@ -67,8 +68,20 @@
 #define  IDIV          0x29
 #define  IMOD          0x2A
 
+union data_type
+{
+    int32_t  i32;
+    float    f32;
+};
+typedef union data_type data_t;
+
 int32_t  *memory;
-int32_t  *reg;
+data_t    *reg;
+int32_t   cyclecounter;
+int32_t   framecounter;
+int32_t   date_day;
+int32_t   date_year;
+int32_t   time_day;
 uint8_t  *data;
 uint8_t   haltflag;
 uint8_t   waitflag;
@@ -80,51 +93,70 @@ void      put_word (uint32_t, uint8_t);
 
 int32_t   main (int8_t  argc,  uint8_t **argv)
 {
-    FILE     *program              = NULL;
-    int32_t   index                = 0;
-    int32_t   value                = 0;
-    size_t    len                  = 0;
-    uint8_t  *destination          = NULL;
-    uint8_t  *source               = NULL;
-    uint8_t   immflag              = FALSE;
-    uint8_t   opcode               = 0x00;
-    uint8_t   dstreg               = 0x00;
-    uint8_t   srcreg               = 0x00;
-    uint8_t   addr                 = 0x00;
-    uint16_t  port                 = 0x0000;
-    uint32_t  immediate            = 0x00000000;
-    uint32_t  rom_offset           = 0x00000000;
-    uint32_t  vbinoffset           = 0x00000000;
-    uint32_t  vtexoffset           = 0x00000000;
-    uint32_t  vsndoffset           = 0x00000000;
-    uint32_t  word                 = 0x00000000;
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // declare and initialize variables
+    //
+    FILE      *program                 = NULL;
+    int32_t    index                   = 0;
+    int32_t    value                   = 0;
+    size_t     len                     = 0;
+    struct tm *current_time_tm;
+    time_t     current_time_raw;
+    uint8_t   *destination             = NULL;
+    uint8_t   *source                  = NULL;
+    uint8_t    immflag                 = FALSE;
+    uint8_t    opcode                  = 0x00;
+    uint8_t    dst                  = 0x00;
+    uint8_t    src                  = 0x00;
+    uint8_t    addr                    = 0x00;
+    uint16_t   port                    = 0x0000;
+    uint32_t   immediate               = 0x00000000;
+    uint32_t   rom_offset              = 0x00000000;
+    uint32_t   vbinoffset              = 0x00000000;
+    uint32_t   vtexoffset              = 0x00000000;
+    uint32_t   vsndoffset              = 0x00000000;
+    uint32_t   word                    = 0x00000000;
 
-    wordsize                       = 4;
-    len                            = sizeof (uint8_t) * 17;
-    destination                    = (uint8_t *) malloc (len);
-    source                         = (uint8_t *) malloc (len);
-    len                            = sizeof (uint8_t) * wordsize;
-    data                           = (uint8_t *) malloc (len);
-    len                            = sizeof (int32_t) * 1024 * 1024 * wordsize;
-    memory                         = (int32_t *) malloc (len);
-    len                            = sizeof (int32_t) * NUM_REGISTERS;
-    reg                            = (int32_t *) malloc (len);
-    offset                         = 0x20000000;
-    program                        = fopen (argv[1], "r");
-    haltflag                       = FALSE;
-    waitflag                       = FALSE;
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // initialize variables
+    //
+    current_time_raw                   = time (NULL); // obtain current time (raw)
+    current_time_tm                    = localtime (&current_time_raw);
+    date_day                           = current_time_tm -> tm_yday + 1;
+    date_year                          = current_time_tm -> tm_year + 1900;
+    time_day                           = current_time_tm -> tm_hour * 3600;
+    time_day                          += current_time_tm -> tm_min  * 60;
+    time_day                          += current_time_tm -> tm_sec  * 60;
+    cyclecounter                       = 0;
+    framecounter                       = 0;
+    wordsize                           = 4;
+    len                                = sizeof (uint8_t) * 17;
+    destination                        = (uint8_t *) malloc (len);
+    source                             = (uint8_t *) malloc (len);
+    len                                = sizeof (uint8_t) * wordsize;
+    data                               = (uint8_t *) malloc (len);
+    len                                = sizeof (int32_t) * 1024 * 1024 * wordsize;
+    memory                             = (int32_t *) malloc (len);
+    len                                = sizeof (int32_t) * NUM_REGISTERS;
+    reg                                = (data_t *) malloc (len);
+    offset                             = 0x20000000;
+    program                            = fopen (argv[1], "r");
+    haltflag                           = FALSE;
+    waitflag                           = FALSE;
 
     fread (data, sizeof (uint8_t), wordsize, program);
-    index                          = strncmp (data, "V32-", 4);
-    if (index                     != 0)
+    index                              = strncmp (data, "V32-", 4);
+    if (index                         != 0)
     {
         fprintf (stderr, "[ERROR] Provided file is NOT a Vircon32 file\n");
         exit (1);
     }
 
     fread (data, sizeof (uint8_t), wordsize, program);
-    index                          = strncmp (data, "CART", 4);
-    if (index                     != 0)
+    index                              = strncmp (data, "CART", 4);
+    if (index                         != 0)
     {
         fprintf (stderr, "[ERROR] Provided file is NOT a Vircon32 cartridge\n");
         exit (2);
@@ -132,95 +164,103 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
     fseek (program, 22 * wordsize, SEEK_CUR);
 
-    vbinoffset                     = get_word (program) / wordsize;
-    word                           = get_word (program);
-    vtexoffset                     = get_word (program) / wordsize;
-    word                           = get_word (program);
-    vsndoffset                     = get_word (program) / wordsize;
+    vbinoffset                         = get_word (program) / wordsize;
+    word                               = get_word (program);
+    vtexoffset                         = get_word (program) / wordsize;
+    word                               = get_word (program);
+    vsndoffset                         = get_word (program) / wordsize;
     
-    for (index                     = 0;
-         index                    <  6;
-         index                     = index + 1)
+    for (index                         = 0;
+         index                        <  6;
+         index                         = index + 1)
     {
-        word                       = get_word (program);
+        word                           = get_word (program);
     }
 
-    rom_offset                     = 0x20000000;
+    rom_offset                         = 0x20000000;
 
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
     fprintf (stdout, "vtexoffset: %.8X\n", vtexoffset);
     fprintf (stdout, "vsndoffset: %.8X\n", vsndoffset);
 
-    offset                         = rom_offset;
+    offset                             = rom_offset;
 
     while (!feof (program))
     {
-        *(reg+PC)                  = offset;
-        word                       = get_word (program);
+        (reg+PC) -> i32                = offset; // location
+        word                           = get_word (program);
         put_word (word, FLAG_SHOW);
-        *(reg+IP)                  = word;
-        offset                     = offset + 1;
-        rom_offset                 = rom_offset + 1;
+        (reg+IP) -> i32                = word; // current instruction
+        offset                         = offset       + 1;
+        rom_offset                     = rom_offset   + 1;
+        cyclecounter                   = cyclecounter + 1;
+        framecounter                   = framecounter + 1;
 
-        immediate                  = word & 0x02000000;
-        if (immediate             == 0x02000000)
+        immediate                      = word & 0x02000000;
+        if (immediate                 == 0x02000000)
         {
-            immediate              = get_word (program);
-            immflag                = TRUE;
+            immediate                  = get_word (program);
+            immflag                    = TRUE;
         }
         else
         {
-            immediate              = 0x00000000;
-            immflag                = FALSE;
+            immediate                  = 0x00000000;
+            immflag                    = FALSE;
         }
 
-        *(reg+IV)                  = immediate;
-
-        //fprintf (stdout, "word: %.8X ", word);
+        (reg+IV) -> i32                = immediate; // immediate value
 
         ////////////////////////////////////////////////////////////////////////////////
         //
         // Obtain instruction parameters from instruction word
         //
-        //rom_offset             = rom_offset + 1;
-        opcode                 = (word & 0xFC000000) >> 26;
-        dstreg                 = (word & 0x01E00000) >> 21;
-        srcreg                 = (word & 0x001E0000) >> 17;
-        addr                   = (word & 0x0001C000) >> 14;
-        port                   = (word & 0x00003FFF);
+        opcode                         = (word & 0xFC000000) >> 26;
+        dst                         = (word & 0x01E00000) >> 21;
+        src                         = (word & 0x001E0000) >> 17;
+        addr                           = (word & 0x0001C000) >> 14;
+        port                           = (word & 0x00003FFF);
 
         switch (opcode)
         {
             case HLT:
-                if (word      == 0x00000000)
+                if (word              == 0x00000000)
                 {
                     fprintf (stdout, "%-5s ", "HLT");
                 }
-                haltflag       = TRUE;
+                haltflag               = TRUE;
                 break;
 
             case WAIT:
                 fprintf (stdout,     "%-5s ", "WAIT");
-                waitflag       = TRUE;
+                waitflag               = TRUE;
+                framecounter           = framecounter + 1;
+                value                  = framecounter;
+                if ((value % 60)      == 0)
+                {
+                    time_day           = time_day   + 1;
+                }
+                cyclecounter           = 0;
                 break;
 
             case JMP:
-                if (immflag           == TRUE)
+                if (immflag             == TRUE)
                 {
-                    if (*(reg+dstreg) == TRUE)
+                    value                = (reg+dst) -> i32;
+                    if (value           == TRUE)
                     {
-                        *(reg+PC)      = immediate;
+                        (reg+PC) -> i32  = immediate;
                     }
                     sprintf (destination, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) == TRUE)
+                    value                = (reg+dst) -> i32;
+                    if (value           == TRUE)
                     {
-                        *(reg+PC    )  = *(reg+srcreg);
+                        (reg+PC) -> i32  = (reg+dst) -> i32;
                     }
-                    sprintf (destination, "R%u",    srcreg);
+                    sprintf (destination, "R%u",    dst);
                 }
                 fprintf (stdout,      "%-5s %-16s", "JMP", destination);
                 break;
@@ -231,19 +271,19 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                 //
                 // push current value in the Program Counter onto the stack
                 //
-                *(reg+SP)              = *(reg+SP) - 1;
-                value                  = *(reg+SP);
-                *(memory+value)        = *(reg+PC);
+                (reg+SP) -> i32        = (reg+SP) -> i32 - 1;
+                value                  = (reg+SP) -> i32;
+                *(memory+value)        = (reg+PC) -> i32;
 
                 if (immflag           == TRUE)
                 {
-                    *(reg+PC)          = immediate;
+                    (reg+PC) -> i32    = immediate;
                     sprintf (destination, "0x%.8X", immediate);
                 }
                 else
                 {
-                    *(reg+PC)          = *(reg+dstreg);
-                    sprintf (destination, "R%u",    dstreg);
+                    (reg+PC) -> i32    = (reg+dst) -> i32;
+                    sprintf (destination, "R%u",    dst);
                 }
                 fprintf (stdout,      "%-5s %-16s", "CALL", destination);
                 break;
@@ -254,50 +294,50 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                 //
                 // pop current value in the stack off back into the Program Counter
                 //
-                value                  = *(reg+SP);
-                *(reg+PC)              = *(memory+value);
-                *(reg+SP)              = *(reg+SP) + 1;
+                value                  = (reg+SP) -> i32;
+                (reg+PC) -> i32        = *(memory+value);
+                (reg+SP) -> i32        = (reg+SP) -> i32 + 1;
                 fprintf (stdout,     "%-5s ", "RET");
                 break;
 
             case JT:
-                sprintf (destination, "R%u,", dstreg);
+                sprintf (destination, "R%u,", dst);
                 if (immflag           == TRUE)
                 {
-                    if (*(reg+dstreg) == TRUE)
+                    if ((reg+dst) -> i32 == TRUE)
                     {
-                        *(reg+PC)      = immediate;
+                        (reg+PC) -> i32   = immediate;
                     }
                     sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) == TRUE)
+                    if ((reg+dst) -> i32 == TRUE)
                     {
-                        *(reg+PC    )  = *(reg+srcreg);
+                        (reg+PC) -> i32  = (reg+src) -> i32;
                     }
-                    sprintf (source, "R%u",    srcreg);
+                    sprintf (source, "R%u",    src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "JT", destination, source);
                 break;
 
             case JF:
-                sprintf (destination, "R%u,", dstreg);
+                sprintf (destination, "R%u,", dst);
                 if (immflag           == TRUE)
                 {
-                    if (*(reg+dstreg) == FALSE)
+                    if ((reg+dst) -> i32 == FALSE)
                     {
-                        *(reg+PC)      = immediate;
+                        (reg+PC) -> i32   = immediate;
                     }
                     sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) == FALSE)
+                    if ((reg+dst) -> i32 == FALSE)
                     {
-                        *(reg+PC    )  = *(reg+srcreg);
+                        (reg+PC)  -> i32  = (reg+src) -> i32;
                     }
-                    sprintf (source, "R%u",    srcreg);
+                    sprintf (source, "R%u",    src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "JF", destination, source);
                 break;
@@ -306,27 +346,27 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
                 if (immflag           == TRUE)
                 {
-                    if (*(reg+dstreg) == immediate)
+                    if ((reg+dst) -> i32 == immediate)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
                     sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) == *(reg+srcreg))
+                    if ((reg+dst) -> i32 == (reg+src) -> i32)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
-                    sprintf (source, "R%u",    srcreg);
+                    sprintf (source, "R%u",    src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "IEQ", destination, source);
                 break;
@@ -335,27 +375,27 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
                 if (immflag           == TRUE)
                 {
-                    if (*(reg+dstreg) != immediate)
+                    if ((reg+dst) -> i32 != immediate)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
                     sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) != *(reg+srcreg))
+                    if ((reg+dst) -> i32 != (reg+src) -> i32)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
-                    sprintf (source, "R%u",    srcreg);
+                    sprintf (source, "R%u",    src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "INE", destination, source);
                 break;
@@ -364,27 +404,27 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
                 if (immflag           == TRUE)
                 {
-                    if (*(reg+dstreg) >  immediate)
+                    if ((reg+dst) -> i32 >  immediate)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
                     sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) >  *(reg+srcreg))
+                    if ((reg+dst) -> i32 >  (reg+src) -> i32)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
-                    sprintf (source, "R%u",    srcreg);
+                    sprintf (source, "R%u",    src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "IGT", destination, source);
                 break;
@@ -393,27 +433,27 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
                 if (immflag           == TRUE)
                 {
-                    if (*(reg+dstreg) >= immediate)
+                    if ((reg+dst) -> i32 >= immediate)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
                     sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) >= *(reg+srcreg))
+                    if ((reg+dst) -> i32 >= (reg+src) -> i32)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
-                    sprintf (source, "R%u",    srcreg);
+                    sprintf (source, "R%u",    src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "IGE", destination, source);
                 break;
@@ -422,27 +462,27 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
                 if (immflag           == TRUE)
                 {
-                    if (*(reg+dstreg) <  immediate)
+                    if ((reg+dst) -> i32 <  immediate)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
                     sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) <  *(reg+srcreg))
+                    if ((reg+dst) -> i32 <  (reg+src) -> i32)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
-                    sprintf (source, "R%u",    srcreg);
+                    sprintf (source, "R%u",    src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "ILT", destination, source);
                 break;
@@ -451,27 +491,27 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
                 if (immflag           == TRUE)
                 {
-                    if (*(reg+dstreg) <= immediate)
+                    if ((reg+dst) -> i32 <= immediate)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
                     sprintf (source, "0x%.8X", immediate);
                 }
                 else
                 {
-                    if (*(reg+dstreg) <= *(reg+srcreg))
+                    if ((reg+dst) -> i32 <= (reg+src) -> i32)
                     {
-                        *(reg+dstreg)  = TRUE;
+                        (reg+dst) -> i32  = TRUE;
                     }
                     else
                     {
-                        *(reg+dstreg)  = FALSE;
+                        (reg+dst) -> i32  = FALSE;
                     }
-                    sprintf (source, "R%u",    srcreg);
+                    sprintf (source, "R%u",    src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "ILE", destination, source);
                 break;
@@ -481,52 +521,52 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                 switch (addr)
                 {
                     case 00: // MOV DSTREG, Immediate
-                        *(reg+dstreg)  = immediate;
-                        sprintf (destination, "R%u,",          dstreg);
+                        (reg+dst) -> i32  = immediate;
+                        sprintf (destination, "R%u,",          dst);
                         sprintf (source,      "0x%.8X",        immediate);
                         break;
 
                     case 01: // MOV DSTREG, SRCREG
-                        *(reg+dstreg)  = srcreg;
-                        sprintf (destination, "R%u,",          dstreg);
-                        sprintf (source,      "R%u",           srcreg);
+                        (reg+dst) -> i32  = src;
+                        sprintf (destination, "R%u,",          dst);
+                        sprintf (source,      "R%u",           src);
                         break;
 
                     case 02: // MOV DSTREG, [Immediate]
-                        *(reg+dstreg)  = *(memory+immediate);
-                        sprintf (destination, "R%u,",          dstreg);
+                        (reg+dst) -> i32  = *(memory+immediate);
+                        sprintf (destination, "R%u,",          dst);
                         sprintf (source,      "[0x%.8X]",      immediate);
                         break;
 
                     case 03: // MOV DSTREG, [SRCREG]
-                        value          = *(reg+dstreg);
-                        *(reg+dstreg)  = *(memory+value);
-                        sprintf (destination, "R%u,",          dstreg);
-                        sprintf (source,      "[R%u]",         srcreg);
+                        value          = (reg+dst) -> i32;
+                        (reg+dst) -> i32  = *(memory+value);
+                        sprintf (destination, "R%u,",          dst);
+                        sprintf (source,      "[R%u]",         src);
                         break;
 
                     case 04: // MOV DSTREG, [SRCREG+Immediate]
-                        *(reg+dstreg)  = *(memory+(*(reg+srcreg)+immediate));
-                        sprintf (destination, "R%u,",          dstreg);
-                        sprintf (source,      "[R%u+0x%.8X]",  srcreg, immediate);
+                        (reg+dst) -> i32  = *(memory+((reg+src) -> i32 + immediate));
+                        sprintf (destination, "R%u,",          dst);
+                        sprintf (source,      "[R%u+0x%.8X]",  src, immediate);
                         break;
 
                     case 05: // MOV [Immediate], SRCREG
-                        *(memory+immediate)  = *(reg+srcreg);
+                        *(memory+immediate)  = (reg+src) -> i32;
                         sprintf (destination, "[0x%.8X],",     immediate);
-                        sprintf (source,      "R%u",           srcreg);
+                        sprintf (source,      "R%u",           src);
                         break;
 
                     case 06: // MOV [DSTREG], SRCREG
-                        *(memory+*(reg+dstreg))  = *(reg+srcreg);
-                        sprintf (destination, "[R%u],",        dstreg);
-                        sprintf (source,      "R%u",           srcreg);
+                        *(memory+(reg+dst) -> i32)  = (reg+src) -> i32;
+                        sprintf (destination, "[R%u],",        dst);
+                        sprintf (source,      "R%u",           src);
                         break;
 
                     case 07: // MOV [DSTREG+Immediate], SRCREG
-                        *(memory+(*(reg+dstreg)+immediate))  = *(reg+srcreg);
-                        sprintf (destination, "[R%u+0x%.8X],", dstreg, immediate);
-                        sprintf (source,      "R%u",           srcreg);
+                        *(memory+((reg+dst) -> i32+immediate))  = (reg+src) -> i32;
+                        sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
+                        sprintf (source,      "R%u",           src);
                         break;
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "MOV", destination, source);
@@ -538,11 +578,11 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                 //
                 // push value in register onto the stack
                 //
-                *(reg+SP)              = *(reg+SP) - 1;
-                value                  = *(reg+SP);
-                *(memory+value)        = *(reg+dstreg);
+                (reg+SP) -> i32           = (reg+SP) -> i32 - 1;
+                value                     = (reg+SP) -> i32;
+                *(memory+value)           = (reg+dst) -> i32;
 
-                sprintf (destination, "R%u",    dstreg);
+                sprintf (destination, "R%u",    dst);
                 fprintf (stdout,      "%-5s %-16s", "PUSH", destination);
                 break;
                 break;
@@ -553,15 +593,15 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                 //
                 // pop current value in the stack off into the indicated register
                 //
-                value                  = *(reg+SP);
-                *(reg+dstreg)          = *(memory+value);
-                *(reg+SP)              = *(reg+SP) + 1;
-                sprintf (destination, "R%u",    dstreg);
+                value                  = (reg+SP) -> i32;
+                (reg+dst) -> i32          = *(memory+value);
+                (reg+SP) -> i32           = (reg+SP) -> i32 + 1;
+                sprintf (destination, "R%u",    dst);
                 fprintf (stdout,      "%-5s %-16s", "POP", destination);
                 break;
 
             case IN:
-                sprintf (destination, "R%u,",         dstreg);
+                sprintf (destination, "R%u,",         dst);
                 sprintf (source,      "0x%.3X",       port);
                 fprintf (stdout,      "%-5s %-16s %-16s", "IN", destination, source);
                 break;
@@ -574,188 +614,188 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                 }
                 else
                 {
-                    sprintf (source,  "R%u",          dstreg);
+                    sprintf (source,  "R%u",          dst);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "OUT", destination, source);
                 break;
 
             case CIB:
-                if (*(reg+dstreg)     != FALSE)
+                if ((reg+dst) -> i32     != FALSE)
                 {
-                    *(reg+dstreg)      = TRUE;
+                    (reg+dst) -> i32      = TRUE;
                 }
                 else
                 {
-                    *(reg+dstreg)      = FALSE;
+                    (reg+dst) -> i32      = FALSE;
                 }
-                sprintf (destination, "R%u",    dstreg);
+                sprintf (destination, "R%u",    dst);
                 fprintf (stdout,      "%-5s %-16s", "CIB", destination);
                 break;
 
             case NOT:
-                *(reg+dstreg)          = ~(*(reg+dstreg));
-                sprintf (destination, "R%u",    dstreg);
+                (reg+dst) -> i32          = ~((reg+dst) -> i32);
+                sprintf (destination, "R%u",    dst);
                 fprintf (stdout,      "%-5s %-16s", "NOT", destination);
                 break;
 
             case AND:
-                sprintf (destination, "R%u",    dstreg);
+                sprintf (destination, "R%u",    dst);
                 if (immflag           == TRUE)
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) & immediate;
+                    (reg+dst) -> i32      &= immediate;
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) & srcreg;
-                    sprintf (source,  "R%u",          srcreg);
+                    (reg+dst) -> i32      &= src;
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "AND", destination, source);
                 break;
 
             case OR:
-                sprintf (destination, "R%u",    dstreg);
+                sprintf (destination, "R%u",    dst);
                 if (immflag           == TRUE)
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) | immediate;
+                    (reg+dst) -> i32      |= immediate;
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) | srcreg;
-                    sprintf (source,  "R%u",          srcreg);
+                    (reg+dst) -> i32      |= src;
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "OR", destination, source);
                 break;
 
             case XOR:
-                sprintf (destination, "R%u",    dstreg);
+                sprintf (destination, "R%u",    dst);
                 if (immflag           == TRUE)
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) ^ immediate;
+                    (reg+dst) -> i32      ^= immediate;
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) ^ srcreg;
-                    sprintf (source,  "R%u",          srcreg);
+                    (reg+dst) -> i32      ^= src;
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "XOR", destination, source);
                 break;
 
             case BNOT:
-                if (*(reg+dstreg)     == FALSE)
+                if ((reg+dst) -> i32      == FALSE)
                 {
-                    *(reg+dstreg)      = TRUE;
+                    (reg+dst) -> i32       = TRUE;
                 }
                 else
                 {
-                    *(reg+dstreg)      = FALSE;
+                    (reg+dst) -> i32       = FALSE;
                 }
-                sprintf (destination, "R%u",    dstreg);
+                sprintf (destination, "R%u",    dst);
                 fprintf (stdout,      "%-5s %-16s", "BNOT", destination);
                 break;
 
             case SHL:
-                sprintf (destination, "R%u",    dstreg);
+                sprintf (destination, "R%u",    dst);
                 if (immflag           == TRUE)
                 {
-                    if ((*reg+dstreg) >= 0)
+                    if ((reg+dst) -> i32 >= 0)
                     {
-                        *(reg+dstreg)  = *(reg+dstreg) << immediate;
+                        (reg+dst) -> i32 <<= immediate;
                     }
                     else
                     {
-                        *(reg+dstreg)  = *(reg+dstreg) >> immediate;
+                        (reg+dst) -> i32 >>= immediate;
                     }
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    if ((*reg+dstreg) >= 0)
+                    if ((reg+dst) -> i32 >= 0)
                     {
-                        *(reg+dstreg)      = *(reg+dstreg) << srcreg;
+                        (reg+dst) -> i32    <<= src;
                     }
                     else
                     {
-                        *(reg+dstreg)      = *(reg+dstreg) >> srcreg;
+                        (reg+dst) -> i32    >>= src;
                     }
-                    sprintf (source,  "R%u",          srcreg);
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "SHL", destination, source);
                 break;
 
             case IADD:
-                sprintf (destination, "R%u,",         dstreg);
-                if (immflag           == TRUE)
+                sprintf (destination, "R%u,",         dst);
+                if (immflag              == TRUE)
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) + immediate;
+                    (reg+dst) -> i32  += immediate;
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) + srcreg;
-                    sprintf (source,  "R%u",          srcreg);
+                    (reg+dst) -> i32  += src;
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "IADD", destination, source);
                 break;
 
             case ISUB:
-                sprintf (destination, "R%u,",         dstreg);
-                if (immflag           == TRUE)
+                sprintf (destination, "R%u,",         dst);
+                if (immflag              == TRUE)
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) - immediate;
+                    (reg+dst) -> i32  -= immediate;
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) - srcreg;
-                    sprintf (source,  "R%u",          srcreg);
+                    (reg+dst) -> i32  -= src;
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "ISUB", destination, source);
                 break;
 
             case IMUL:
-                sprintf (destination, "R%u,",         dstreg);
-                if (immflag           == TRUE)
+                sprintf (destination, "R%u,",         dst);
+                if (immflag              == TRUE)
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) * immediate;
+                    (reg+dst) -> i32  *= immediate;
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) * srcreg;
-                    sprintf (source,  "R%u",          srcreg);
+                    (reg+dst) -> i32  *= src;
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "IMUL", destination, source);
                 break;
 
             case IDIV:
-                sprintf (destination, "R%u,",         dstreg);
-                if (immflag           == TRUE)
+                sprintf (destination, "R%u,",         dst);
+                if (immflag              == TRUE)
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) / immediate;
+                    (reg+dst) -> i32  /= immediate;
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) / srcreg;
-                    sprintf (source,  "R%u",          srcreg);
+                    (reg+dst) -> i32  /= src;
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "IDIV", destination, source);
                 break;
 
             case IMOD:
-                sprintf (destination, "R%u,",         dstreg);
+                sprintf (destination, "R%u,",         dst);
                 if (immflag           == TRUE)
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) % immediate;
+                    (reg+dst) -> i32  %= immediate;
                     sprintf (source,  "0x%.8X",       immediate);
                 }
                 else
                 {
-                    *(reg+dstreg)      = *(reg+dstreg) % srcreg;
-                    sprintf (source,  "R%u",          srcreg);
+                    (reg+dst) -> i32      = ((reg+dst) -> i32) % src;
+                    sprintf (source,  "R%u",          src);
                 }
                 fprintf (stdout,      "%-5s %-16s %-16s", "IMOD", destination, source);
                 break;
@@ -764,7 +804,7 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
         fprintf (stdout, "\n");
         if (immflag           == TRUE)
         {
-            put_word (*(reg+IV), FLAG_SHOW);
+            put_word ((reg+IV) -> i32, FLAG_SHOW);
             offset             = offset + 1;
             rom_offset         = rom_offset + 1;
             fprintf (stdout, "\n");
