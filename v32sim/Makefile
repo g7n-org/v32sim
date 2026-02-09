@@ -14,5 +14,9 @@ debug: $(SRC) $(BIN)
 	@mkdir -p ../bin
 	$(CC)  $(INC) -o ../bin/$@ $< $(CFLAGS) $(LIBS)
 
+install:
+	@mkdir -p /home/$(USER)/bin
+	@cp -av ../bin/* /home/$(USER)/bin/
+
 clean:
 	@rm -vf .*.sw[op] *.save* *~ ../bin/* core errors

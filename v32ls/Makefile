@@ -12,10 +12,11 @@ debug: $(SRC) $(BIN)
 
 .c:
 	@mkdir -p ../bin
-	$(info tool: $@.c -> $@)
-	@echo '#!/usr/bin/env -S tcc -run' >  ../bin/$@
-	@cat $@.c                          >> ../bin/$@
-	@chmod 0700 ../bin/*
+	$(CC)  $(INC) -o ../bin/$@ $< $(CFLAGS) $(LIBS)
+
+install:
+	@mkdir -p /home/$(USER)/bin
+	@cp -av ../bin/* /home/$(USER)/bin/
 
 clean:
 	@rm -vf .*.sw[op] *.save* *~ ../bin/* core errors

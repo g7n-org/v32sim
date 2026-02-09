@@ -4,27 +4,19 @@ INC =
 CC = gcc
 SRC = $(wildcard *.c)
 BIN = $(SRC:.c=)
-all: gcc
+all: $(SRC) $(BIN)
 
 debug: CFLAGS += -DDEBUG -g
 debug: DEBUG = debug
-debug: gcc-debug
+debug: $(SRC) $(BIN)
 
-gcc:
-	@make -f Makefile.gcc
-
-gcc-debug:
-	@make -f Makefile.gcc debug
-
-cscript:
-	@make -f Makefile.cscript
+.c:
+	@mkdir -p ../bin
+	$(CC)  $(INC) -o ../bin/$@ $< $(CFLAGS) $(LIBS)
 
 install:
 	@mkdir -p /home/$(USER)/bin
 	@cp -av ../bin/* /home/$(USER)/bin/
-
-sysinstall:	
-	@cp -av ../bin/* /usr/local/bin/
 
 clean:
 	@rm -vf .*.sw[op] *.save* *~ ../bin/* core errors
