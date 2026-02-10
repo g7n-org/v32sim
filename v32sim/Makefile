@@ -1,5 +1,5 @@
 LIBS =
-CFLAGS = -Wall --std=gnu18 -funsigned-char -Wno-unused-value
+CFLAGS = -Wall --std=gnu18 -funsigned-char -Wno-unused-value -Wno-pointer-sign -Wno-main
 INC = 
 CC = gcc
 SRC = $(wildcard *.c)

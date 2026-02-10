@@ -91,7 +91,7 @@ uint32_t  offset;
 uint32_t  get_word (FILE *);
 void      put_word (uint32_t, uint8_t);
 
-int32_t   main (int8_t  argc,  uint8_t **argv)
+int32_t   main (int32_t  argc,  uint8_t **argv)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -134,7 +134,7 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
     cyclecounter                       = 0;
     framecounter                       = 0;
     wordsize                           = 4;
-    len                                = sizeof (uint8_t) * 17;
+    len                                = sizeof (uint8_t) * 18;
     destination                        = (uint8_t *) malloc (len);
     source                             = (uint8_t *) malloc (len);
     len                                = sizeof (uint8_t) * 256;
@@ -160,10 +160,21 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
 
     fread (data, sizeof (uint8_t), wordsize, program);
     index                              = strncmp (data, "CART", 4);
-    if (index                         != 0)
+    value                              = strncmp (data, "BIOS", 4);
+    if ((index                        != 0) &&
+        (value                        != 0))
     {
         fprintf (stderr, "[ERROR] Provided file is NOT a Vircon32 cartridge\n");
         exit (2);
+    }
+
+    if (index                         == 0) // CART
+    {
+        rom_offset                     = 0x20000000;
+    }
+    else if (value                    == 0) // BIOS
+    {
+        rom_offset                     = 0x10000000;
     }
 
     fseek (program, 22 * wordsize, SEEK_CUR);
@@ -181,8 +192,6 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
         word                           = get_word (program);
     }
 
-    rom_offset                         = 0x20000000;
-
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
     fprintf (stdout, "vtexoffset: %.8X\n", vtexoffset);
@@ -196,9 +205,9 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
         {
             do
             {
-                fprintf (stdout, "v32> ");
+                fprintf (stdout, "v32sim> ");
                 fscanf  (stdin,  "%s", input);
-                if (strcmp (input, "regs") == 0)
+                if (strncmp (input, "r", 1) == 0)
                 {
                     for (index = 0; index < 16; index++)
                     {
@@ -206,19 +215,18 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
                         fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
                     }
                 }
-                //else if (strcmp (input, "regs") == 0)
-            //    {
-            //        for (index = 0; index < 16; index++)
-            //        {
-            //            fprintf (stdout, "R%u: 0x%.8X\n", index, (reg+index) -> i32);
-            //        }
-            //    }
+                else if (strncmp (input, "c", 1) == 0)
+                {
+                    runflag            = TRUE;
+                }
             }
-            while (strcmp (input, "step") != 0);
+            while (strncmp (input, "s", 1) != 0);
         }
-        (reg+PC) -> i32                = offset; // location
+
         word                           = get_word (program);
         put_word (word, FLAG_SHOW);
+
+        (reg+PC) -> i32                = offset; // location
         (reg+IP) -> i32                = word; // current instruction
         offset                         = offset       + 1;
         rom_offset                     = rom_offset   + 1;
@@ -244,8 +252,8 @@ int32_t   main (int8_t  argc,  uint8_t **argv)
         // Obtain instruction parameters from instruction word
         //
         opcode                         = (word & 0xFC000000) >> 26;
-        dst                         = (word & 0x01E00000) >> 21;
-        src                         = (word & 0x001E0000) >> 17;
+        dst                            = (word & 0x01E00000) >> 21;
+        src                            = (word & 0x001E0000) >> 17;
         addr                           = (word & 0x0001C000) >> 14;
         port                           = (word & 0x00003FFF);
 
