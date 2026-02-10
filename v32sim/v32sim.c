@@ -106,8 +106,11 @@ int32_t   main (int32_t  argc,  uint8_t **argv)
     uint8_t   *destination             = NULL;
     uint8_t   *source                  = NULL;
     uint8_t   *input                   = NULL;
+    uint8_t    newcommand              = '\0';
+    uint8_t    lastcommand             = '\0';
     uint8_t    immflag                 = FALSE;
     uint8_t    runflag                 = FALSE;
+    uint8_t    processflag             = FALSE;
     uint8_t    opcode                  = 0x00;
     uint8_t    dst                     = 0x00;
     uint8_t    src                     = 0x00;
@@ -203,24 +206,41 @@ int32_t   main (int32_t  argc,  uint8_t **argv)
     {
         if (runflag                   == FALSE)
         {
+            newcommand                 = '\0';
+            processflag                = FALSE;
             do
             {
                 fprintf (stdout, "v32sim> ");
                 fscanf  (stdin,  "%s", input);
-                if (strncmp (input, "r", 1) == 0)
+                newcommand             = *(input+0);
+                if (*(input+0)        == '\n')
                 {
-                    for (index = 0; index < 16; index++)
-                    {
-                        sprintf (source, "R%u:", index);
-                        fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
-                    }
+                    newcommand         = lastcommand;
                 }
-                else if (strncmp (input, "c", 1) == 0)
+                
+                switch (newcommand)
                 {
-                    runflag            = TRUE;
+                    case 'c':
+                        processflag        = TRUE;
+                        runflag            = TRUE;
+                        break;
+
+                    case 'r':
+                        for (index = 0; index < 16; index++)
+                        {
+                            sprintf (source, "R%u:", index);
+                            fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
+                        }
+                        break;
+
+                    case 's':
+                        processflag        = TRUE;
+                        lastcommand        = 's';
+                        break;
                 }
+                lastcommand            = newcommand;
             }
-            while (strncmp (input, "s", 1) != 0);
+            while (processflag        == FALSE);
         }
 
         word                           = get_word (program);
