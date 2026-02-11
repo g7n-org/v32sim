@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+##
+## gamepad_gadget.sh
+##
+##############################################################################
 
 ##############################################################################
 ##
@@ -24,36 +28,39 @@ cd       v32kbd
 ##
 ## IDs (Linux Foundation for dev/testing; for products, use your own VID/PID)
 ##
-echo '0x1d6b'                     >  idVendor
-echo '0x0104'                     >  idProduct
-echo '0x0100'                     >  bcdDevice
-echo '0x0200'                     >  bcdUSB
+echo '0x1d6b'                                   >  idVendor
+echo '0x0104'                                   >  idProduct
+echo '0x0100'                                   >  bcdDevice
+echo '0x0200'                                   >  bcdUSB
 
 ##############################################################################
 ##
 ## Addition gadget attributes
 ##
-mkdir -p strings/0x409
-echo "deadbeef0001"               >  strings/0x409/serialnumber
-echo "Raspberry Pi"               >  strings/0x409/manufacturer
-echo "USB Gamepad"                >  strings/0x409/product
+STRING="strings/0x409"
+mkdir -p ${STRING}
+echo "deadbeef0001"                             >  ${STRING}/serialnumber
+echo "Raspberry Pi"                             >  ${STRING}/manufacturer
+echo "USB Gamepad"                              >  ${STRING}/product
 
 ##############################################################################
 ##
 ## Configuration
 ##
-mkdir -p configs/c.1/strings/0x409
-echo "Config 1"                   >  configs/c.1/strings/0x409/configuration
-echo 120                          >  configs/c.1/MaxPower
+CONFIG="configs/c.1/strings/0x409"
+mkdir -p ${CONFIG}
+echo "Config 1"                                 >  ${CONFIG}/configuration
+echo 120                                        >  configs/c.1/MaxPower
 
 ##############################################################################
 ##
 ## HID function: 7 buttons + 2 axes (X,Y), 4-byte report
 ##
-mkdir -p functions/hid.usb0
-echo 0                            >  functions/hid.usb0/protocol
-echo 0                            >  functions/hid.usb0/subclass
-echo 4                            >  functions/hid.usb0/report_length
+FUNCTION="functions/hid.usb0"
+mkdir -p ${FUNCTION}
+echo 0                                          >  ${FUNCTION}/protocol
+echo 0                                          >  ${FUNCTION}/subclass
+echo 4                                          >  ${FUNCTION}/report_length
 
 # HID report descriptor (4 bytes/report: [buttons(8)] [pad(8)] [X(8)] [Y(8)])
 # Generic Desktop Joystick, 8 buttons, 8-bit pad, 8-bit X, 8-bit Y (0..255)
