@@ -8,7 +8,6 @@
 #define  XAXIS   2
 #define  YAXIS   3
 
-// A B X Y L R START unused
 int32_t  main (int32_t  argc, uint8_t **argv)
 {
     ////////////////////////////////////////////////////////////////////////////////////
@@ -19,6 +18,7 @@ int32_t  main (int32_t  argc, uint8_t **argv)
     int32_t   index    = 0;
     uint8_t  *packet   = (uint8_t *) malloc (sizeof (uint8_t) * 4);
     uint8_t  *inputs   = (packet+BUTTONS);
+    uint8_t  *dpad     = NULL;
     uint8_t   pos      = 7;
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -38,17 +38,41 @@ int32_t  main (int32_t  argc, uint8_t **argv)
     //
     *(packet+BUTTONS)  = 0x00;
     *(packet+PAD)      = 0x00;
-    *(packet+XAXIS)    = 0x00;
-    *(packet+YAXIS)    = 0x00;
+    *(packet+XAXIS)    = 0x80; // 0-255: 0 is left, 128 is center, 255 is right
+    *(packet+YAXIS)    = 0x80; // 0-255: 0 is up,   128 is center, 255 is down
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Verify that enough arguments were provided
     //
-    if (argc          <  8)
+    if (argc          <  13)
     {
-        fprintf (stderr, "[ERROR] NOT ENOUGH GAMEPAD INPUTS SPECIFIED!\n");
+        fprintf (stderr, "[ERROR] NOT ENOUGH GAMEPAD INPUTS SPECIFIED!\n\n");
+        fprintf (stderr, "usage: %s UP DOWN LEFT RIGHT A B X Y L R START SELECT\n", *(argv+0));
         exit    (2);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Process DPad axes
+    //
+    for (index                   = 1;
+         index                  <= 4;
+         index                   = index + 1)
+    {
+        switch (index)
+        {
+            case 1: // up
+            case 2: // down
+                dpad             = (packet+YAXIS);
+                break;
+
+            case 3: // left
+            case 4: // right
+                dpad             = (packet+XAXIS);
+                break;
+        }
+        *dpad  = (atoi (*(argv+index))) ? (255 - ((index % 2) * 255)) : *dpad;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -56,12 +80,12 @@ int32_t  main (int32_t  argc, uint8_t **argv)
     // Convert arguments into individual button states, and pack the BUTTONS
     // packet byte
     //
-    for (index         = 0;
-         index        <  8;
-         index         = index + 1)
+    for (index                   = 5;
+         index                  <= 12;
+         index                   = index + 1)
     {
-        *inputs       |= (atoi (*(argv+index)) << pos);
-        pos            = pos   - 1;
+        *inputs                 |= (atoi (*(argv+index)) << pos);
+        pos                      = pos   - 1;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -72,9 +96,15 @@ int32_t  main (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // Display the states of each D-pad axis
+    //
+    fprintf (stdout, "[dpad] X-axis: %.2X, Y-axis: %.2X\n", *(packet+XAXIS), *(packet+YAXIS));
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // Display the states of each button
     //
-    fprintf (stdout, "[inputs] A: %u, B: %u, X: %u, Y: %u, L: %u, R: %u, START: %u, unused: %u\n",
+    fprintf (stdout, "[inputs] A: %u, B: %u, X: %u, Y: %u, L: %u, R: %u, START: %u, SELECT: %u\n",
                      (((*inputs) & 0x80) >> 7),
                      (((*inputs) & 0x40) >> 6),
                      (((*inputs) & 0x20) >> 5),
@@ -82,13 +112,13 @@ int32_t  main (int32_t  argc, uint8_t **argv)
                      (((*inputs) & 0x08) >> 3),
                      (((*inputs) & 0x04) >> 2),
                      (((*inputs) & 0x02) >> 1),
-					 (((*inputs) & 0x01)));
+                     (((*inputs) & 0x01)));
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Delay
     //
-    sleep (4);
+    sleep (1);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -96,6 +126,6 @@ int32_t  main (int32_t  argc, uint8_t **argv)
     //
     fclose (gamepad);
     free   (packet);
-    
+
     return (0);
 }
