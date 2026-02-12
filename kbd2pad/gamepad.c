@@ -34,15 +34,6 @@ int32_t  main (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Initialize the gadget packet
-    //
-    *(packet+BUTTONS)  = 0x00;
-    *(packet+PAD)      = 0x00;
-    *(packet+XAXIS)    = 0x80; // 0-255: 0 is left, 128 is center, 255 is right
-    *(packet+YAXIS)    = 0x80; // 0-255: 0 is up,   128 is center, 255 is down
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
     // Verify that enough arguments were provided
     //
     if (argc          <  13)
@@ -51,6 +42,15 @@ int32_t  main (int32_t  argc, uint8_t **argv)
         fprintf (stderr, "usage: %s UP DOWN LEFT RIGHT A B X Y L R START SELECT\n", *(argv+0));
         exit    (2);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Initialize the gadget packet
+    //
+    *(packet+BUTTONS)  = 0x00;
+    *(packet+PAD)      = 0x00;
+    *(packet+XAXIS)    = 0x80; // 0-255: 0 is left, 128 is center, 255 is right
+    *(packet+YAXIS)    = 0x80; // 0-255: 0 is up,   128 is center, 255 is down
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
