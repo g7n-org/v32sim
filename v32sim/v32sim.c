@@ -94,6 +94,7 @@ FILE     *program;
 uint8_t  *destination;
 uint8_t  *source;
 int32_t  *memory;
+int32_t  *portaddr;
 data_t   *reg;
 int32_t   cyclecounter;
 int32_t   framecounter;
@@ -111,7 +112,7 @@ uint32_t  get_word (FILE *);
 void      put_word (uint32_t, uint8_t);
 void      decode   (uint32_t, uint32_t, uint8_t);
 
-int32_t   main (int32_t  argc,  uint8_t **argv)
+int32_t   main     (int32_t  argc, uint8_t **argv)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -158,6 +159,7 @@ int32_t   main (int32_t  argc,  uint8_t **argv)
     //
     // "[RXX+0x12345678],\0" <- 17 bytes of string data + 1 NULL terminator
     // "0123456789ABCDEF10"
+    //
     len                                = sizeof (uint8_t) * 18;
     destination                        = (uint8_t *) malloc (len);
     source                             = (uint8_t *) malloc (len);
@@ -179,6 +181,13 @@ int32_t   main (int32_t  argc,  uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // Allocate Vircon32 IOPorts
+    //
+    len                                = sizeof (int32_t) * 1024 * 8;
+    portaddr                           = (int32_t *) malloc (len);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // Vircon32 has 16MB of RAM, or 4MW of memory
     //
     len                                = sizeof (int32_t) * 1024 * 1024 * wordsize;
@@ -190,6 +199,12 @@ int32_t   main (int32_t  argc,  uint8_t **argv)
     //
     len                                = sizeof (int32_t) * NUM_REGISTERS;
     reg                                = (data_t *) malloc (len);
+    for (index                         = 0;
+         index                        <  NUM_REGISTERS;
+         index                         = index + 1)
+    {
+        (reg+index) -> i32             = 0x00000000;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -480,8 +495,8 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
     uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
     uint8_t   processflag          = (flags & FLAG_PROCESS)   ? TRUE : FALSE;
     uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
-    uint8_t   dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
-    uint8_t   src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
+    uint32_t  dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
+    uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint8_t   port                 = (instruction & IOPORT_MASK);
 
@@ -498,42 +513,42 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
     switch (opcode)
     {
         case HLT:
-            if (instruction           == 0x00000000)
+            if (instruction       == 0x00000000)
             {
                 fprintf (display, "%-5s ", "HLT");
             }
 
-            if (processflag           == TRUE)
+            if (processflag       == TRUE)
             {
-                haltflag               = TRUE;
+                haltflag           = TRUE;
             }
             break;
 
         case WAIT:
             fprintf (display,     "%-5s ", "WAIT");
 
-            if (processflag           == TRUE)
+            if (processflag       == TRUE)
             {
-                waitflag               = TRUE;
-                framecounter           = framecounter + 1;
-                value                  = framecounter;
-                if ((value % 60)      == 0)
+                waitflag           = TRUE;
+                framecounter       = framecounter + 1;
+                value              = framecounter;
+                if ((value % 60)  == 0)
                 {
-                    time_day           = time_day   + 1;
+                    time_day       = time_day   + 1;
                 }
-                cyclecounter           = 0;
+                cyclecounter       = 0;
             }
             break;
 
         case JMP:
-            if (immflag                 == TRUE)
+            if (immflag             == TRUE)
             {
-                if (processflag         == TRUE)
+                if (processflag     == TRUE)
                 {
-                    value                = (reg+dst) -> i32;
-                    if (value           == TRUE)
+                    value            = (reg+dst) -> i32;
+                    if (value       == TRUE)
                     {
-                        (reg+PC) -> i32  = immediate;
+                        (reg+PC) -> i32         = immediate;
                     }
                 }
                 sprintf (destination, "0x%.8X", immediate);
@@ -542,10 +557,10 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             {
                 if (processflag     == TRUE)
                 {
-                    value                = (reg+dst) -> i32;
-                    if (value           == TRUE)
+                    value            = (reg+dst) -> i32;
+                    if (value       == TRUE)
                     {
-                        (reg+PC) -> i32  = (reg+dst) -> i32;
+                        (reg+PC) -> i32         = (reg+dst) -> i32;
                     }
                 }
                 sprintf (destination, "R%u",    dst);
@@ -570,7 +585,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             {
                 if (processflag       == TRUE)
                 {
-                    (reg+PC) -> i32    = immediate;
+                    (reg+PC) -> i32               = immediate;
                     offset             = (reg+PC) -> i32;
                     fseek (program, offset + 0x24, SEEK_SET);
                 }
@@ -580,7 +595,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             {
                 if (processflag       == TRUE)
                 {
-                    (reg+PC) -> i32    = (reg+dst) -> i32;
+                    (reg+PC) -> i32               = (reg+dst) -> i32;
                     offset             = (reg+PC) -> i32;
                     fseek (program, offset + 0x24, SEEK_SET);
                 }
@@ -611,7 +626,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 if ((processflag      == TRUE)  &&
                     ((reg+dst) -> i32 == TRUE))
                 {
-                    (reg+PC)   -> i32  = immediate;
+                    (reg+PC) -> i32               = immediate;
                 }
                 sprintf (source, "0x%.8X", immediate);
             }
@@ -620,7 +635,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 if ((processflag      == TRUE)  &&
                     ((reg+dst) -> i32 == TRUE))
                 {
-                    (reg+PC)   -> i32  = (reg+src) -> i32;
+                    (reg+PC) -> i32               = (reg+src) -> i32;
                 }
                 sprintf (source, "R%u",    src);
             }
@@ -634,7 +649,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 if ((processflag      == TRUE)  &&
                     ((reg+dst) -> i32 == FALSE))
                 {
-                    (reg+PC)   -> i32  = immediate;
+                    (reg+PC) -> i32               = immediate;
                 }
                 sprintf (source, "0x%.8X", immediate);
             }
@@ -643,7 +658,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 if ((processflag      == TRUE)  &&
                     ((reg+dst) -> i32 == FALSE))
                 {
-                    (reg+PC)   -> i32  = (reg+src) -> i32;
+                    (reg+PC) -> i32               = (reg+src) -> i32;
                 }
                 sprintf (source, "R%u",    src);
             }
@@ -670,11 +685,11 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 if ((processflag      == TRUE)  &&
                     ((reg+dst) -> i32 == (reg+src) -> i32))
                 {
-                    (reg+dst) -> i32   = TRUE;
+                    (reg+dst)  -> i32  = TRUE;
                 }
                 else if (processflag  == TRUE)
                 {
-                    (reg+dst) -> i32   = FALSE;
+                    (reg+dst)  -> i32  = FALSE;
                 }
                 sprintf (source, "R%u",    src);
             }
@@ -712,7 +727,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case IGT:
 
-            if (immflag           == TRUE)
+            if (immflag              == TRUE)
             {
                 if ((reg+dst) -> i32 >  immediate)
                 {
@@ -741,7 +756,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case IGE:
 
-            if (immflag           == TRUE)
+            if (immflag              == TRUE)
             {
                 if ((reg+dst) -> i32 >= immediate)
                 {
@@ -770,7 +785,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case ILT:
 
-            if (immflag           == TRUE)
+            if (immflag              == TRUE)
             {
                 if ((reg+dst) -> i32 <  immediate)
                 {
@@ -799,7 +814,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case ILE:
 
-            if (immflag           == TRUE)
+            if (immflag              == TRUE)
             {
                 if ((reg+dst) -> i32 <= immediate)
                 {
@@ -831,7 +846,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             switch (addr)
             {
                 case 00: // MOV DSTREG, Immediate
-                    if (processflag == TRUE)
+                    if (processflag  == TRUE)
                     {
                         (reg+dst) -> i32  = immediate;
                     }
@@ -840,7 +855,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     break;
 
                 case 01: // MOV DSTREG, SRCREG
-                    if (processflag == TRUE)
+                    if (processflag  == TRUE)
                     {
                         (reg+dst) -> i32  = src;
                     }
@@ -849,7 +864,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     break;
 
                 case 02: // MOV DSTREG, [Immediate]
-                    if (processflag == TRUE)
+                    if (processflag  == TRUE)
                     {
                         (reg+dst) -> i32  = *(memory+immediate);
                     }
@@ -858,9 +873,9 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     break;
 
                 case 03: // MOV DSTREG, [SRCREG]
-                    if (processflag == TRUE)
+                    if (processflag  == TRUE)
                     {
-                        value          = (reg+dst) -> i32;
+                        value         = (reg+dst) -> i32;
                         (reg+dst) -> i32  = *(memory+value);
                     }
                     sprintf (destination, "R%u,",          dst);
@@ -868,7 +883,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
-                    if (processflag == TRUE)
+                    if (processflag  == TRUE)
                     {
                         (reg+dst) -> i32  = *(memory+((reg+src) -> i32 + immediate));
                     }
@@ -877,7 +892,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
-                    if (processflag == TRUE)
+                    if (processflag  == TRUE)
                     {
                         *(memory+immediate)  = (reg+src) -> i32;
                     }
@@ -913,11 +928,11 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             //
             // push value in register onto the stack
             //
-            if (processflag          == TRUE)
+            if (processflag             == TRUE)
             {
-                (reg+SP) -> i32           = (reg+SP) -> i32 - 1;
-                value                     = (reg+SP) -> i32;
-                *(memory+value)           = (reg+dst) -> i32;
+                (reg+SP) -> i32          = (reg+SP) -> i32 - 1;
+                value                    = (reg+SP) -> i32;
+                *(memory+value)          = (reg+dst) -> i32;
             }
 
             sprintf (destination, "R%u",    dst);
@@ -931,17 +946,21 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             //
             // pop current value in the stack off into the indicated register
             //
-            if (processflag          == TRUE)
+            if (processflag             == TRUE)
             {
-                value                 = (reg+SP) -> i32;
-                (reg+dst) -> i32      = *(memory+value);
-                (reg+SP) -> i32       = (reg+SP) -> i32 + 1;
+                value                    = (reg+SP) -> i32;
+                (reg+dst) -> i32         = *(memory+value);
+                (reg+SP) -> i32          = (reg+SP) -> i32 + 1;
             }
             sprintf (destination, "R%u",    dst);
             fprintf (display,      "%-5s %-16s", "POP", destination);
             break;
 
         case IN:
+            if (processflag             == TRUE)
+            {
+                (reg+dst) -> i32         = *(portaddr+port);
+            }
             sprintf (destination, "R%u,",         dst);
             sprintf (source,      "0x%.3X",       port);
             fprintf (display,      "%-5s %-16s %-16s", "IN", destination, source);
@@ -949,7 +968,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case OUT:
             sprintf (destination, "0x%.3X,",      port);
-            if (immflag   == TRUE)
+            if (immflag                 == TRUE)
             {
                 sprintf (source,  "0x%.3X",       port);
             }
@@ -961,23 +980,23 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             break;
 
         case CIB:
-            if ((processflag         == TRUE) &&
-                ((reg+dst) -> i32    != FALSE))
+            if ((processflag            == TRUE) &&
+                ((reg+dst) -> i32       != FALSE))
             {
-                (reg+dst) -> i32      = TRUE;
+                (reg+dst) -> i32         = TRUE;
             }
-            else if (processflag     == TRUE)
+            else if (processflag        == TRUE)
             {
-                (reg+dst) -> i32      = FALSE;
+                (reg+dst) -> i32         = FALSE;
             }
             sprintf (destination, "R%u",    dst);
             fprintf (display,      "%-5s %-16s", "CIB", destination);
             break;
 
         case NOT:
-            if (processflag          == TRUE)
+            if (processflag             == TRUE)
             {
-                (reg+dst) -> i32      = ~((reg+dst) -> i32);
+                (reg+dst) -> i32         = ~((reg+dst) -> i32);
             }
             sprintf (destination, "R%u",    dst);
             fprintf (display,      "%-5s %-16s", "NOT", destination);
@@ -985,14 +1004,14 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case AND:
             sprintf (destination, "R%u",    dst);
-            if (immflag           == TRUE)
+            if (immflag                 == TRUE)
             {
-                (reg+dst) -> i32      &= immediate;
+                (reg+dst) -> i32        &= immediate;
                 sprintf (source,  "0x%.8X",       immediate);
             }
             else
             {
-                (reg+dst) -> i32      &= src;
+                (reg+dst) -> i32        &= src;
                 sprintf (source,  "R%u",          src);
             }
             fprintf (display,      "%-5s %-16s %-16s", "AND", destination, source);
@@ -1000,14 +1019,14 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case OR:
             sprintf (destination, "R%u",    dst);
-            if (immflag           == TRUE)
+            if (immflag                 == TRUE)
             {
-                (reg+dst) -> i32      |= immediate;
+                (reg+dst) -> i32        |= immediate;
                 sprintf (source,  "0x%.8X",       immediate);
             }
             else
             {
-                (reg+dst) -> i32      |= src;
+                (reg+dst) -> i32        |= src;
                 sprintf (source,  "R%u",          src);
             }
             fprintf (display,      "%-5s %-16s %-16s", "OR", destination, source);
@@ -1015,27 +1034,27 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case XOR:
             sprintf (destination, "R%u",    dst);
-            if (immflag           == TRUE)
+            if (immflag                 == TRUE)
             {
-                (reg+dst) -> i32      ^= immediate;
+                (reg+dst) -> i32        ^= immediate;
                 sprintf (source,  "0x%.8X",       immediate);
             }
             else
             {
-                (reg+dst) -> i32      ^= src;
+                (reg+dst) -> i32        ^= src;
                 sprintf (source,  "R%u",          src);
             }
             fprintf (display,      "%-5s %-16s %-16s", "XOR", destination, source);
             break;
 
         case BNOT:
-            if ((reg+dst) -> i32      == FALSE)
+            if ((reg+dst) -> i32        == FALSE)
             {
-                (reg+dst) -> i32       = TRUE;
+                (reg+dst) -> i32         = TRUE;
             }
             else
             {
-                (reg+dst) -> i32       = FALSE;
+                (reg+dst) -> i32         = FALSE;
             }
             sprintf (destination, "R%u",    dst);
             fprintf (display,      "%-5s %-16s", "BNOT", destination);
@@ -1043,27 +1062,27 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case SHL:
             sprintf (destination, "R%u",    dst);
-            if (immflag           == TRUE)
+            if (immflag                 == TRUE)
             {
-                if ((reg+dst) -> i32 >= 0)
+                if ((reg+dst) -> i32    >= 0)
                 {
-                    (reg+dst) -> i32 <<= immediate;
+                    (reg+dst) -> i32   <<= immediate;
                 }
                 else
                 {
-                    (reg+dst) -> i32 >>= immediate;
+                    (reg+dst) -> i32   >>= immediate;
                 }
                 sprintf (source,  "0x%.8X",       immediate);
             }
             else
             {
-                if ((reg+dst) -> i32 >= 0)
+                if ((reg+dst) -> i32    >= 0)
                 {
-                    (reg+dst) -> i32    <<= src;
+                    (reg+dst) -> i32   <<= src;
                 }
                 else
                 {
-                    (reg+dst) -> i32    >>= src;
+                    (reg+dst) -> i32   >>= src;
                 }
                 sprintf (source,  "R%u",          src);
             }
@@ -1072,19 +1091,19 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case IADD:
             sprintf (destination, "R%u,",         dst);
-            if (immflag              == TRUE)
+            if (immflag                 == TRUE)
             {
-                if (processflag   == TRUE)
+                if (processflag         == TRUE)
                 {
-                    (reg+dst) -> i32  += immediate;
+                    (reg+dst) -> i32    += immediate;
                 }
                 sprintf (source,  "0x%.8X",       immediate);
             }
             else
             {
-                if (processflag   == TRUE)
+                if (processflag         == TRUE)
                 {
-                    (reg+dst) -> i32  += src;
+                    (reg+dst) -> i32    += src;
                 }
                 sprintf (source,  "R%u",          src);
             }
@@ -1093,19 +1112,19 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
         case ISUB:
             sprintf (destination, "R%u,",         dst);
-            if (immflag           == TRUE)
+            if (immflag                 == TRUE)
             {
-                if (processflag   == TRUE)
+                if (processflag         == TRUE)
                 {
-                    (reg+dst) -> i32  -= immediate;
+                    (reg+dst) -> i32    -= immediate;
                 }
                 sprintf (source,  "0x%.8X",       immediate);
             }
             else
             {
-                if (processflag   == TRUE)
+                if (processflag         == TRUE)
                 {
-                    (reg+dst) -> i32  -= src;
+                    (reg+dst) -> i32    -= src;
                 }
                 sprintf (source,  "R%u",          src);
             }
