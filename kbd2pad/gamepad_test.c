@@ -1,3 +1,18 @@
+//
+// gamepad_test.c - program to open, generate, and send USB gamepad "packets" that
+//                  correspond with gamepad inputs to send.
+//
+//           usage: gamepad_test UP DOWN LEFT RIGHT A B X Y L R START SELECT
+//
+// NOTE: the program expects a `1` or `0` in the particular argument. `0` means it
+// is NOT pressed. A `1` in that position means it is.
+//
+// Multiple inputs can be set in the same packet.
+//
+// ALL arguments must be provided. If you're only setting one input,  you MUST set
+// the others to `0`.
+//
+////////////////////////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
