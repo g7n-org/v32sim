@@ -90,12 +90,6 @@ int32_t  main (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Write the packet out to the gadget device
-    //
-    fwrite (packet, sizeof (uint8_t), 4, gamepad);
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
     // Display the states of each D-pad axis
     //
     fprintf (stdout, "[dpad] X-axis: %.2X, Y-axis: %.2X\n", *(packet+XAXIS), *(packet+YAXIS));
@@ -116,9 +110,24 @@ int32_t  main (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Delay
+    // Send the inputs
     //
-    sleep (1);
+    for (index        = 0;
+         index       <  10;
+         index        = index + 1)
+    {
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Write the packet out to the gadget device
+        //
+        fwrite (packet, sizeof (uint8_t), 4, gamepad);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Delay for a fraction of a second (tenth)
+        //
+        usleep (100000);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
