@@ -44,6 +44,30 @@ to fill this niche.
 the `-h` or `--help` argument to get  a list of available options you can
 apply.
 
+```
+Usage: v32cat [OPTION]... FILE
+Display hex representation of bytes read from FILE.
+
+Mandatory arguments to long options are mandatory for short options too.
+
+  -a, --address=ADDR         highlight WORD at ADDR
+  -A, --adjust-offsets       render offsets from CART origin
+  -b, --binary               display binary in decode mode
+  -1, --column               force one WORD column output
+  -d, --decode               decode instructions in-line
+  -f, --fancy                enable fancy content rendering
+  -F, --file                 reference offset from file
+  -m, --memory               reference offset from memory
+  -r, --range=ADDR1-ADDR2    highlight WORDs in ADDR range
+  -R, --raw                  no fancy content or colors
+  -s, --start=ADDR           start processing at ADDR
+  -S, --stop=ADDR            stop processing at ADDR
+  -W, --width=WIDTH          set line WIDTH (in bytes)
+  -w, --wordsize=SIZE        set WORD size to SIZE (in bytes)
+  -v, --verbose              enable operational verbosity
+  -h, --help                 display this usage information
+```
+
 ### default
 
 By default, when not passed through a pipe or redirected, **v32cat** will
