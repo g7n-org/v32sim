@@ -3,90 +3,120 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "ioports.h"
 
-#define  OPCODE_MASK     0xFC000000
-#define  DSTREG_MASK     0x01E00000
-#define  SRCREG_MASK     0x001E0000
-#define  MOVADR_MASK     0x0001C000
-#define  IOPORT_MASK     0x00003FFF
-#define  OPCODESHIFT     26
-#define  DSTREGSHIFT     21
-#define  SRCREGSHIFT     17
-#define  MOVADRSHIFT     14
+#define  IOPORTS_ALLOC_FAIL 3
+#define  IOPORTS_READ_ERROR 4
 
-#define  TRUE            1
-#define  FALSE           0
+#define  NUM_TIM_PORTS      4
+#define  NUM_RNG_PORTS      1
+#define  NUM_GPU_PORTS      18
+#define  NUM_SPU_PORTS      14
+#define  NUM_INP_PORTS      13
+#define  NUM_CAR_PORTS      4
+#define  NUM_MEM_PORTS      1
 
-#define  NUM_REGISTERS   19
+#define  TIM_PORT           0
+#define  RNG_PORT           1
+#define  GPU_PORT           2
+#define  SPU_PORT           3
+#define  INP_PORT           4
+#define  CAR_PORT           5
+#define  MEM_PORT           6
 
-#define  R0              0
-#define  R1              1
-#define  R2              2
-#define  R3              3
-#define  R4              4
-#define  R5              5
-#define  R6              6
-#define  R7              7
-#define  R8              8
-#define  R9              9
-#define  R10             10
-#define  R11             11
-#define  CR              11
-#define  R12             12
-#define  SR              12
-#define  R13             13
-#define  DR              13
-#define  R14             14
-#define  BP              14
-#define  R15             15
-#define  SP              15
-#define  IP              16
-#define  IV              17
-#define  PC              18
+#define  OPCODE_MASK        0xFC000000
+#define  DSTREG_MASK        0x01E00000
+#define  SRCREG_MASK        0x001E0000
+#define  MOVADR_MASK        0x0001C000
+#define  IOPORT_MASK        0x00003FFF
+#define  OPCODESHIFT        26
+#define  DSTREGSHIFT        21
+#define  SRCREGSHIFT        17
+#define  MOVADRSHIFT        14
 
-#define  FLAG_NONE       0
-#define  FLAG_DISPLAY    1
-#define  FLAG_PROCESS    2 
-#define  FLAG_IMMEDIATE  4
+#define  TRUE               1
+#define  FALSE              0
 
-#define  HLT             0x00
-#define  WAIT            0x01
-#define  JMP             0x02
-#define  CALL            0x03
-#define  RET             0x04
-#define  JT              0x05
-#define  JF              0x06
-#define  IEQ             0x07
-#define  INE             0x08
-#define  IGT             0x09
-#define  IGE             0x0A
-#define  ILT             0x0B
-#define  ILE             0x0C
-#define  MOV             0x13
-#define  PUSH            0x15
-#define  POP             0x16
-#define  IN              0x17
-#define  OUT             0x18
-#define  CIB             0x1E
-#define  NOT             0x20
-#define  AND             0x21
-#define  OR              0x22
-#define  XOR             0x23
-#define  BNOT            0x24
-#define  SHL             0x25
-#define  IADD            0x26
-#define  ISUB            0x27
-#define  IMUL            0x28
-#define  IDIV            0x29
-#define  IMOD            0x2A
+#define  NUM_REGISTERS      19
 
-union data_type
+#define  R0                 0
+#define  R1                 1
+#define  R2                 2
+#define  R3                 3
+#define  R4                 4
+#define  R5                 5
+#define  R6                 6
+#define  R7                 7
+#define  R8                 8
+#define  R9                 9
+#define  R10                10
+#define  R11                11
+#define  CR                 11
+#define  R12                12
+#define  SR                 12
+#define  R13                13
+#define  DR                 13
+#define  R14                14
+#define  BP                 14
+#define  R15                15
+#define  SP                 15
+#define  IP                 16
+#define  IV                 17
+#define  PC                 18
+
+#define  FLAG_NONE          0
+#define  FLAG_DISPLAY       1
+#define  FLAG_PROCESS       2 
+#define  FLAG_IMMEDIATE     4
+
+#define  FLAG_READ          4
+#define  FLAG_WRITE         2
+
+#define  HLT                0x00
+#define  WAIT               0x01
+#define  JMP                0x02
+#define  CALL               0x03
+#define  RET                0x04
+#define  JT                 0x05
+#define  JF                 0x06
+#define  IEQ                0x07
+#define  INE                0x08
+#define  IGT                0x09
+#define  IGE                0x0A
+#define  ILT                0x0B
+#define  ILE                0x0C
+#define  MOV                0x13
+#define  PUSH               0x15
+#define  POP                0x16
+#define  IN                 0x17
+#define  OUT                0x18
+#define  CIB                0x1E
+#define  NOT                0x20
+#define  AND                0x21
+#define  OR                 0x22
+#define  XOR                0x23
+#define  BNOT               0x24
+#define  SHL                0x25
+#define  IADD               0x26
+#define  ISUB               0x27
+#define  IMUL               0x28
+#define  IDIV               0x29
+#define  IMOD               0x2A
+
+union  data_type
 {
     int32_t  i32;
     float    f32;
 };
-
 typedef union data_type data_t;
+
+struct port_type
+{
+    data_t   data;
+    uint8_t  flag;
+    int8_t  *name;
+};
+typedef struct port_type port_t;
 
 FILE     *display;
 FILE     *devnull;
@@ -94,13 +124,23 @@ FILE     *program;
 uint8_t  *destination;
 uint8_t  *source;
 int32_t  *memory;
-int32_t  *portaddr;
 data_t   *reg;
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// Variables related to IOPorts
+//
+port_t  **ioports;
 int32_t   cyclecounter;
 int32_t   framecounter;
 int32_t   date_day;
 int32_t   date_year;
 int32_t   time_day;
+int32_t   gpu_remainingpixels;
+int32_t   gpu_selectedtexture;
+int32_t   gpu_selectedregion;
+int32_t   gpu_drawingpointx;
+int32_t   gpu_drawingpointy;
 uint8_t  *data;
 uint8_t   haltflag;
 uint8_t   waitflag;
@@ -108,9 +148,16 @@ uint8_t   wordsize;
 uint32_t  offset;
 uint32_t  rom_offset;
 
-uint32_t  get_word (FILE *);
-void      put_word (uint32_t, uint8_t);
-void      decode   (uint32_t, uint32_t, uint8_t);
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// Function prototypes
+//
+uint32_t  get_word     (FILE *);
+void      put_word     (uint32_t, uint8_t);
+void      decode       (uint32_t, uint32_t, uint8_t);
+void      init_ioports (void);
+int32_t   ioports_get  (uint16_t);
+void      ioports_put  (uint16_t, int32_t);
 
 int32_t   main     (int32_t  argc, uint8_t **argv)
 {
@@ -120,6 +167,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     int32_t    index                   = 0;
     int32_t    value                   = 0;
+    //port_t    *pptr                    = NULL;
     size_t     len                     = 0;
     struct tm *current_time_tm;
     time_t     current_time_raw;
@@ -181,10 +229,9 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Allocate Vircon32 IOPorts
+    // Allocate Vircon32 IOPorts (a 2D array of ports)
     //
-    len                                = sizeof (int32_t) * 1024 * 8;
-    portaddr                           = (int32_t *) malloc (len);
+    init_ioports ();
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -959,7 +1006,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
         case IN:
             if (processflag             == TRUE)
             {
-                (reg+dst) -> i32         = *(portaddr+port);
+                (reg+dst) -> i32         = *(ioports+port);
             }
             sprintf (destination, "R%u,",         dst);
             sprintf (source,      "0x%.3X",       port);
@@ -1178,4 +1225,580 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
     }
 
     fprintf (stdout, "\n");
+}
+
+void  init_ioports  (void)
+{
+    int8_t  *nptr                 = NULL;
+    //int32_t  index                = 0;
+    port_t  *pptr                 = NULL;
+    size_t   len                  = 0;
+
+    len                           = sizeof (port_t *) * 8;
+    ioports                       = (port_t **) malloc (len);
+    if (ioports                  == NULL)
+    {
+        fprintf (stderr, "[error] failed to allocate memory for 'ioports'\n");
+        exit (IOPORTS_ALLOC_FAIL);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // TIM ports: allocate and initialize
+    //
+    len                           = sizeof (port_t)   * NUM_TIM_PORTS;
+    *(ioports+TIM_PORT)           = (port_t *) malloc (len);
+    pptr                          = *(ioports+TIM_PORT);
+
+    (pptr+0) -> data.i32          = 0x00000000;
+    (pptr+0) -> flag              = FLAG_READ;
+    (pptr+0) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+0) -> name;
+    sprintf (nptr, "TIM_CurrentDate");
+
+    (pptr+1) -> data.i32          = 0x00000000;
+    (pptr+1) -> flag              = FLAG_READ;
+    (pptr+1) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+1) -> name;
+    sprintf (nptr, "TIM_CurrentTime");
+
+    (pptr+2) -> data.i32          = 0x00000000;
+    (pptr+2) -> flag              = FLAG_READ;
+    (pptr+2) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+2) -> name;
+    sprintf (nptr, "TIM_FrameCounter");
+
+    (pptr+3) -> data.i32          = 0x00000000;
+    (pptr+3) -> flag              = FLAG_READ;
+    (pptr+3) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+3) -> name;
+    sprintf (nptr, "TIM_CycleCounter");
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RNG ports: allocate and initialize
+    //
+    len                           = sizeof (port_t)   * NUM_RNG_PORTS;
+    *(ioports+RNG_PORT)           = (port_t *) malloc (len);
+    pptr                          = *(ioports+RNG_PORT);
+
+    (pptr+0) -> data.i32          = 0x00000000;
+    (pptr+0) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+0) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+0) -> name;
+    sprintf (nptr, "RNG_CurrentValue");
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // GPU ports: allocate and initialize
+    //
+    len                           = sizeof (port_t)   * NUM_GPU_PORTS;
+    *(ioports+GPU_PORT)           = (port_t *) malloc (len);
+    pptr                          = *(ioports+GPU_PORT);
+
+    (pptr+0) -> data.i32          = 0x00000000;
+    (pptr+0) -> flag              = FLAG_WRITE;
+    (pptr+0) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+0) -> name;
+    sprintf (nptr, "GPU_Command");
+
+    (pptr+1) -> data.i32          = 0x00000000;
+    (pptr+1) -> flag              = FLAG_READ;
+    (pptr+1) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+1) -> name;
+    sprintf (nptr, "GPU_RemainingPixels");
+
+    (pptr+2) -> data.i32          = 0x00000000;
+    (pptr+2) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+2) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+2) -> name;
+    sprintf (nptr, "GPU_ClearColor");
+
+    (pptr+3) -> data.i32          = 0x00000000;
+    (pptr+3) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+3) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+3) -> name;
+    sprintf (nptr, "GPU_MultiplyColor");
+
+    (pptr+4) -> data.i32          = 0x00000000;
+    (pptr+4) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+4) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+4) -> name;
+    sprintf (nptr, "GPU_ActiveBlending");
+
+    (pptr+5) -> data.i32          = 0x00000000;
+    (pptr+5) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+5) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+5) -> name;
+    sprintf (nptr, "GPU_SelectedTexture");
+
+    (pptr+6) -> data.i32          = 0x00000000;
+    (pptr+6) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+6) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+6) -> name;
+    sprintf (nptr, "GPU_SelectedRegion");
+
+    (pptr+7) -> data.i32          = 0x00000000;
+    (pptr+7) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+7) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+7) -> name;
+    sprintf (nptr, "GPU_DrawingPointX");
+
+    (pptr+8) -> data.i32          = 0x00000000;
+    (pptr+8) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+8) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+8) -> name;
+    sprintf (nptr, "GPU_DrawingPointY");
+
+    (pptr+9) -> data.i32          = 0x00000000;
+    (pptr+9) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+9) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+9) -> name;
+    sprintf (nptr, "GPU_DrawingScaleX");
+
+    (pptr+10) -> data.i32         = 0x00000000;
+    (pptr+10) -> flag             = FLAG_READ | FLAG_WRITE;
+    (pptr+10) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+10) -> name;
+    sprintf (nptr, "GPU_DrawingScaleY");
+
+    (pptr+11) -> data.i32         = 0x00000000;
+    (pptr+11) -> flag             = FLAG_READ | FLAG_WRITE;
+    (pptr+11) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+11) -> name;
+    sprintf (nptr, "GPU_DrawingAngle");
+
+    (pptr+12) -> data.i32         = 0x00000000;
+    (pptr+12) -> flag             = FLAG_READ | FLAG_WRITE;
+    (pptr+12) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+12) -> name;
+    sprintf (nptr, "GPU_RegionMinX");
+
+    (pptr+13) -> data.i32         = 0x00000000;
+    (pptr+13) -> flag             = FLAG_READ | FLAG_WRITE;
+    (pptr+13) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+13) -> name;
+    sprintf (nptr, "GPU_RegionMinY");
+
+    (pptr+14) -> data.i32         = 0x00000000;
+    (pptr+14) -> flag             = FLAG_READ | FLAG_WRITE;
+    (pptr+14) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+14) -> name;
+    sprintf (nptr, "GPU_RegionMaxX");
+
+    (pptr+15) -> data.i32         = 0x00000000;
+    (pptr+15) -> flag             = FLAG_READ | FLAG_WRITE;
+    (pptr+15) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+15) -> name;
+    sprintf (nptr, "GPU_RegionMaxY");
+
+    (pptr+16) -> data.i32         = 0x00000000;
+    (pptr+16) -> flag             = FLAG_READ | FLAG_WRITE;
+    (pptr+16) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+16) -> name;
+    sprintf (nptr, "GPU_RegionHotspotX");
+
+    (pptr+17) -> data.i32         = 0x00000000;
+    (pptr+17) -> flag             = FLAG_READ | FLAG_WRITE;
+    (pptr+17) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+17) -> name;
+    sprintf (nptr, "GPU_RegionHotspotX");
+}
+
+int32_t  ioports_get  (uint16_t  portaddr)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize local variables
+    //
+    int32_t   value         = 0x00000000;                // obtained value
+    uint16_t  type          = (portaddr & 0x0700) >> 12; // port category
+    uint16_t  attr          = (portaddr & 0x00FF);       // item within category
+    uint8_t   flag          = FLAG_NONE;                 // short form access
+    port_t   *pptr          = *(ioports+type);           // pointer for sanity
+
+    flag                    = (pptr+attr) -> flag;
+    if ((flag & FLAG_READ) != FLAG_READ)
+    {
+        fprintf (stderr, "[error] SYSTEM ERROR: port '%s' not accessible via READ!\n",
+                         (pptr+attr) -> name);
+        exit (IOPORTS_READ_ERROR);
+    }
+
+    switch (portaddr)
+    {
+        case TIM_CurrentDate:
+            break;
+
+        case TIM_CurrentTime:
+            break;
+
+        case TIM_FrameCounter:
+            value           = framecounter;
+            break;
+
+        case TIM_CycleCounter:
+            value           = cyclecounter;
+            break;
+
+        case RNG_CurrentValue:
+            value           = rand ();
+            break;
+
+        case GPU_Command:
+            break;
+
+        case GPU_RemainingPixels:
+            value           = gpu_remainingpixels;
+            break;
+
+        case GPU_ClearColor:
+            break;
+
+        case GPU_MultiplyColor:
+            break;
+
+        case GPU_ActiveBlending:
+            break;
+
+        case GPU_SelectedTexture:
+            value           = gpu_selectedtexture;
+            break;
+
+        case GPU_SelectedRegion:
+            value           = gpu_selectedregion;
+            break;
+
+        case GPU_DrawingPointX:
+            value           = gpu_drawingpointx;
+            break;
+
+        case GPU_DrawingPointY:
+            value           = gpu_drawingpointy;
+            break;
+
+        case GPU_DrawingScaleX:
+            break;
+
+        case GPU_DrawingScaleY:
+            break;
+
+        case GPU_DrawingAngle:
+            break;
+
+        case GPU_RegionMinX:
+            break;
+
+        case GPU_RegionMinY:
+            break;
+
+        case GPU_RegionMaxX:
+            break;
+
+        case GPU_RegionMaxY:
+            break;
+
+        case GPU_RegionHotspotX:
+            break;
+
+        case GPU_RegionHotspotY:
+            break;
+
+        case SPU_Command:
+            break;
+
+        case SPU_GlobalVolume:
+            break;
+
+        case SPU_SelectedSound:
+            break;
+
+        case SPU_SelectedChannel:
+            break;
+
+        case SPU_SoundLength:
+            break;
+
+        case SPU_SoundPlayWithLoop:
+            break;
+
+        case SPU_SoundLoopStart:
+            break;
+
+        case SPU_SoundLoopEnd:
+            break;
+
+        case SPU_ChannelState:
+            break;
+
+        case SPU_ChannelAssignedSound:
+            break;
+
+        case SPU_ChannelVolume:
+            break;
+
+        case SPU_ChannelSpeed:
+            break;
+
+        case SPU_ChannelLoopEnabled:
+            break;
+
+        case SPU_ChannelPosition:
+            break;
+
+        case INP_SelectedGamepad:
+            break;
+
+        case INP_GamepadConnected:
+            break;
+
+        case INP_GamepadLeft:
+            break;
+
+        case INP_GamepadRight:
+            break;
+
+        case INP_GamepadUp:
+            break;
+
+        case INP_GamepadDown:
+            break;
+
+        case INP_GamepadButtonStart:
+            break;
+
+        case INP_GamepadButtonA:
+            break;
+
+        case INP_GamepadButtonB:
+            break;
+
+        case INP_GamepadButtonX:
+            break;
+
+        case INP_GamepadButtonY:
+            break;
+
+        case INP_GamepadButtonL:
+            break;
+
+        case INP_GamepadButtonR:
+            break;
+
+        case CAR_Connected:
+            break;
+
+        case CAR_ProgramROMSize:
+            break;
+
+        case CAR_NumberOfTextures:
+            break;
+
+        case CAR_NumberOfSounds:
+            break;
+
+        case MEM_Connected:
+            break;
+    }
+
+    return (value);
+}
+
+void      ioports_put  (uint16_t  portaddr, int32_t  value)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize local variables
+    //
+    int32_t   value          = 0x00000000;                // obtained value
+    uint16_t  type           = (portaddr & 0x0700) >> 12; // port category
+    uint16_t  attr           = (portaddr & 0x00FF);       // item within category
+    uint8_t   flag           = FLAG_NONE;                 // short form access
+    port_t   *pptr           = *(ioports+type);           // pointer for sanity
+
+    flag                     = (pptr+attr) -> flag;
+    if ((flag & FLAG_WRITE) != FLAG_WRITE)
+    {
+        fprintf (stderr, "[error] SYSTEM ERROR: port '%s' not accessible via READ!\n",
+                         (pptr+attr) -> name);
+        exit (IOPORTS_READ_ERROR);
+    }
+
+    switch (portaddr)
+    {
+        case TIM_CurrentDate:
+            break;
+
+        case TIM_CurrentTime:
+            break;
+
+        case TIM_FrameCounter:
+            value            = framecounter;
+            break;
+
+        case TIM_CycleCounter:
+            value            = cyclecounter;
+            break;
+
+        case RNG_CurrentValue:
+            value            = rand ();
+            break;
+
+        case GPU_Command:
+            break;
+
+        case GPU_RemainingPixels:
+            value            = gpu_remainingpixels;
+            break;
+
+        case GPU_ClearColor:
+            break;
+
+        case GPU_MultiplyColor:
+            break;
+
+        case GPU_ActiveBlending:
+            break;
+
+        case GPU_SelectedTexture:
+            value            = gpu_selectedtexture;
+            break;
+
+        case GPU_SelectedRegion:
+            value            = gpu_selectedregion;
+            break;
+
+        case GPU_DrawingPointX:
+            value            = gpu_drawingpointx;
+            break;
+
+        case GPU_DrawingPointY:
+            value            = gpu_drawingpointy;
+            break;
+
+        case GPU_DrawingScaleX:
+            break;
+
+        case GPU_DrawingScaleY:
+            break;
+
+        case GPU_DrawingAngle:
+            break;
+
+        case GPU_RegionMinX:
+            break;
+
+        case GPU_RegionMinY:
+            break;
+
+        case GPU_RegionMaxX:
+            break;
+
+        case GPU_RegionMaxY:
+            break;
+
+        case GPU_RegionHotspotX:
+            break;
+
+        case GPU_RegionHotspotY:
+            break;
+
+        case SPU_Command:
+            break;
+
+        case SPU_GlobalVolume:
+            break;
+
+        case SPU_SelectedSound:
+            break;
+
+        case SPU_SelectedChannel:
+            break;
+
+        case SPU_SoundLength:
+            break;
+
+        case SPU_SoundPlayWithLoop:
+            break;
+
+        case SPU_SoundLoopStart:
+            break;
+
+        case SPU_SoundLoopEnd:
+            break;
+
+        case SPU_ChannelState:
+            break;
+
+        case SPU_ChannelAssignedSound:
+            break;
+
+        case SPU_ChannelVolume:
+            break;
+
+        case SPU_ChannelSpeed:
+            break;
+
+        case SPU_ChannelLoopEnabled:
+            break;
+
+        case SPU_ChannelPosition:
+            break;
+
+        case INP_SelectedGamepad:
+            break;
+
+        case INP_GamepadConnected:
+            break;
+
+        case INP_GamepadLeft:
+            break;
+
+        case INP_GamepadRight:
+            break;
+
+        case INP_GamepadUp:
+            break;
+
+        case INP_GamepadDown:
+            break;
+
+        case INP_GamepadButtonStart:
+            break;
+
+        case INP_GamepadButtonA:
+            break;
+
+        case INP_GamepadButtonB:
+            break;
+
+        case INP_GamepadButtonX:
+            break;
+
+        case INP_GamepadButtonY:
+            break;
+
+        case INP_GamepadButtonL:
+            break;
+
+        case INP_GamepadButtonR:
+            break;
+
+        case CAR_Connected:
+            break;
+
+        case CAR_ProgramROMSize:
+            break;
+
+        case CAR_NumberOfTextures:
+            break;
+
+        case CAR_NumberOfSounds:
+            break;
+
+        case MEM_Connected:
+            break;
+    }
+
+    return (value);
 }
