@@ -138,11 +138,6 @@ int32_t   framecounter;
 int32_t   date_day;
 int32_t   date_year;
 int32_t   time_day;
-int32_t   gpu_remainingpixels;
-int32_t   gpu_selectedtexture;
-int32_t   gpu_selectedregion;
-int32_t   gpu_drawingpointx;
-int32_t   gpu_drawingpointy;
 uint8_t  *data;
 uint8_t   haltflag;
 uint8_t   waitflag;
@@ -174,6 +169,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     struct tm *current_time_tm;
     time_t     current_time_raw;
     uint8_t   *input                   = NULL;
+	uint8_t   *arg                     = NULL;
     uint8_t    newcommand              = '\0';
     uint8_t    lastcommand             = '\0';
     uint8_t    decodeflags             = FLAG_NONE;
@@ -221,6 +217,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     len                                = sizeof (uint8_t) * 256;
     input                              = (uint8_t *) malloc (len);
+    arg                                = (uint8_t *) malloc (len);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -393,11 +390,20 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                 //
                 fprintf (stdout, "v32sim> ");
                 //fscanf  (stdin,  "%s", input);
+				/*
                 *(input+0)             = fgetc (stdin);
                 if (*(input+0)        != '\n')
                 {
-                    fgetc (stdin);
-                }
+                    *(input+1)         = fgetc (stdin);
+                }*/
+
+				index                  = 0;
+				do
+				{
+					*(input+index)     = fgetc (stdin);
+					index              = index + 1;
+				}
+				while (*(input+(index-1)) != '\n');
                 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -407,6 +413,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                 newcommand             = *(input+0);
                 if (*(input+0)        == '\n')
                 {
+					*(input+1)         = '\0';
                     newcommand         = lastcommand;
                 }
                 
@@ -418,13 +425,23 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                         break;
 
                     case 'r':
-                        for (index     = 0;
-                             index    <  16;
-                             index     = index + 1)
-                        {
-                            sprintf (source, "R%u:", index);
-                            fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
-                        }
+						if (*(input+1) == ' ')
+						{
+							arg         = strtok ((input+2), " ");
+							index       = atoi (arg+1);
+							sprintf (source, "R%u:", index);
+							fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
+						}
+						else
+						{
+							for (index     = 0;
+								 index    <  16;
+								 index     = index + 1)
+							{
+								sprintf (source, "R%u:", index);
+								fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
+							}
+						}
                         break;
 
                     case 's':
@@ -1453,17 +1470,8 @@ int32_t  ioports_get  (uint16_t  portaddr)
     switch (portaddr)
     {
         case TIM_CurrentDate:
-            value           = (pptr+attr) -> data.i32;
-            break;
-
         case TIM_CurrentTime:
-            value           = (pptr+attr) -> data.i32;
-            break;
-
         case TIM_FrameCounter:
-            value           = (pptr+attr) -> data.i32;
-            break;
-
         case TIM_CycleCounter:
             value           = (pptr+attr) -> data.i32;
             break;
@@ -1474,62 +1482,23 @@ int32_t  ioports_get  (uint16_t  portaddr)
             break;
 
         case GPU_RemainingPixels:
-            value           = (pptr+attr) -> data.i32;
-            break;
-
         case GPU_ClearColor:
-            break;
-
         case GPU_MultiplyColor:
-            break;
-
         case GPU_ActiveBlending:
-            break;
-
         case GPU_SelectedTexture:
-            value           = gpu_selectedtexture;
-            break;
-
         case GPU_SelectedRegion:
-            value           = gpu_selectedregion;
-            break;
-
         case GPU_DrawingPointX:
-            value           = gpu_drawingpointx;
-            break;
-
         case GPU_DrawingPointY:
-            value           = gpu_drawingpointy;
-            break;
-
         case GPU_DrawingScaleX:
-            break;
-
         case GPU_DrawingScaleY:
-            break;
-
         case GPU_DrawingAngle:
-            break;
-
         case GPU_RegionMinX:
-            break;
-
         case GPU_RegionMinY:
-            break;
-
         case GPU_RegionMaxX:
-            break;
-
         case GPU_RegionMaxY:
-            break;
-
         case GPU_RegionHotspotX:
-            break;
-
         case GPU_RegionHotspotY:
-            break;
-
-        case SPU_Command:
+            value           = (pptr+attr) -> data.i32;
             break;
 
         case SPU_GlobalVolume:
@@ -1572,42 +1541,19 @@ int32_t  ioports_get  (uint16_t  portaddr)
             break;
 
         case INP_SelectedGamepad:
-            break;
-
         case INP_GamepadConnected:
-            break;
-
         case INP_GamepadLeft:
-            break;
-
         case INP_GamepadRight:
-            break;
-
         case INP_GamepadUp:
-            break;
-
         case INP_GamepadDown:
-            break;
-
         case INP_GamepadButtonStart:
-            break;
-
         case INP_GamepadButtonA:
-            break;
-
         case INP_GamepadButtonB:
-            break;
-
         case INP_GamepadButtonX:
-            break;
-
         case INP_GamepadButtonY:
-            break;
-
         case INP_GamepadButtonL:
-            break;
-
         case INP_GamepadButtonR:
+            value           = (pptr+attr) -> data.i32;
             break;
 
         case CAR_Connected:
