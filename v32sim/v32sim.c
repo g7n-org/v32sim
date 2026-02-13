@@ -5,103 +5,105 @@
 #include <time.h>
 #include "ioports.h"
 
-#define  IOPORTS_ALLOC_FAIL 3
-#define  IOPORTS_READ_ERROR 4
+#define  IOPORTS_ALLOC_FAIL  3
+#define  IOPORTS_READ_ERROR  4
+#define  IOPORTS_WRITE_ERROR 5
+#define  IOPORTS_BAD_PORT    6
 
-#define  NUM_TIM_PORTS      4
-#define  NUM_RNG_PORTS      1
-#define  NUM_GPU_PORTS      18
-#define  NUM_SPU_PORTS      14
-#define  NUM_INP_PORTS      13
-#define  NUM_CAR_PORTS      4
-#define  NUM_MEM_PORTS      1
+#define  NUM_TIM_PORTS       4
+#define  NUM_RNG_PORTS       1
+#define  NUM_GPU_PORTS       18
+#define  NUM_SPU_PORTS       14
+#define  NUM_INP_PORTS       13
+#define  NUM_CAR_PORTS       4
+#define  NUM_MEM_PORTS       1
 
-#define  TIM_PORT           0
-#define  RNG_PORT           1
-#define  GPU_PORT           2
-#define  SPU_PORT           3
-#define  INP_PORT           4
-#define  CAR_PORT           5
-#define  MEM_PORT           6
+#define  TIM_PORT            0
+#define  RNG_PORT            1
+#define  GPU_PORT            2
+#define  SPU_PORT            3
+#define  INP_PORT            4
+#define  CAR_PORT            5
+#define  MEM_PORT            6
 
-#define  OPCODE_MASK        0xFC000000
-#define  DSTREG_MASK        0x01E00000
-#define  SRCREG_MASK        0x001E0000
-#define  MOVADR_MASK        0x0001C000
-#define  IOPORT_MASK        0x00003FFF
-#define  OPCODESHIFT        26
-#define  DSTREGSHIFT        21
-#define  SRCREGSHIFT        17
-#define  MOVADRSHIFT        14
+#define  OPCODE_MASK         0xFC000000
+#define  DSTREG_MASK         0x01E00000
+#define  SRCREG_MASK         0x001E0000
+#define  MOVADR_MASK         0x0001C000
+#define  IOPORT_MASK         0x00003FFF
+#define  OPCODESHIFT         26
+#define  DSTREGSHIFT         21
+#define  SRCREGSHIFT         17
+#define  MOVADRSHIFT         14
 
-#define  TRUE               1
-#define  FALSE              0
+#define  TRUE                1
+#define  FALSE               0
 
-#define  NUM_REGISTERS      19
+#define  NUM_REGISTERS       19
 
-#define  R0                 0
-#define  R1                 1
-#define  R2                 2
-#define  R3                 3
-#define  R4                 4
-#define  R5                 5
-#define  R6                 6
-#define  R7                 7
-#define  R8                 8
-#define  R9                 9
-#define  R10                10
-#define  R11                11
-#define  CR                 11
-#define  R12                12
-#define  SR                 12
-#define  R13                13
-#define  DR                 13
-#define  R14                14
-#define  BP                 14
-#define  R15                15
-#define  SP                 15
-#define  IP                 16
-#define  IV                 17
-#define  PC                 18
+#define  R0                  0
+#define  R1                  1
+#define  R2                  2
+#define  R3                  3
+#define  R4                  4
+#define  R5                  5
+#define  R6                  6
+#define  R7                  7
+#define  R8                  8
+#define  R9                  9
+#define  R10                 10
+#define  R11                 11
+#define  CR                  11
+#define  R12                 12
+#define  SR                  12
+#define  R13                 13
+#define  DR                  13
+#define  R14                 14
+#define  BP                  14
+#define  R15                 15
+#define  SP                  15
+#define  IP                  16
+#define  IV                  17
+#define  PC                  18
 
-#define  FLAG_NONE          0
-#define  FLAG_DISPLAY       1
-#define  FLAG_PROCESS       2 
-#define  FLAG_IMMEDIATE     4
+#define  FLAG_NONE           0
+#define  FLAG_DISPLAY        1
+#define  FLAG_PROCESS        2 
+#define  FLAG_IMMEDIATE      4
 
-#define  FLAG_READ          4
-#define  FLAG_WRITE         2
+#define  FLAG_READ           4
+#define  FLAG_WRITE          2
 
-#define  HLT                0x00
-#define  WAIT               0x01
-#define  JMP                0x02
-#define  CALL               0x03
-#define  RET                0x04
-#define  JT                 0x05
-#define  JF                 0x06
-#define  IEQ                0x07
-#define  INE                0x08
-#define  IGT                0x09
-#define  IGE                0x0A
-#define  ILT                0x0B
-#define  ILE                0x0C
-#define  MOV                0x13
-#define  PUSH               0x15
-#define  POP                0x16
-#define  IN                 0x17
-#define  OUT                0x18
-#define  CIB                0x1E
-#define  NOT                0x20
-#define  AND                0x21
-#define  OR                 0x22
-#define  XOR                0x23
-#define  BNOT               0x24
-#define  SHL                0x25
-#define  IADD               0x26
-#define  ISUB               0x27
-#define  IMUL               0x28
-#define  IDIV               0x29
-#define  IMOD               0x2A
+#define  HLT                 0x00
+#define  WAIT                0x01
+#define  JMP                 0x02
+#define  CALL                0x03
+#define  RET                 0x04
+#define  JT                  0x05
+#define  JF                  0x06
+#define  IEQ                 0x07
+#define  INE                 0x08
+#define  IGT                 0x09
+#define  IGE                 0x0A
+#define  ILT                 0x0B
+#define  ILE                 0x0C
+#define  MOV                 0x13
+#define  PUSH                0x15
+#define  POP                 0x16
+#define  IN                  0x17
+#define  OUT                 0x18
+#define  CIB                 0x1E
+#define  NOT                 0x20
+#define  AND                 0x21
+#define  OR                  0x22
+#define  XOR                 0x23
+#define  BNOT                0x24
+#define  SHL                 0x25
+#define  IADD                0x26
+#define  ISUB                0x27
+#define  IMUL                0x28
+#define  IDIV                0x29
+#define  IMOD                0x2A
 
 union  data_type
 {
@@ -155,9 +157,9 @@ uint32_t  rom_offset;
 uint32_t  get_word     (FILE *);
 void      put_word     (uint32_t, uint8_t);
 void      decode       (uint32_t, uint32_t, uint8_t);
-void      init_ioports (void);
-int32_t   ioports_get  (uint16_t);
-void      ioports_put  (uint16_t, int32_t);
+void      init_ioports (void);                        // initialize IOPorts
+int32_t   ioports_get  (uint16_t);                    // get value from port
+void      ioports_set  (uint16_t, int32_t);           // set value to port
 
 int32_t   main     (int32_t  argc, uint8_t **argv)
 {
@@ -545,7 +547,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
     uint32_t  dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
     uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
-    uint8_t   port                 = (instruction & IOPORT_MASK);
+    uint16_t  port                 = (instruction & IOPORT_MASK);
 
     ////////////////////////////////////////////////////////////////////////////////
     //
@@ -1006,7 +1008,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
         case IN:
             if (processflag             == TRUE)
             {
-                (reg+dst) -> i32         = *(ioports+port);
+                (reg+dst) -> i32         = ioports_get (port);
             }
             sprintf (destination, "R%u,",         dst);
             sprintf (source,      "0x%.3X",       port);
@@ -1017,10 +1019,18 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             sprintf (destination, "0x%.3X,",      port);
             if (immflag                 == TRUE)
             {
-                sprintf (source,  "0x%.3X",       port);
+                if (processflag         == TRUE)
+                {
+                    ioports_set (port, immediate);
+                }
+                sprintf (source,  "0x%.3X",       immediate);
             }
             else
             {
+                if (processflag         == TRUE)
+                {
+                    ioports_set (port, (reg+dst) -> i32);
+                }
                 sprintf (source,  "R%u",          dst);
             }
             fprintf (display,      "%-5s %-16s %-16s", "OUT", destination, source);
@@ -1403,6 +1413,20 @@ void  init_ioports  (void)
     (pptr+17) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
     nptr                          = (pptr+17) -> name;
     sprintf (nptr, "GPU_RegionHotspotX");
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // INP ports: allocate and initialize
+    //
+    len                           = sizeof (port_t)   * NUM_INP_PORTS;
+    *(ioports+INP_PORT)           = (port_t *) malloc (len);
+    pptr                          = *(ioports+INP_PORT);
+
+    (pptr+0) -> data.i32          = 0x00000000;
+    (pptr+0) -> flag              = FLAG_READ | FLAG_WRITE;
+    (pptr+0) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                          = (pptr+0) -> name;
+    sprintf (nptr, "INP_SelectedGamepad");
 }
 
 int32_t  ioports_get  (uint16_t  portaddr)
@@ -1416,11 +1440,12 @@ int32_t  ioports_get  (uint16_t  portaddr)
     uint16_t  attr          = (portaddr & 0x00FF);       // item within category
     uint8_t   flag          = FLAG_NONE;                 // short form access
     port_t   *pptr          = *(ioports+type);           // pointer for sanity
+    int32_t  *dptr          = (pptr+attr) -> data.i32;   // pointer to port data
 
     flag                    = (pptr+attr) -> flag;
     if ((flag & FLAG_READ) != FLAG_READ)
     {
-        fprintf (stderr, "[error] SYSTEM ERROR: port '%s' not accessible via READ!\n",
+        fprintf (stderr, "[ERROR] port '%s' not accessible via READ!\n",
                          (pptr+attr) -> name);
         exit (IOPORTS_READ_ERROR);
     }
@@ -1428,28 +1453,28 @@ int32_t  ioports_get  (uint16_t  portaddr)
     switch (portaddr)
     {
         case TIM_CurrentDate:
+            value           = (pptr+attr) -> data.i32;
             break;
 
         case TIM_CurrentTime:
+            value           = (pptr+attr) -> data.i32;
             break;
 
         case TIM_FrameCounter:
-            value           = framecounter;
+            value           = (pptr+attr) -> data.i32;
             break;
 
         case TIM_CycleCounter:
-            value           = cyclecounter;
+            value           = (pptr+attr) -> data.i32;
             break;
 
-        case RNG_CurrentValue:
-            value           = rand ();
-            break;
-
-        case GPU_Command:
+        case RNG_CurrentValue: // obtain pseudorandom value, place in port
+            *dptr           = rand ();
+            value           = (pptr+attr) -> data.i32;
             break;
 
         case GPU_RemainingPixels:
-            value           = gpu_remainingpixels;
+            value           = (pptr+attr) -> data.i32;
             break;
 
         case GPU_ClearColor:
@@ -1604,76 +1629,102 @@ int32_t  ioports_get  (uint16_t  portaddr)
     return (value);
 }
 
-void      ioports_put  (uint16_t  portaddr, int32_t  value)
+void      ioports_set  (uint16_t  portaddr, int32_t  value)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Declare and initialize local variables
     //
-    int32_t   value          = 0x00000000;                // obtained value
-    uint16_t  type           = (portaddr & 0x0700) >> 12; // port category
-    uint16_t  attr           = (portaddr & 0x00FF);       // item within category
-    uint8_t   flag           = FLAG_NONE;                 // short form access
-    port_t   *pptr           = *(ioports+type);           // pointer for sanity
+    uint16_t  type           = (portaddr & 0x0700) >> 8;    // port category
+    uint16_t  attr           = (portaddr & 0x00FF);         // item within category
+    uint8_t   flag           = FLAG_NONE;                   // short form access
+    port_t   *pptr           = *(ioports+type);             // pointer for sanity
+
+	//fprintf (stdout, "type: %hu, attr:      %hu\n", type, attr);
+	//fprintf (stdout, "dptr: %p,  dptr->i32: %.8X\n", dptr, (pptr+attr) -> data.i32);
 
     flag                     = (pptr+attr) -> flag;
     if ((flag & FLAG_WRITE) != FLAG_WRITE)
     {
-        fprintf (stderr, "[error] SYSTEM ERROR: port '%s' not accessible via READ!\n",
+        fprintf (stderr, "[ERROR] port '%s' not accessible via WRITE!\n",
                          (pptr+attr) -> name);
-        exit (IOPORTS_READ_ERROR);
+        exit (IOPORTS_WRITE_ERROR);
+    }
+
+    switch (type)
+    {
+        case TIM_PORT:
+            if (attr        >= NUM_TIM_PORTS)
+            {
+                fprintf (stderr, "[ERROR] invalid TIM port 0x%.3hX\n", portaddr);
+                exit (IOPORTS_BAD_PORT);
+            }
+            break;
+
+        case RNG_PORT:
+            if (attr        >= NUM_RNG_PORTS)
+            {
+                fprintf (stderr, "[ERROR] invalid RNG port 0x%.3hX\n", portaddr);
+                exit (IOPORTS_BAD_PORT);
+            }
+            break;
+
+        case GPU_PORT:
+            if (attr        >= NUM_GPU_PORTS)
+            {
+                fprintf (stderr, "[ERROR] invalid GPU port 0x%.3hX\n", portaddr);
+                exit (IOPORTS_BAD_PORT);
+            }
+            break;
+
+        case SPU_PORT:
+            if (attr        >= NUM_SPU_PORTS)
+            {
+                fprintf (stderr, "[ERROR] invalid SPU port 0x%.3hX\n", portaddr);
+                exit (IOPORTS_BAD_PORT);
+            }
+            break;
+
+        case INP_PORT:
+            if (attr        >= NUM_INP_PORTS)
+            {
+                fprintf (stderr, "[ERROR] invalid INP port 0x%.3hX\n", portaddr);
+                exit (IOPORTS_BAD_PORT);
+            }
+            break;
+
+        case CAR_PORT:
+            if (attr        >= NUM_CAR_PORTS)
+            {
+                fprintf (stderr, "[ERROR] invalid CAR port 0x%.3hX\n", portaddr);
+                exit (IOPORTS_BAD_PORT);
+            }
+            break;
+
+        case MEM_PORT:
+            if (attr        >= NUM_MEM_PORTS)
+            {
+                fprintf (stderr, "[ERROR] invalid MEM port 0x%.3hX\n", portaddr);
+                exit (IOPORTS_BAD_PORT);
+            }
+            break;
     }
 
     switch (portaddr)
     {
-        case TIM_CurrentDate:
-            break;
-
-        case TIM_CurrentTime:
-            break;
-
-        case TIM_FrameCounter:
-            value            = framecounter;
-            break;
-
-        case TIM_CycleCounter:
-            value            = cyclecounter;
-            break;
-
         case RNG_CurrentValue:
-            value            = rand ();
+            srand (value);
             break;
 
         case GPU_Command:
-            break;
-
-        case GPU_RemainingPixels:
-            value            = gpu_remainingpixels;
-            break;
-
         case GPU_ClearColor:
-            break;
-
         case GPU_MultiplyColor:
-            break;
-
         case GPU_ActiveBlending:
-            break;
-
         case GPU_SelectedTexture:
-            value            = gpu_selectedtexture;
-            break;
-
         case GPU_SelectedRegion:
-            value            = gpu_selectedregion;
-            break;
-
         case GPU_DrawingPointX:
-            value            = gpu_drawingpointx;
-            break;
-
         case GPU_DrawingPointY:
-            value            = gpu_drawingpointy;
+			(pptr+attr) -> data.i32  = value;
             break;
 
         case GPU_DrawingScaleX:
@@ -1746,42 +1797,7 @@ void      ioports_put  (uint16_t  portaddr, int32_t  value)
             break;
 
         case INP_SelectedGamepad:
-            break;
-
-        case INP_GamepadConnected:
-            break;
-
-        case INP_GamepadLeft:
-            break;
-
-        case INP_GamepadRight:
-            break;
-
-        case INP_GamepadUp:
-            break;
-
-        case INP_GamepadDown:
-            break;
-
-        case INP_GamepadButtonStart:
-            break;
-
-        case INP_GamepadButtonA:
-            break;
-
-        case INP_GamepadButtonB:
-            break;
-
-        case INP_GamepadButtonX:
-            break;
-
-        case INP_GamepadButtonY:
-            break;
-
-        case INP_GamepadButtonL:
-            break;
-
-        case INP_GamepadButtonR:
+			(pptr+attr) -> data.i32  = value;
             break;
 
         case CAR_Connected:
@@ -1799,6 +1815,4 @@ void      ioports_put  (uint16_t  portaddr, int32_t  value)
         case MEM_Connected:
             break;
     }
-
-    return (value);
 }
