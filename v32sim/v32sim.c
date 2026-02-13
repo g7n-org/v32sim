@@ -133,8 +133,6 @@ data_t   *reg;
 // Variables related to IOPorts
 //
 port_t  **ioports;
-int32_t   cyclecounter;
-int32_t   framecounter;
 int32_t   date_day;
 int32_t   date_year;
 int32_t   time_day;
@@ -164,12 +162,13 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     int32_t    index                   = 0;
     int32_t    value                   = 0;
+    int32_t    lastaddr                = 0;
     //port_t    *pptr                    = NULL;
     size_t     len                     = 0;
     struct tm *current_time_tm;
     time_t     current_time_raw;
     uint8_t   *input                   = NULL;
-	uint8_t   *arg                     = NULL;
+    uint8_t   *arg                     = NULL;
     uint8_t    newcommand              = '\0';
     uint8_t    lastcommand             = '\0';
     uint8_t    decodeflags             = FLAG_NONE;
@@ -193,8 +192,6 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     time_day                           = current_time_tm -> tm_hour * 3600;
     time_day                          += current_time_tm -> tm_min  * 60;
     time_day                          += current_time_tm -> tm_sec  * 60;
-    cyclecounter                       = 0;
-    framecounter                       = 0;
     wordsize                           = 4;
     haltflag                           = FALSE;
     waitflag                           = FALSE;
@@ -390,20 +387,20 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                 //
                 fprintf (stdout, "v32sim> ");
                 //fscanf  (stdin,  "%s", input);
-				/*
+                /*
                 *(input+0)             = fgetc (stdin);
                 if (*(input+0)        != '\n')
                 {
                     *(input+1)         = fgetc (stdin);
                 }*/
 
-				index                  = 0;
-				do
-				{
-					*(input+index)     = fgetc (stdin);
-					index              = index + 1;
-				}
-				while (*(input+(index-1)) != '\n');
+                index                  = 0;
+                do
+                {
+                    *(input+index)     = fgetc (stdin);
+                    index              = index + 1;
+                }
+                while (*(input+(index-1)) != '\n');
                 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -413,9 +410,11 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                 newcommand             = *(input+0);
                 if (*(input+0)        == '\n')
                 {
-					*(input+1)         = '\0';
+                    *(input+1)         = '\0';
                     newcommand         = lastcommand;
                 }
+                *(input+index-1)           = '\0';
+                fprintf (stdout, "input >%s<\n", input);
                 
                 switch (newcommand)
                 {
@@ -424,24 +423,45 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                         runflag        = TRUE;
                         break;
 
+                    case 'm':
+                        if (*(input+1) == ' ')
+                        {
+                            arg         = strtok ((input+2), " ");
+                            value       = atoi (arg+1);
+                            sprintf (source, "[%.8X]:", value);
+                            fprintf (stdout, "%-4s 0x%.8X\n", source, *(memory+value));
+                        }
+                        else
+                        {
+                            for (index     = lastaddr;
+                                 index    <  lastaddr + 8;
+                                 index     = index + 1)
+                            {
+                                sprintf (source, "[%.8X]:", index);
+                                fprintf (stdout, "%-11s 0x%.8X\n", source, *(memory+index));
+                            }
+                            lastaddr       = index;
+                        }
+                        break;
+
                     case 'r':
-						if (*(input+1) == ' ')
-						{
-							arg         = strtok ((input+2), " ");
-							index       = atoi (arg+1);
-							sprintf (source, "R%u:", index);
-							fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
-						}
-						else
-						{
-							for (index     = 0;
-								 index    <  16;
-								 index     = index + 1)
-							{
-								sprintf (source, "R%u:", index);
-								fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
-							}
-						}
+                        if (*(input+1) == ' ')
+                        {
+                            arg         = strtok ((input+2), " ");
+                            value       = atoi (arg+1);
+                            sprintf (source, "R%u:", value);
+                            fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+value) -> i32);
+                        }
+                        else
+                        {
+                            for (index     = 0;
+                                 index    <  16;
+                                 index     = index + 1)
+                            {
+                                sprintf (source, "R%u:", index);
+                                fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
+                            }
+                        }
                         break;
 
                     case 's':
@@ -458,8 +478,22 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
 
         (reg+PC) -> i32                = offset;    // location
         (reg+IP) -> i32                = word;      // current instruction
-        cyclecounter                   = cyclecounter + 1;
-        framecounter                   = framecounter + 1;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // update the Cycle Counter
+        //
+        value                          = ioports_get (TIM_CycleCounter);
+        value                          = value + 1;
+        ioports_set (TIM_CycleCounter, value);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // update the Frame Counter
+        //
+        value                          = ioports_get (TIM_FrameCounter);
+        value                          = value + 1;
+        ioports_set (TIM_FrameCounter, value);
 
         (reg+IV) -> i32                = immediate; // immediate value
     }
@@ -596,13 +630,26 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             if (processflag       == TRUE)
             {
                 waitflag           = TRUE;
-                framecounter       = framecounter + 1;
-                value              = framecounter;
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // reset the Cycle Counter to 0
+                //
+                value                          = ioports_get (TIM_CycleCounter);
+                value                          = value + 1;
+                ioports_set (TIM_CycleCounter, 0);
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // update the Frame Counter
+                //
+                value                          = ioports_get (TIM_FrameCounter);
+                value                          = value + 1;
+                ioports_set (TIM_FrameCounter, value);
                 if ((value % 60)  == 0)
                 {
                     time_day       = time_day   + 1;
                 }
-                cyclecounter       = 0;
             }
             break;
 
@@ -1586,8 +1633,8 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
     uint8_t   flag           = FLAG_NONE;                   // short form access
     port_t   *pptr           = *(ioports+type);             // pointer for sanity
 
-	//fprintf (stdout, "type: %hu, attr:      %hu\n", type, attr);
-	//fprintf (stdout, "dptr: %p,  dptr->i32: %.8X\n", dptr, (pptr+attr) -> data.i32);
+    //fprintf (stdout, "type: %hu, attr:      %hu\n", type, attr);
+    //fprintf (stdout, "dptr: %p,  dptr->i32: %.8X\n", dptr, (pptr+attr) -> data.i32);
 
     flag                     = (pptr+attr) -> flag;
     if ((flag & FLAG_WRITE) != FLAG_WRITE)
@@ -1670,7 +1717,7 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
         case GPU_SelectedRegion:
         case GPU_DrawingPointX:
         case GPU_DrawingPointY:
-			(pptr+attr) -> data.i32  = value;
+            (pptr+attr) -> data.i32  = value;
             break;
 
         case GPU_DrawingScaleX:
@@ -1743,7 +1790,7 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
             break;
 
         case INP_SelectedGamepad:
-			(pptr+attr) -> data.i32  = value;
+            (pptr+attr) -> data.i32  = value;
             break;
 
         case CAR_Connected:
