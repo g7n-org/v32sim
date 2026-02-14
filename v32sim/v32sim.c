@@ -2,8 +2,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include "ioports.h"
+
+#define  BIOS_DEFAULT_PATH   "/usr/local/Vircon32/Emulator/Bios/StandardBios.v32"
 
 #define  V32_PAGE_RAM        0
 #define  V32_PAGE_BIOS       1
@@ -24,6 +27,9 @@
 #define  MEMORY_READ_ERROR   8
 #define  MEMORY_WRITE_ERROR  9
 #define  MEMORY_BAD_ACCESS   10
+
+#define  FILE_OPEN_ERROR     11
+#define  FILE_POSITION_ERROR 12
 
 #define  NUM_MEMORY_PAGES    4
 
@@ -143,6 +149,7 @@ struct memory_type
     data_t   *data;
     uint32_t  firstaddr;
     uint32_t  last_addr;
+    uint32_t  size;
 };
 typedef struct memory_type mem_t;
 
@@ -151,6 +158,8 @@ FILE     *devnull;
 FILE     *program;
 uint8_t  *destination;
 uint8_t  *source;
+int8_t   *biosfile;
+int8_t   *cartfile;
 mem_t    *memory;
 word_t   *reg;
 
@@ -162,6 +171,7 @@ data_t  **ioports;
 int32_t   date_day;
 int32_t   date_year;
 int32_t   time_day;
+uint8_t   system_override;
 
 uint8_t  *data;
 uint8_t   haltflag;
@@ -173,6 +183,7 @@ uint32_t  rom_offset;
 //
 // Function prototypes
 //
+size_t    get_filesize (int8_t *);
 uint32_t  get_word     (FILE *);
 void      put_word     (uint32_t, uint8_t);
 void      decode       (uint32_t, uint32_t, uint8_t);
@@ -180,6 +191,7 @@ void      init_ioports (void);                        // initialize IOPorts
 int32_t   ioports_get  (uint16_t);                    // get value from port
 void      ioports_set  (uint16_t, int32_t);           // set value to port
 void      init_memory  (void);                        // initialize memory
+void      load_memory  (uint32_t, int8_t *);          // load contents into memory
 word_t   *memory_get   (uint32_t);                    // get value from memory
 void      memory_set   (uint32_t, word_t *);          // set value to memory
 int32_t   word2int     (word_t *);
@@ -194,7 +206,6 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     int32_t    index                   = 0;
     int32_t    value                   = 0;
     int32_t    lastaddr                = 0;
-    //data_t    *pptr                    = NULL;
     size_t     len                     = 0;
     struct tm *current_time_tm;
     time_t     current_time_raw;
@@ -229,6 +240,28 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // Open the indicated V32 file
+    //
+    len                                = strlen (argv[1]) + 1;
+    cartfile                           = (int8_t *) malloc (len);
+    strcpy (cartfile, argv[1]);
+    program                            = fopen (argv[1], "r");
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Set up 'biosfile'
+    //
+    biosfile                           = (int8_t *) malloc (sizeof (int8_t) * 64);
+    strcpy (biosfile, "StandardBios.v32");
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Open /dev/null
+    //
+    devnull                            = fopen ("/dev/null", "w");
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // 18 is the maximum length of potential columnar output of an operand:
     //
     // "[RXX+0x12345678],\0" <- 17 bytes of string data + 1 NULL terminator
@@ -258,13 +291,17 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     // Allocate Vircon32 IOPorts (a 2D array of ports)
     //
+    system_override                    = FALSE;
     init_ioports ();
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Allocate Vircon32 RAM (a 16MB/4MW 1D array of word_t)
+    // Allocate Vircon32 memory regions (RAM, BIOS, CART, MEMC)
     //
     init_memory ();
+    load_memory (V32_PAGE_BIOS, biosfile); // load BIOS file contents into memory
+    load_memory (V32_PAGE_CART, cartfile); // load CART file contents into memory
+    //load_memory (V32_PAGE_MEMC, memcfile); // load MEMC file contents into memory
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -278,18 +315,6 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     {
         (reg+index) -> i32             = 0x00000000;
     }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Open the indicated V32 file
-    //
-    program                            = fopen (argv[1], "r");
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Open /dev/null
-    //
-    devnull                            = fopen ("/dev/null", "w");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -524,6 +549,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
         //
         value                          = ioports_get (TIM_CycleCounter);
         value                          = value + 1;
+        system_override                = TRUE;
         ioports_set (TIM_CycleCounter, value);
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -532,6 +558,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
         //
         value                          = ioports_get (TIM_FrameCounter);
         value                          = value + 1;
+        system_override                = TRUE;
         ioports_set (TIM_FrameCounter, value);
 
         (reg+IV) -> i32                = immediate; // immediate value
@@ -547,7 +574,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
 //
 // RETURN VAL: the uint32_t of the word just read
 //
-uint32_t  get_word (FILE *program)
+uint32_t  get_word (FILE *fptr)
 {
     //////////////////////////////////////////////////////////////////////////
     //
@@ -558,16 +585,16 @@ uint32_t  get_word (FILE *program)
 
     //////////////////////////////////////////////////////////////////////////
     //
-    // Read a wordsize amount of data from the program file
+    // Read a wordsize amount of data from the FILE pointer
     //
-    fread (data, sizeof (uint8_t), wordsize, program);
+    fread (data, sizeof (uint8_t), wordsize, fptr);
 
     //////////////////////////////////////////////////////////////////////////
     //
     // If we have not encountered the end of the file, proceed with
     // processing
     //
-    if (!feof (program))
+    if (!feof (fptr))
     {
         //////////////////////////////////////////////////////////////////////
         //
@@ -676,6 +703,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 //
                 value                          = ioports_get (TIM_CycleCounter);
                 value                          = value + 1;
+                system_override                = TRUE;
                 ioports_set (TIM_CycleCounter, 0);
 
                 ////////////////////////////////////////////////////////////////////////
@@ -684,6 +712,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 //
                 value                          = ioports_get (TIM_FrameCounter);
                 value                          = value + 1;
+                system_override                = TRUE;
                 ioports_set (TIM_FrameCounter, value);
                 if ((value % 60)  == 0)
                 {
@@ -1344,7 +1373,6 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 void  init_ioports  (void)
 {
     int8_t  *nptr                 = NULL;
-    //int32_t  index                = 0;
     data_t  *pptr                 = NULL;
     size_t   len                  = 0;
 
@@ -1549,9 +1577,13 @@ int32_t  ioports_get  (uint16_t  portaddr)
     flag                    = (pptr+attr) -> flag;
     if ((flag & FLAG_READ) != FLAG_READ)
     {
-        fprintf (stderr, "[ERROR] port '%s' not accessible via READ!\n",
-                         (pptr+attr) -> name);
-        exit (IOPORTS_READ_ERROR);
+        if (system_override == FALSE)
+        {
+            fprintf (stderr, "[ERROR] port '%s' not accessible via READ!\n",
+                             (pptr+attr) -> name);
+            exit (IOPORTS_READ_ERROR);
+        }
+        system_override      = FALSE;
     }
 
     switch (portaddr)
@@ -1673,15 +1705,16 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
     uint8_t   flag           = FLAG_NONE;                   // short form access
     data_t   *pptr           = *(ioports+type);             // pointer for sanity
 
-    //fprintf (stdout, "type: %hu, attr:      %hu\n", type, attr);
-    //fprintf (stdout, "dptr: %p,  dptr->i32: %.8X\n", dptr, (pptr+attr) -> value.i32);
-
     flag                     = (pptr+attr) -> flag;
     if ((flag & FLAG_WRITE) != FLAG_WRITE)
     {
-        fprintf (stderr, "[ERROR] port '%s' not accessible via WRITE!\n",
-                         (pptr+attr) -> name);
-        exit (IOPORTS_WRITE_ERROR);
+        if (system_override == FALSE)
+        {
+            fprintf (stderr, "[ERROR] port '%s' not accessible via WRITE!\n",
+                             (pptr+attr) -> name);
+            exit (IOPORTS_WRITE_ERROR);
+        }
+        system_override      = FALSE;
     }
 
     switch (type)
@@ -1884,50 +1917,125 @@ void    init_memory (void)
                 (memory+page) -> type       = V32_PAGE_RAM;
                 (memory+page) -> firstaddr  = 0x00000000;
                 (memory+page) -> last_addr  = 0x003FFFFF;
-                len                         = sizeof (data_t) * 1024 * 1024 * wordsize;
+                (memory+page) -> size       = 1024 * 1024 * wordsize;
                 break;
 
             case V32_PAGE_BIOS:
                 (memory+page) -> type       = V32_PAGE_BIOS;
                 (memory+page) -> firstaddr  = 0x10000000;
                 (memory+page) -> last_addr  = 0x100FFFFF;
-                len                         = sizeof (data_t) * 1024 * 1024 * 1;
+                (memory+page) -> size       = get_filesize (BIOS_DEFAULT_PATH);
                 break;
 
             case V32_PAGE_CART:
                 (memory+page) -> type       = V32_PAGE_CART;
                 (memory+page) -> firstaddr  = 0x20000000;
                 (memory+page) -> last_addr  = 0x27FFFFFF;
+                (memory+page) -> size       = get_filesize (cartfile);
                 break;
 
             case V32_PAGE_MEMC:
                 (memory+page) -> type       = V32_PAGE_MEMC;
                 (memory+page) -> firstaddr  = 0x30000000;
                 (memory+page) -> last_addr  = 0x3003FFFF;
-                len                         = sizeof (data_t) * 1024 * 256;
+                (memory+page) -> size       = 1024 * 256;
                 break;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // Vircon32 has 16MB of RAM, or 4MW of memory; declare as an array of word_t
+        // allocate memory for the page
         //
-        (memory+page) -> data               = (data_t *) malloc (len);
-
+        len                                 = sizeof (data_t) * (memory+page) -> size;
+        (memory+page)     -> data           = (data_t *) malloc (len);
         if ((memory+page) -> data          == NULL)
         {
             fprintf (stderr, "[error] failed to allocate for memory page\n");
             exit (MEMORY_ALLOC_FAIL);
         }
 
+        dptr                                = (memory+page) -> data;
         for (offset                         = 0;
-             offset                        <  len;
+             offset                        <  (memory+page) -> size;
              offset                         = offset + 1)
         {
-            dptr                            = (memory+page) -> data;
+            switch (page)
+            {
+                case V32_PAGE_RAM:
+                case V32_PAGE_MEMC:
+                    (dptr+offset) -> flag   = FLAG_READ | FLAG_WRITE;
+                    break;
+
+                case V32_PAGE_BIOS:
+                case V32_PAGE_CART:
+                    (dptr+offset) -> flag   = FLAG_READ;
+                    break;
+            }
             (dptr+offset) -> value.i32      = 0x00000000;
         }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Mark unused BIOS page words as neither read nor write
+        //
+        if (page                           == V32_PAGE_BIOS)
+        {
+            for (offset                     = (memory+page) -> size;
+                 offset                    <  (memory+page) -> last_addr - (memory+page) -> firstaddr;
+                 offset                     = offset + 1)
+            {
+                (dptr+offset) -> flag       = FLAG_NONE;
+            }
+        }            
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// load_memory(): load data files from disk into page-appropriate location in memory
+//
+void    load_memory (uint32_t  page, int8_t *filename)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize variables
+    //
+    FILE     *fptr    = NULL;
+    uint32_t  offset  = 0x00000000;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Adjust offset to be at the start of the indicated page
+    //
+    page              = page << 28;
+    offset            = offset | page;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Open indicated filename for reading
+    //
+    fptr              = fopen (filename, "rb");
+    if (fptr         == NULL)
+    {
+        fprintf (stderr, "[ERROR] Could not open '%s' for reading\n", filename);
+        exit    (FILE_OPEN_ERROR);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Continually read in words from the file until we reach EOF, placing each
+    // read word in memory at the appropriate offset.
+    //
+    while (!feof (fptr))
+    {
+        memory_set (offset, get_word (fptr));
+        if (!feof (fptr))
+        {
+            offset    = offset + 1;
+        }
+    }
+
+    fclose (fptr);
 }
 
 word_t *memory_get (uint32_t  address)
@@ -1947,7 +2055,7 @@ word_t *memory_get (uint32_t  address)
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr         = (memory+page) -> data;
+            dptr         = (memory+page)  -> data;
             flag         = ((dptr+offset) -> flag) & FLAG_READ;
             if (flag    != FLAG_READ)
             {
@@ -1963,7 +2071,7 @@ word_t *memory_get (uint32_t  address)
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr         = (memory+page) -> data;
+            dptr         = (memory+page)  -> data;
             flag         = ((dptr+offset) -> flag) & FLAG_READ;
             if (flag    != FLAG_READ)
             {
@@ -1979,7 +2087,7 @@ word_t *memory_get (uint32_t  address)
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr         = (memory+page) -> data;
+            dptr         = (memory+page)  -> data;
             flag         = ((dptr+offset) -> flag) & FLAG_READ;
             if (flag    != FLAG_READ)
             {
@@ -1995,7 +2103,7 @@ word_t *memory_get (uint32_t  address)
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr         = (memory+page) -> data;
+            dptr         = (memory+page)  -> data;
             flag         = ((dptr+offset) -> flag) & FLAG_READ;
             if (flag    != FLAG_READ)
             {
@@ -2005,7 +2113,7 @@ word_t *memory_get (uint32_t  address)
             break;
     }
 
-    dptr                 = (memory+page) -> data;
+    dptr                 = (memory+page)  -> data;
     wptr                 = &(dptr+offset) -> value;
     return (wptr);
 }
@@ -2026,4 +2134,57 @@ int32_t   word2int     (word_t *info)
 float     word2float   (word_t *info)
 {
     return (info -> f32);
+}
+
+size_t    get_filesize (int8_t *filename)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize variables
+    //
+    int32_t  offset  = 0;
+    size_t   size    = 0;
+    FILE    *fptr    = fopen (filename, "rb"); // open in (binary) read mode
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // open indicated file for reading (in binary mode, if pertinent)
+    //
+    if (fptr        == NULL)
+    {
+        fprintf (stderr, "[ERROR] Unable to open file '%s' for reading\n", filename);
+        exit    (FILE_OPEN_ERROR);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // adjust FILE pointer to end of file
+    //
+    offset           = fseek (fptr, 0, SEEK_END);
+    if (offset      == 0)
+    {
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Get the current position (file size in bytes)
+        //
+        size         = ftell (fptr);
+        if (size    == -1)
+        {
+            fprintf (stderr, "[ERROR] Unable to obtain file position\n");
+            exit    (FILE_POSITION_ERROR);
+        }
+    }
+    else
+    {
+        fprintf (stderr, "[ERROR] Unable to seek to end of file\n");
+        exit    (FILE_POSITION_ERROR);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Close the file
+    //
+    fclose (fptr);
+
+    return (size);
 }
