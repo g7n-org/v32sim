@@ -5,10 +5,25 @@
 #include <time.h>
 #include "ioports.h"
 
+#define  V32_PAGE_RAM        0
+#define  V32_PAGE_BIOS       1
+#define  V32_PAGE_CART       2
+#define  V32_PAGE_MEMC       3
+
+#define  RAM_LAST_ADDR       0x003FFFFF
+#define  BIOS_LAST_ADDR      0x100FFFFF
+#define  CART_LAST_ADDR      0x27FFFFFF
+#define  MEMC_LAST_ADDR      0x3003FFFF
+
 #define  IOPORTS_ALLOC_FAIL  3
 #define  IOPORTS_READ_ERROR  4
 #define  IOPORTS_WRITE_ERROR 5
 #define  IOPORTS_BAD_PORT    6
+
+#define  MEMORY_ALLOC_FAIL   7
+#define  MEMORY_READ_ERROR   8
+#define  MEMORY_WRITE_ERROR  9
+#define  MEMORY_BAD_ACCESS   10
 
 #define  NUM_TIM_PORTS       4
 #define  NUM_RNG_PORTS       1
@@ -105,42 +120,45 @@
 #define  IDIV                0x29
 #define  IMOD                0x2A
 
-union  data_type
+union  word_type
 {
     int32_t  i32;
     float    f32;
 };
-typedef union data_type data_t;
+typedef union word_type word_t;
 
-struct port_type
+struct data_type
 {
-    data_t   data;
+    word_t   data;
     uint8_t  flag;
     int8_t  *name;
 };
-typedef struct port_type port_t;
+typedef struct data_type data_t;
 
 FILE     *display;
 FILE     *devnull;
 FILE     *program;
 uint8_t  *destination;
 uint8_t  *source;
-int32_t  *memory;
-data_t   *reg;
+data_t   *memory;
+data_t   *bios;
+data_t   *cart;
+data_t   *memcard;
+word_t   *reg;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // Variables related to IOPorts
 //
-port_t  **ioports;
+data_t  **ioports;
 int32_t   date_day;
 int32_t   date_year;
 int32_t   time_day;
+
 uint8_t  *data;
 uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
-uint32_t  offset;
 uint32_t  rom_offset;
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -153,6 +171,9 @@ void      decode       (uint32_t, uint32_t, uint8_t);
 void      init_ioports (void);                        // initialize IOPorts
 int32_t   ioports_get  (uint16_t);                    // get value from port
 void      ioports_set  (uint16_t, int32_t);           // set value to port
+void      init_memory  (void);                        // initialize memory
+word_t   *memory_get   (uint32_t);                    // get value from memory
+void      memory_set   (uint32_t, word_t *);          // set value to memory
 
 int32_t   main     (int32_t  argc, uint8_t **argv)
 {
@@ -163,7 +184,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     int32_t    index                   = 0;
     int32_t    value                   = 0;
     int32_t    lastaddr                = 0;
-    //port_t    *pptr                    = NULL;
+    //data_t    *pptr                    = NULL;
     size_t     len                     = 0;
     struct tm *current_time_tm;
     time_t     current_time_raw;
@@ -231,17 +252,16 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Vircon32 has 16MB of RAM, or 4MW of memory
+    // Allocate Vircon32 RAM (a 16MB/4MW 1D array of word_t)
     //
-    len                                = sizeof (int32_t) * 1024 * 1024 * wordsize;
-    memory                             = (int32_t *) malloc (len);
+    init_memory ();
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Our registers will be in a data_t array
+    // Our registers will be in a word_t array
     //
     len                                = sizeof (int32_t) * NUM_REGISTERS;
-    reg                                = (data_t *) malloc (len);
+    reg                                = (word_t *) malloc (len);
     for (index                         = 0;
          index                        <  NUM_REGISTERS;
          index                         = index + 1)
@@ -343,8 +363,6 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     fprintf (stdout, "vtexoffset: %.8X\n", vtexoffset);
     fprintf (stdout, "vsndoffset: %.8X\n", vsndoffset);
 
-    offset                             = rom_offset;
-
     while ((!feof (program)) &&
            (*(input+0)                != EOF))
     {
@@ -364,14 +382,12 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
 
         put_word (word, FLAG_DISPLAY);
         decode   (word, immediate, decodeflags | FLAG_DISPLAY);
-        offset                         = offset       + 1;
         rom_offset                     = rom_offset   + 1;
 
         if (FLAG_IMMEDIATE            == (decodeflags & FLAG_IMMEDIATE))
         {
             put_word (immediate, FLAG_DISPLAY);
             fprintf (stdout, "\n");
-            offset                     = offset       + 1;
             rom_offset                 = rom_offset   + 1;
         }
 
@@ -430,11 +446,17 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                             value       = atoi (arg+1);
                             sprintf (source, "[%.8X]:", value);
                             fprintf (stdout, "%-4s 0x%.8X\n", source, *(memory+value));
+                            lastaddr    = value;
                         }
                         else
                         {
-                            for (index     = lastaddr;
-                                 index    <  lastaddr + 8;
+                            if (lastaddr  <  0x0000004)
+                            {
+                                lastaddr   = 0x0000004;
+                            }
+
+                            for (index     = lastaddr - 4;
+                                 index    <  lastaddr + 4;
                                  index     = index + 1)
                             {
                                 sprintf (source, "[%.8X]:", index);
@@ -468,6 +490,13 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                         processflag    = TRUE;
                         lastcommand    = 's';
                         break;
+
+                    case '?':
+                        fprintf (stdout, "  c        - continue normal execution\n");
+                        fprintf (stdout, "  m [addr] - display memory address(es)\n");
+                        fprintf (stdout, "  r [r#]   - display register(s)\n");
+                        fprintf (stdout, "  s        - step to next instruction\n");
+                        break;
                 }
                 lastcommand            = newcommand;
             }
@@ -476,8 +505,8 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
 
         decode (word, immediate, decodeflags | FLAG_PROCESS);
 
-        (reg+PC) -> i32                = offset;    // location
-        (reg+IP) -> i32                = word;      // current instruction
+        (reg+PC) -> i32                = rom_offset;  // location
+        (reg+IP) -> i32                = word;        // current instruction
 
         ////////////////////////////////////////////////////////////////////////////////
         //
@@ -565,7 +594,7 @@ void      put_word (uint32_t  word, uint8_t  flag)
     //
     if (flag         == FLAG_DISPLAY)
     {
-        fprintf (stdout, "[%.8X] ", offset);
+        fprintf (stdout, "[%.8X] ", rom_offset);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -698,9 +727,9 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             {
                 if (processflag       == TRUE)
                 {
-                    (reg+PC) -> i32               = immediate;
-                    offset             = (reg+PC) -> i32;
-                    fseek (program, offset + 0x24, SEEK_SET);
+                    (reg+PC) -> i32    = immediate;
+                    rom_offset         = (reg+PC) -> i32;
+                    fseek (program, rom_offset + 0x24, SEEK_SET);
                 }
                 sprintf (destination, "0x%.8X", immediate);
             }
@@ -708,9 +737,9 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             {
                 if (processflag       == TRUE)
                 {
-                    (reg+PC) -> i32               = (reg+dst) -> i32;
-                    offset             = (reg+PC) -> i32;
-                    fseek (program, offset + 0x24, SEEK_SET);
+                    (reg+PC) -> i32    = (reg+dst) -> i32;
+                    rom_offset         = (reg+PC) -> i32;
+                    fseek (program, rom_offset + 0x24, SEEK_SET);
                 }
                 sprintf (destination, "R%u",    dst);
             }
@@ -1026,7 +1055,8 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     if (processflag     == TRUE)
                     {
                         value=(((reg+dst) -> i32)+immediate);
-                        *(memory+value)  = (reg+src) -> i32;
+                        //*(memory+value)  = (reg+src) -> i32;
+						memory_set (value, (reg+src));
                     }
                     sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
                     sprintf (source,      "R%u",           src);
@@ -1062,7 +1092,8 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             if (processflag             == TRUE)
             {
                 value                    = (reg+SP) -> i32;
-                (reg+dst) -> i32         = *(memory+value);
+                //(reg+dst) -> i32         = *(memory+value);
+                (reg+dst) -> i32         = memory_get (value);
                 (reg+SP) -> i32          = (reg+SP) -> i32 + 1;
             }
             sprintf (destination, "R%u",    dst);
@@ -1305,11 +1336,11 @@ void  init_ioports  (void)
 {
     int8_t  *nptr                 = NULL;
     //int32_t  index                = 0;
-    port_t  *pptr                 = NULL;
+    data_t  *pptr                 = NULL;
     size_t   len                  = 0;
 
-    len                           = sizeof (port_t *) * 8;
-    ioports                       = (port_t **) malloc (len);
+    len                           = sizeof (data_t *) * 8;
+    ioports                       = (data_t **) malloc (len);
     if (ioports                  == NULL)
     {
         fprintf (stderr, "[error] failed to allocate memory for 'ioports'\n");
@@ -1320,8 +1351,8 @@ void  init_ioports  (void)
     //
     // TIM ports: allocate and initialize
     //
-    len                           = sizeof (port_t)   * NUM_TIM_PORTS;
-    *(ioports+TIM_PORT)           = (port_t *) malloc (len);
+    len                           = sizeof (data_t)   * NUM_TIM_PORTS;
+    *(ioports+TIM_PORT)           = (data_t *) malloc (len);
     pptr                          = *(ioports+TIM_PORT);
 
     (pptr+0) -> data.i32          = 0x00000000;
@@ -1352,8 +1383,8 @@ void  init_ioports  (void)
     //
     // RNG ports: allocate and initialize
     //
-    len                           = sizeof (port_t)   * NUM_RNG_PORTS;
-    *(ioports+RNG_PORT)           = (port_t *) malloc (len);
+    len                           = sizeof (data_t)   * NUM_RNG_PORTS;
+    *(ioports+RNG_PORT)           = (data_t *) malloc (len);
     pptr                          = *(ioports+RNG_PORT);
 
     (pptr+0) -> data.i32          = 0x00000000;
@@ -1366,8 +1397,8 @@ void  init_ioports  (void)
     //
     // GPU ports: allocate and initialize
     //
-    len                           = sizeof (port_t)   * NUM_GPU_PORTS;
-    *(ioports+GPU_PORT)           = (port_t *) malloc (len);
+    len                           = sizeof (data_t)   * NUM_GPU_PORTS;
+    *(ioports+GPU_PORT)           = (data_t *) malloc (len);
     pptr                          = *(ioports+GPU_PORT);
 
     (pptr+0) -> data.i32          = 0x00000000;
@@ -1482,8 +1513,8 @@ void  init_ioports  (void)
     //
     // INP ports: allocate and initialize
     //
-    len                           = sizeof (port_t)   * NUM_INP_PORTS;
-    *(ioports+INP_PORT)           = (port_t *) malloc (len);
+    len                           = sizeof (data_t)   * NUM_INP_PORTS;
+    *(ioports+INP_PORT)           = (data_t *) malloc (len);
     pptr                          = *(ioports+INP_PORT);
 
     (pptr+0) -> data.i32          = 0x00000000;
@@ -1503,7 +1534,7 @@ int32_t  ioports_get  (uint16_t  portaddr)
     uint16_t  type          = (portaddr & 0x0700) >> 12; // port category
     uint16_t  attr          = (portaddr & 0x00FF);       // item within category
     uint8_t   flag          = FLAG_NONE;                 // short form access
-    port_t   *pptr          = *(ioports+type);           // pointer for sanity
+    data_t   *pptr          = *(ioports+type);           // pointer for sanity
     int32_t  *dptr          = (pptr+attr) -> data.i32;   // pointer to port data
 
     flag                    = (pptr+attr) -> flag;
@@ -1631,7 +1662,7 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
     uint16_t  type           = (portaddr & 0x0700) >> 8;    // port category
     uint16_t  attr           = (portaddr & 0x00FF);         // item within category
     uint8_t   flag           = FLAG_NONE;                   // short form access
-    port_t   *pptr           = *(ioports+type);             // pointer for sanity
+    data_t   *pptr           = *(ioports+type);             // pointer for sanity
 
     //fprintf (stdout, "type: %hu, attr:      %hu\n", type, attr);
     //fprintf (stdout, "dptr: %p,  dptr->i32: %.8X\n", dptr, (pptr+attr) -> data.i32);
@@ -1808,4 +1839,109 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
         case MEM_Connected:
             break;
     }
+}
+
+void    init_memory (void)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Vircon32 RAM is 16MB / 4MW
+    //
+    size_t  len  = sizeof (word_t) * 1024 * 1024 * wordsize;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Vircon32 has 16MB of RAM, or 4MW of memory; declare as an array of word_t
+    //
+    memory       = (word_t *) malloc (len);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Verify malloc() was successful
+    //
+    if (memory  == NULL)
+    {
+        fprintf (stderr, "[error] failed to allocate 'memory'\n");
+        exit (MEMORY_ALLOC_FAIL);
+    }
+}
+
+word_t *memory_get (uint32_t  address)
+{
+    uint32_t  page       = (address & 0xF0000000) >> 28;
+    uint32_t  offset     = (address & 0x0FFFFFFF);
+    uint8_t   flag       = FLAG_NONE;
+
+    switch (page)
+    {
+        case V32_PAGE_RAM:
+            if (address >  RAM_LAST_ADDR)
+            {
+                fprintf (stderr, "[ERROR] invalid RAM access at 0x%.3hX\n", address);
+                exit (MEMORY_BAD_ACCESS);
+            }
+
+            flag         = ((memory+offset) -> flag) & FLAG_READ;
+            if (flag    != FLAG_READ)
+            {
+                fprintf (stderr, "[ERROR] RAM address 0x%.8X not readable!\n", address);
+                exit (MEMORY_READ_ERROR);
+            }
+            break;
+
+        case V32_PAGE_BIOS:
+            if (address >  BIOS_LAST_ADDR)
+            {
+                fprintf (stderr, "[ERROR] invalid BIOS access at 0x%.3hX\n", address);
+                exit (MEMORY_BAD_ACCESS);
+            }
+
+            flag         = ((bios+offset) -> flag) & FLAG_READ;
+            if (flag    != FLAG_READ)
+            {
+                fprintf (stderr, "[ERROR] BIOS address 0x%.8X not readable!\n", address);
+                exit (MEMORY_READ_ERROR);
+            }
+            break;
+
+        case V32_PAGE_CART:
+            if (address >  CART_LAST_ADDR)
+            {
+                fprintf (stderr, "[ERROR] invalid CART access at 0x%.3hX\n", address);
+                exit (MEMORY_BAD_ACCESS);
+            }
+
+            flag         = ((cart+offset) -> flag) & FLAG_READ;
+            if (flag    != FLAG_READ)
+            {
+                fprintf (stderr, "[ERROR] CART address 0x%.8X not readable!\n", address);
+                exit (MEMORY_READ_ERROR);
+            }
+            break;
+
+        case V32_PAGE_MEMC:
+            if (address >  MEMC_LAST_ADDR)
+            {
+                fprintf (stderr, "[ERROR] invalid MEMC access at 0x%.3hX\n", address);
+                exit (MEMORY_BAD_ACCESS);
+            }
+
+            flag         = ((memcard+offset) -> flag) & FLAG_READ;
+            if (flag    != FLAG_READ)
+            {
+                fprintf (stderr, "[ERROR] MEMC address 0x%.8X not readable!\n", address);
+                exit (MEMORY_READ_ERROR);
+            }
+            break;
+    }
+
+    return (memory+address);
+}
+
+void    memory_set (uint32_t  address, word_t *dataword)
+{
+    uint32_t  page       = (address & 0xF0000000) >> 28;
+    uint32_t  offset     = (address & 0x0FFFFFFF);
+    uint8_t   flag       = FLAG_NONE;
+
 }
