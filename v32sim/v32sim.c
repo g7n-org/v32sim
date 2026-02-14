@@ -171,7 +171,7 @@ data_t  **ioports;
 int32_t   date_day;
 int32_t   date_year;
 int32_t   time_day;
-uint8_t   system_override;
+uint8_t   sys_force;
 
 uint8_t  *data;
 uint8_t   haltflag;
@@ -291,7 +291,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     // Allocate Vircon32 IOPorts (a 2D array of ports)
     //
-    system_override                    = FALSE;
+    sys_force                          = FALSE;
     init_ioports ();
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -478,7 +478,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                         if (*(input+1) == ' ')
                         {
                             arg         = strtok ((input+2), " ");
-                            value       = atoi (arg+1);
+                            value       = strtol (arg, NULL, 16);
                             sprintf (source, "[%.8X]:", value);
                             fprintf (stdout, "%-4s 0x%.8X\n", source, word2int (memory_get (value)));
                             lastaddr    = value;
@@ -498,6 +498,18 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                                 fprintf (stdout, "%-11s 0x%.8X\n", source, word2int (memory_get (index)));
                             }
                             lastaddr       = index;
+                        }
+                        break;
+
+                    case 'P':
+                        if (*(input+1) == ' ')
+                        {
+                            arg         = strtok ((input+2), " ");
+                            sys_force   = TRUE;
+							index       = strtol (arg, NULL, 16);
+                            value       = ioports_get (index);
+							fprintf (stdout, "[input]: '%s', arg: '%s', index: 0x%.4hX\n", input, arg, index);
+                            fprintf (stdout, "[%s]: 0x%.8X\n", arg, value);
                         }
                         break;
 
@@ -527,8 +539,10 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                         break;
 
                     case '?':
-                        fprintf (stdout, "  c        - continue normal execution\n");
-                        fprintf (stdout, "  m [addr] - display memory address(es)\n");
+                    case 'h':
+                        fprintf (stdout, "  c        - resume execution\n");
+                        fprintf (stdout, "  m [addr] - display memory address\n");
+                        fprintf (stdout, "  P ioaddr - display IOPort content\n");
                         fprintf (stdout, "  r [r#]   - display register(s)\n");
                         fprintf (stdout, "  s        - step to next instruction\n");
                         break;
@@ -549,7 +563,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
         //
         value                          = ioports_get (TIM_CycleCounter);
         value                          = value + 1;
-        system_override                = TRUE;
+        sys_force                      = TRUE;
         ioports_set (TIM_CycleCounter, value);
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -558,7 +572,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
         //
         value                          = ioports_get (TIM_FrameCounter);
         value                          = value + 1;
-        system_override                = TRUE;
+        sys_force                      = TRUE;
         ioports_set (TIM_FrameCounter, value);
 
         (reg+IV) -> i32                = immediate; // immediate value
@@ -703,7 +717,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 //
                 value                          = ioports_get (TIM_CycleCounter);
                 value                          = value + 1;
-                system_override                = TRUE;
+                sys_force                      = TRUE;
                 ioports_set (TIM_CycleCounter, 0);
 
                 ////////////////////////////////////////////////////////////////////////
@@ -712,7 +726,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 //
                 value                          = ioports_get (TIM_FrameCounter);
                 value                          = value + 1;
-                system_override                = TRUE;
+                sys_force                      = TRUE;
                 ioports_set (TIM_FrameCounter, value);
                 if ((value % 60)  == 0)
                 {
@@ -1568,7 +1582,7 @@ int32_t  ioports_get  (uint16_t  portaddr)
     // Declare and initialize local variables
     //
     int32_t   value         = 0x00000000;                // obtained value
-    uint16_t  type          = (portaddr & 0x0700) >> 12; // port category
+    uint16_t  type          = (portaddr & 0x0700) >> 8;  // port category
     uint16_t  attr          = (portaddr & 0x00FF);       // item within category
     uint8_t   flag          = FLAG_NONE;                 // short form access
     data_t   *pptr          = *(ioports+type);           // pointer for sanity
@@ -1577,13 +1591,13 @@ int32_t  ioports_get  (uint16_t  portaddr)
     flag                    = (pptr+attr) -> flag;
     if ((flag & FLAG_READ) != FLAG_READ)
     {
-        if (system_override == FALSE)
+        if (sys_force      == FALSE)
         {
             fprintf (stderr, "[ERROR] port '%s' not accessible via READ!\n",
                              (pptr+attr) -> name);
             exit (IOPORTS_READ_ERROR);
         }
-        system_override      = FALSE;
+        sys_force           = FALSE;
     }
 
     switch (portaddr)
@@ -1618,6 +1632,11 @@ int32_t  ioports_get  (uint16_t  portaddr)
         case GPU_RegionHotspotX:
         case GPU_RegionHotspotY:
             value           = (pptr+attr) -> value.i32;
+//			fprintf (stdout, "[ioport_get] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
+//			fprintf (stdout, "[ioport_get] attr: %u (0x%.8X)\n", attr, attr);
+//			fprintf (stdout, "[ioport_get] type: %u (0x%.8X)\n", type, type);
+//			fprintf (stdout, "[ioport_get] value: %d (0x%.8X)\n", value, value);
+//			fprintf (stdout, "[ioport_get] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
             break;
 
         case SPU_GlobalVolume:
@@ -1708,13 +1727,13 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
     flag                     = (pptr+attr) -> flag;
     if ((flag & FLAG_WRITE) != FLAG_WRITE)
     {
-        if (system_override == FALSE)
+        if (sys_force       == FALSE)
         {
             fprintf (stderr, "[ERROR] port '%s' not accessible via WRITE!\n",
                              (pptr+attr) -> name);
             exit (IOPORTS_WRITE_ERROR);
         }
-        system_override      = FALSE;
+        sys_force            = FALSE;
     }
 
     switch (type)
@@ -1791,6 +1810,11 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
         case GPU_DrawingPointX:
         case GPU_DrawingPointY:
             (pptr+attr) -> value.i32  = value;
+//			fprintf (stdout, "[ioport_set] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
+//			fprintf (stdout, "[ioport_set] attr: %u (0x%.8X)\n", attr, attr);
+//			fprintf (stdout, "[ioport_set] type: %u (0x%.8X)\n", type, type);
+//			fprintf (stdout, "[ioport_set] value: %d (0x%.8X)\n", value, value);
+//			fprintf (stdout, "[ioport_set] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
             break;
 
         case GPU_DrawingScaleX:
