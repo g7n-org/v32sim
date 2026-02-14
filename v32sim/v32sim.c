@@ -25,6 +25,8 @@
 #define  MEMORY_WRITE_ERROR  9
 #define  MEMORY_BAD_ACCESS   10
 
+#define  NUM_MEMORY_PAGES    4
+
 #define  NUM_TIM_PORTS       4
 #define  NUM_RNG_PORTS       1
 #define  NUM_GPU_PORTS       18
@@ -129,21 +131,27 @@ typedef union word_type word_t;
 
 struct data_type
 {
-    word_t   data;
+    word_t   value;
     uint8_t  flag;
     int8_t  *name;
 };
 typedef struct data_type data_t;
+
+struct device_type
+{
+    uint8_t   type;
+    data_t   *data;
+    uint32_t  start_offset;
+    uint32_t  size;
+};
+typedef struct device_type dev_t;
 
 FILE     *display;
 FILE     *devnull;
 FILE     *program;
 uint8_t  *destination;
 uint8_t  *source;
-data_t   *memory;
-data_t   *bios;
-data_t   *cart;
-data_t   *memcard;
+dev_t    *memory;
 word_t   *reg;
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -1056,7 +1064,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     {
                         value=(((reg+dst) -> i32)+immediate);
                         //*(memory+value)  = (reg+src) -> i32;
-						memory_set (value, (reg+src));
+                        memory_set (value, (reg+src));
                     }
                     sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
                     sprintf (source,      "R%u",           src);
@@ -1843,26 +1851,65 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
 
 void    init_memory (void)
 {
+    int32_t  page   = 0;
+    size_t   len    = 0;
+
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Vircon32 RAM is 16MB / 4MW
     //
-    size_t  len  = sizeof (word_t) * 1024 * 1024 * wordsize;
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Vircon32 has 16MB of RAM, or 4MW of memory; declare as an array of word_t
-    //
-    memory       = (word_t *) malloc (len);
+    memory          = (dev_t *) malloc (sizeof (dev_t) * NUM_MEMORY_PAGES);
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Verify malloc() was successful
-    //
-    if (memory  == NULL)
+    for (page       = 0;
+         page      <  NUM_MEMORY_PAGES;
+         page       = page  + 1)
     {
-        fprintf (stderr, "[error] failed to allocate 'memory'\n");
-        exit (MEMORY_ALLOC_FAIL);
+        switch (page)
+        {
+            case V32_PAGE_RAM:
+                (memory+page) -> type       = V32_PAGE_RAM;
+                (memory+page) -> firstaddr  = 0x00000000;
+                (memory+page) -> last_addr  = 0x003FFFFF;
+                len                         = sizeof (data_t) * 1024 * 1024 * wordsize;
+                break;
+
+            case V32_PAGE_BIOS:
+                (memory+page) -> type       = V32_PAGE_BIOS;
+                (memory+page) -> firstaddr  = 0x10000000;
+                (memory+page) -> last_addr  = 0x100FFFFF;
+                len                         = sizeof (data_t) * 1024 * 1024 * 1;
+                break;
+
+            case V32_PAGE_CART:
+                (memory+page) -> type       = V32_PAGE_CART;
+                (memory+page) -> firstaddr  = 0x20000000;
+                (memory+page) -> last_addr  = 0x27FFFFFF;
+                break;
+
+            case V32_PAGE_MEMC:
+                (memory+page) -> type       = V32_PAGE_MEMC;
+                (memory+page) -> firstaddr  = 0x30000000;
+                (memory+page) -> last_addr  = 0x3003FFFF;
+                len                         = sizeof (data_t) * 1024 * 256;
+                break;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Vircon32 has 16MB of RAM, or 4MW of memory; declare as an array of word_t
+        //
+        (memory+index) -> data  = (data_t *) malloc (len);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Verify malloc() was successful
+        //
+        if (memory     == NULL)
+        {
+            fprintf (stderr, "[error] failed to allocate for memory resource\n");
+            exit (MEMORY_ALLOC_FAIL);
+        }
     }
 }
 
