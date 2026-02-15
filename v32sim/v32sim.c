@@ -33,6 +33,7 @@
 
 #define  NUM_MEMORY_PAGES    4
 
+#define  NUM_PORT_CATEGORIES 7
 #define  NUM_TIM_PORTS       4
 #define  NUM_RNG_PORTS       1
 #define  NUM_GPU_PORTS       18
@@ -193,7 +194,7 @@ void      ioports_set  (uint16_t, int32_t);           // set value to port
 void      init_memory  (void);                        // initialize memory
 void      load_memory  (uint32_t, int8_t *);          // load contents into memory
 word_t   *memory_get   (uint32_t);                    // get value from memory
-void      memory_set   (uint32_t, word_t *);          // set value to memory
+void      memory_set   (uint32_t, uint32_t);          // set value to memory
 int32_t   word2int     (word_t *);
 float     word2float   (word_t *);
 
@@ -465,7 +466,6 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                     newcommand         = lastcommand;
                 }
                 *(input+index-1)           = '\0';
-                fprintf (stdout, "input >%s<\n", input);
                 
                 switch (newcommand)
                 {
@@ -506,9 +506,9 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                         {
                             arg         = strtok ((input+2), " ");
                             sys_force   = TRUE;
-							index       = strtol (arg, NULL, 16);
+                            index       = strtol (arg, NULL, 16);
                             value       = ioports_get (index);
-							fprintf (stdout, "[input]: '%s', arg: '%s', index: 0x%.4hX\n", input, arg, index);
+                            fprintf (stdout, "[input]: '%s', arg: '%s', index: 0x%.4hX\n", input, arg, index);
                             fprintf (stdout, "[%s]: 0x%.8X\n", arg, value);
                         }
                         break;
@@ -808,7 +808,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             if (processflag           == TRUE)
             {
                 value                  = (reg+SP) -> i32;
-                (reg+PC) -> i32        = memory_get (value);
+                (reg+PC) -> i32        = word2int (memory_get (value));
                 (reg+SP) -> i32        = (reg+SP) -> i32 + 1;
             }
             fprintf (display,     "%-5s ", "RET");
@@ -1080,7 +1080,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
                     if (processflag  == TRUE)
                     {
-                        value             = memory_get ((reg+src) -> i32 + immediate);
+                        value             = word2int (memory_get ((reg+src) -> i32 + immediate));
                         (reg+dst) -> i32  = value;
                     }
                     sprintf (destination, "R%u,",          dst);
@@ -1109,7 +1109,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     if (processflag     == TRUE)
                     {
                         value=((reg+dst) -> i32) + immediate;
-                        memory_set (value, (reg+src));
+                        memory_set (value, (reg+src) -> i32);
                     }
                     sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
                     sprintf (source,      "R%u",           src);
@@ -1386,13 +1386,23 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
 void  init_ioports  (void)
 {
-    int8_t  *nptr                 = NULL;
-    data_t  *pptr                 = NULL;
-    size_t   len                  = 0;
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize variables
+    //
+    int32_t  index                    = 0;
+    int8_t  *nptr                     = NULL;
+    data_t  *pptr                     = NULL;
+    size_t   len                      = 0;
 
-    len                           = sizeof (data_t *) * 8;
-    ioports                       = (data_t **) malloc (len);
-    if (ioports                  == NULL)
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // ioports is the top-level (double pointer) nexus, each category is a single-
+	// pointer array hanging off of each element of ioports.
+    //
+    len                               = sizeof (data_t *) * NUM_PORT_CATEGORIES;
+    ioports                           = (data_t **) malloc (len);
+    if (ioports                      == NULL)
     {
         fprintf (stderr, "[error] failed to allocate memory for 'ioports'\n");
         exit (IOPORTS_ALLOC_FAIL);
@@ -1402,177 +1412,221 @@ void  init_ioports  (void)
     //
     // TIM ports: allocate and initialize
     //
-    len                           = sizeof (data_t)   * NUM_TIM_PORTS;
-    *(ioports+TIM_PORT)           = (data_t *) malloc (len);
-    pptr                          = *(ioports+TIM_PORT);
+    len                               = sizeof (data_t)   * NUM_TIM_PORTS;
+    *(ioports+TIM_PORT)               = (data_t *) malloc (len);
+    pptr                              = *(ioports+TIM_PORT);
 
-    (pptr+0) -> value.i32         = 0x00000000;
-    (pptr+0) -> flag              = FLAG_READ;
-    (pptr+0) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+0) -> name;
-    sprintf (nptr, "TIM_CurrentDate");
 
-    (pptr+1) -> value.i32         = 0x00000000;
-    (pptr+1) -> flag              = FLAG_READ;
-    (pptr+1) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+1) -> name;
-    sprintf (nptr, "TIM_CurrentTime");
+    for (index                        = 0;
+         index                       <  NUM_TIM_PORTS;
+         index                        = index + 1)
+    {
+        (pptr+index) -> value.i32     = 0x00000000;
+        (pptr+index) -> flag          = FLAG_READ;
+        (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                          = (pptr+index) -> name;
 
-    (pptr+2) -> value.i32         = 0x00000000;
-    (pptr+2) -> flag              = FLAG_READ;
-    (pptr+2) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+2) -> name;
-    sprintf (nptr, "TIM_FrameCounter");
+        switch (index)
+        {
+            case TIM_CurrentDate:
+                sprintf (nptr, "TIM_CurrentDate");
+                break;
 
-    (pptr+3) -> value.i32         = 0x00000000;
-    (pptr+3) -> flag              = FLAG_READ;
-    (pptr+3) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+3) -> name;
-    sprintf (nptr, "TIM_CycleCounter");
+            case TIM_CurrentTime:
+                sprintf (nptr, "TIM_CurrentTime");
+                break;
+
+            case TIM_FrameCounter:
+                sprintf (nptr, "TIM_FrameCounter");
+                break;
+
+            case TIM_CycleCounter:
+                sprintf (nptr, "TIM_CycleCounter");
+                break;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // RNG ports: allocate and initialize
     //
-    len                           = sizeof (data_t)   * NUM_RNG_PORTS;
-    *(ioports+RNG_PORT)           = (data_t *) malloc (len);
-    pptr                          = *(ioports+RNG_PORT);
+    len                               = sizeof (data_t)   * NUM_RNG_PORTS;
+    *(ioports+RNG_PORT)               = (data_t *) malloc (len);
+    pptr                              = *(ioports+RNG_PORT);
 
-    (pptr+0) -> value.i32         = 0x00000000;
-    (pptr+0) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+0) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+0) -> name;
+    (pptr+0) -> value.i32             = 0x00000000;
+    (pptr+0) -> flag                  = FLAG_READ | FLAG_WRITE;
+    (pptr+0) -> name                  = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                              = (pptr+0) -> name;
     sprintf (nptr, "RNG_CurrentValue");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // GPU ports: allocate and initialize
     //
-    len                           = sizeof (data_t)   * NUM_GPU_PORTS;
-    *(ioports+GPU_PORT)           = (data_t *) malloc (len);
-    pptr                          = *(ioports+GPU_PORT);
+    len                               = sizeof (data_t)   * NUM_GPU_PORTS;
+    *(ioports+GPU_PORT)               = (data_t *) malloc (len);
+    pptr                              = *(ioports+GPU_PORT);
 
-    (pptr+0) -> value.i32         = 0x00000000;
-    (pptr+0) -> flag              = FLAG_WRITE;
-    (pptr+0) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+0) -> name;
-    sprintf (nptr, "GPU_Command");
+    for (index                        = 0;
+         index                       <  NUM_GPU_PORTS;
+         index                        = index + 1)
+    {
+        (pptr+index) -> value.i32     = 0x00000000;
+        (pptr+index) -> flag          = FLAG_READ | FLAG_WRITE;
+        (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                          = (pptr+index) -> name;
 
-    (pptr+1) -> value.i32         = 0x00000000;
-    (pptr+1) -> flag              = FLAG_READ;
-    (pptr+1) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+1) -> name;
-    sprintf (nptr, "GPU_RemainingPixels");
+        switch (index)
+        {
+            case GPU_Command:
+                (pptr+index) -> flag  = FLAG_WRITE;
+                sprintf (nptr, "GPU_Command");
+                break;
 
-    (pptr+2) -> value.i32         = 0x00000000;
-    (pptr+2) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+2) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+2) -> name;
-    sprintf (nptr, "GPU_ClearColor");
+            case GPU_RemainingPixels:
+                (pptr+index) -> flag  = FLAG_READ;
+                sprintf (nptr, "GPU_RemainingPixels");
+                break;
 
-    (pptr+3) -> value.i32         = 0x00000000;
-    (pptr+3) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+3) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+3) -> name;
-    sprintf (nptr, "GPU_MultiplyColor");
+            case GPU_ClearColor:
+                sprintf (nptr, "GPU_ClearColor");
+                break;
 
-    (pptr+4) -> value.i32         = 0x00000000;
-    (pptr+4) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+4) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+4) -> name;
-    sprintf (nptr, "GPU_ActiveBlending");
+            case GPU_MultiplyColor:
+                sprintf (nptr, "GPU_MultiplyColor");
+                break;
 
-    (pptr+5) -> value.i32         = 0x00000000;
-    (pptr+5) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+5) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+5) -> name;
-    sprintf (nptr, "GPU_SelectedTexture");
+            case GPU_ActiveBlending:
+                sprintf (nptr, "GPU_ActiveBlending");
+                break;
 
-    (pptr+6) -> value.i32         = 0x00000000;
-    (pptr+6) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+6) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+6) -> name;
-    sprintf (nptr, "GPU_SelectedRegion");
+            case GPU_SelectedTexture:
+                sprintf ((pptr+index) -> name, "GPU_SelectedTexture");
+                break;
 
-    (pptr+7) -> value.i32         = 0x00000000;
-    (pptr+7) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+7) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+7) -> name;
-    sprintf (nptr, "GPU_DrawingPointX");
+            case GPU_SelectedRegion:
+                sprintf (nptr, "GPU_SelectedRegion");
 
-    (pptr+8) -> value.i32         = 0x00000000;
-    (pptr+8) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+8) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+8) -> name;
-    sprintf (nptr, "GPU_DrawingPointY");
+            case GPU_DrawingPointX:
+                sprintf (nptr, "GPU_DrawingPointX");
+                break;
 
-    (pptr+9) -> value.i32         = 0x00000000;
-    (pptr+9) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+9) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+9) -> name;
-    sprintf (nptr, "GPU_DrawingScaleX");
+            case GPU_DrawingPointY:
+                sprintf (nptr, "GPU_DrawingPointY");
+                break;
 
-    (pptr+10) -> value.i32        = 0x00000000;
-    (pptr+10) -> flag             = FLAG_READ | FLAG_WRITE;
-    (pptr+10) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+10) -> name;
-    sprintf (nptr, "GPU_DrawingScaleY");
+            case GPU_DrawingScaleX:
+                sprintf (nptr, "GPU_DrawingScaleX");
+                break;
 
-    (pptr+11) -> value.i32        = 0x00000000;
-    (pptr+11) -> flag             = FLAG_READ | FLAG_WRITE;
-    (pptr+11) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+11) -> name;
-    sprintf (nptr, "GPU_DrawingAngle");
+            case GPU_DrawingScaleY:
+                sprintf (nptr, "GPU_DrawingScaleY");
+                break;
 
-    (pptr+12) -> value.i32        = 0x00000000;
-    (pptr+12) -> flag             = FLAG_READ | FLAG_WRITE;
-    (pptr+12) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+12) -> name;
-    sprintf (nptr, "GPU_RegionMinX");
+            case GPU_DrawingAngle:
+                sprintf (nptr, "GPU_DrawingAngle");
+                break;
 
-    (pptr+13) -> value.i32        = 0x00000000;
-    (pptr+13) -> flag             = FLAG_READ | FLAG_WRITE;
-    (pptr+13) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+13) -> name;
-    sprintf (nptr, "GPU_RegionMinY");
+            case GPU_RegionMinX:
+                sprintf (nptr, "GPU_RegionMinX");
+                break;
 
-    (pptr+14) -> value.i32        = 0x00000000;
-    (pptr+14) -> flag             = FLAG_READ | FLAG_WRITE;
-    (pptr+14) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+14) -> name;
-    sprintf (nptr, "GPU_RegionMaxX");
+            case GPU_RegionMinY:
+                sprintf (nptr, "GPU_RegionMinY");
+                break;
 
-    (pptr+15) -> value.i32        = 0x00000000;
-    (pptr+15) -> flag             = FLAG_READ | FLAG_WRITE;
-    (pptr+15) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+15) -> name;
-    sprintf (nptr, "GPU_RegionMaxY");
+            case GPU_RegionMaxX:
+                sprintf (nptr, "GPU_RegionMaxX");
+                break;
 
-    (pptr+16) -> value.i32        = 0x00000000;
-    (pptr+16) -> flag             = FLAG_READ | FLAG_WRITE;
-    (pptr+16) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+16) -> name;
-    sprintf (nptr, "GPU_RegionHotspotX");
+            case GPU_RegionMaxY:
+                sprintf (nptr, "GPU_RegionMaxY");
+                break;
 
-    (pptr+17) -> value.i32        = 0x00000000;
-    (pptr+17) -> flag             = FLAG_READ | FLAG_WRITE;
-    (pptr+17) -> name             = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+17) -> name;
-    sprintf (nptr, "GPU_RegionHotspotX");
+            case GPU_RegionHotspotX:
+                sprintf (nptr, "GPU_RegionHotspotX");
+                break;
+
+            case GPU_RegionHotspotY:
+                sprintf (nptr, "GPU_RegionHotspotY");
+                break;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // INP ports: allocate and initialize
     //
-    len                           = sizeof (data_t)   * NUM_INP_PORTS;
-    *(ioports+INP_PORT)           = (data_t *) malloc (len);
-    pptr                          = *(ioports+INP_PORT);
+    len                               = sizeof (data_t)   * NUM_INP_PORTS;
+    *(ioports+INP_PORT)               = (data_t *) malloc (len);
+    pptr                              = *(ioports+INP_PORT);
 
-    (pptr+0) -> value.i32         = 0x00000000;
-    (pptr+0) -> flag              = FLAG_READ | FLAG_WRITE;
-    (pptr+0) -> name              = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                          = (pptr+0) -> name;
-    sprintf (nptr, "INP_SelectedGamepad");
+    for (index                        = 0;
+         index                       <  NUM_INP_PORTS;
+         index                        = index + 1)
+    {
+        (pptr+index) -> value.i32     = 0x00000000;
+        (pptr+index) -> flag          = FLAG_READ;
+        (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                          = (pptr+index) -> name;
+
+        switch (index)
+        {
+            case INP_SelectedGamepad:
+                (pptr+index) -> flag  = FLAG_READ | FLAG_WRITE;
+                strcpy ((pptr+index) -> name, "INP_SelectedGamepad");
+                break;
+
+            case INP_GamepadConnected:
+                sprintf (nptr, "INP_GamepadConnected");
+                break;
+
+            case INP_GamepadLeft:
+                sprintf (nptr, "INP_GamepadLeft");
+                break;
+
+            case INP_GamepadRight:
+                sprintf (nptr, "INP_GamepadRight");
+                break;
+
+            case INP_GamepadUp:
+                sprintf (nptr, "INP_GamepadUp");
+                break;
+
+            case INP_GamepadDown:
+                sprintf (nptr, "INP_GamepadDown");
+                break;
+
+            case INP_GamepadButtonStart:
+                sprintf (nptr, "INP_GamepadButtonStart");
+                break;
+
+            case INP_GamepadButtonA:
+                sprintf (nptr, "INP_GamepadButtonA");
+                break;
+
+            case INP_GamepadButtonB:
+                sprintf (nptr, "INP_GamepadButtonB");
+                break;
+
+            case INP_GamepadButtonX:
+                sprintf (nptr, "INP_GamepadButtonX");
+                break;
+
+            case INP_GamepadButtonY:
+                sprintf (nptr, "INP_GamepadButtonY");
+                break;
+
+            case INP_GamepadButtonL:
+                sprintf (nptr, "INP_GamepadButtonL");
+                break;
+
+            case INP_GamepadButtonR:
+                sprintf (nptr, "INP_GamepadButtonR");
+                break;
+        }
+    }
 }
 
 int32_t  ioports_get  (uint16_t  portaddr)
@@ -1632,11 +1686,11 @@ int32_t  ioports_get  (uint16_t  portaddr)
         case GPU_RegionHotspotX:
         case GPU_RegionHotspotY:
             value           = (pptr+attr) -> value.i32;
-//			fprintf (stdout, "[ioport_get] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
-//			fprintf (stdout, "[ioport_get] attr: %u (0x%.8X)\n", attr, attr);
-//			fprintf (stdout, "[ioport_get] type: %u (0x%.8X)\n", type, type);
-//			fprintf (stdout, "[ioport_get] value: %d (0x%.8X)\n", value, value);
-//			fprintf (stdout, "[ioport_get] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
+//            fprintf (stdout, "[ioport_get] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
+//            fprintf (stdout, "[ioport_get] attr: %u (0x%.8X)\n", attr, attr);
+//            fprintf (stdout, "[ioport_get] type: %u (0x%.8X)\n", type, type);
+//            fprintf (stdout, "[ioport_get] value: %d (0x%.8X)\n", value, value);
+//            fprintf (stdout, "[ioport_get] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
             break;
 
         case SPU_GlobalVolume:
@@ -1725,6 +1779,7 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
     data_t   *pptr           = *(ioports+type);             // pointer for sanity
 
     flag                     = (pptr+attr) -> flag;
+	fprintf (stdout, "[%s] flag: %u, value: %u\n", (pptr+attr) -> name, (pptr+attr) -> flag, (pptr+attr) -> value.i32);
     if ((flag & FLAG_WRITE) != FLAG_WRITE)
     {
         if (sys_force       == FALSE)
@@ -1810,11 +1865,11 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
         case GPU_DrawingPointX:
         case GPU_DrawingPointY:
             (pptr+attr) -> value.i32  = value;
-//			fprintf (stdout, "[ioport_set] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
-//			fprintf (stdout, "[ioport_set] attr: %u (0x%.8X)\n", attr, attr);
-//			fprintf (stdout, "[ioport_set] type: %u (0x%.8X)\n", type, type);
-//			fprintf (stdout, "[ioport_set] value: %d (0x%.8X)\n", value, value);
-//			fprintf (stdout, "[ioport_set] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
+//            fprintf (stdout, "[ioport_set] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
+//            fprintf (stdout, "[ioport_set] attr: %u (0x%.8X)\n", attr, attr);
+//            fprintf (stdout, "[ioport_set] type: %u (0x%.8X)\n", type, type);
+//            fprintf (stdout, "[ioport_set] value: %d (0x%.8X)\n", value, value);
+//            fprintf (stdout, "[ioport_set] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
             break;
 
         case GPU_DrawingScaleX:
@@ -2052,6 +2107,7 @@ void    load_memory (uint32_t  page, int8_t *filename)
     //
     while (!feof (fptr))
     {
+        sys_force     = TRUE;
         memory_set (offset, get_word (fptr));
         if (!feof (fptr))
         {
@@ -2062,92 +2118,200 @@ void    load_memory (uint32_t  page, int8_t *filename)
     fclose (fptr);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// memory_get(): retrieve word_t located at requested memory address
+//
+// returns a word_t pointer to the requested content
+//
 word_t *memory_get (uint32_t  address)
 {
-    data_t   *dptr       = NULL;
-    uint32_t  page       = (address & 0xF0000000) >> 28;
-    uint32_t  offset     = (address & 0x0FFFFFFF);
-    uint8_t   flag       = FLAG_NONE;
-    word_t   *wptr       = NULL;
+    data_t   *dptr             = NULL;
+    uint32_t  page             = (address & 0xF0000000) >> 28;
+    uint32_t  offset           = (address & 0x0FFFFFFF);
+    uint8_t   flag             = FLAG_NONE;
+    word_t   *wptr             = NULL;
 
     switch (page)
     {
         case V32_PAGE_RAM:
-            if (address >  RAM_LAST_ADDR)
+            if (address       >  RAM_LAST_ADDR)
             {
                 fprintf (stderr, "[ERROR] invalid RAM access at 0x%.3hX\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr         = (memory+page)  -> data;
-            flag         = ((dptr+offset) -> flag) & FLAG_READ;
-            if (flag    != FLAG_READ)
+            dptr               = (memory+page)  -> data;
+            flag               = ((dptr+offset) -> flag) & FLAG_READ;
+            if (flag          != FLAG_READ)
             {
-                fprintf (stderr, "[ERROR] RAM address 0x%.8X not readable!\n", address);
-                exit (MEMORY_READ_ERROR);
+                if (sys_force == FALSE)
+                {
+                    fprintf (stderr, "[ERROR] RAM address 0x%.8X not readable!\n", address);
+                    exit (MEMORY_READ_ERROR);
+                }
+                sys_force      = FALSE;
             }
             break;
 
         case V32_PAGE_BIOS:
-            if (address >  BIOS_LAST_ADDR)
+            if (address       >  BIOS_LAST_ADDR)
             {
                 fprintf (stderr, "[ERROR] invalid BIOS access at 0x%.3hX\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr         = (memory+page)  -> data;
-            flag         = ((dptr+offset) -> flag) & FLAG_READ;
-            if (flag    != FLAG_READ)
+            dptr               = (memory+page)  -> data;
+            flag               = ((dptr+offset) -> flag) & FLAG_READ;
+            if (flag          != FLAG_READ)
             {
-                fprintf (stderr, "[ERROR] BIOS address 0x%.8X not readable!\n", address);
-                exit (MEMORY_READ_ERROR);
+                if (sys_force == FALSE)
+                {
+                    fprintf (stderr, "[ERROR] BIOS address 0x%.8X not readable!\n", address);
+                    exit (MEMORY_READ_ERROR);
+                }
+                sys_force      = FALSE;
             }
             break;
 
         case V32_PAGE_CART:
-            if (address >  CART_LAST_ADDR)
+            if (address       >  CART_LAST_ADDR)
             {
                 fprintf (stderr, "[ERROR] invalid CART access at 0x%.3hX\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr         = (memory+page)  -> data;
-            flag         = ((dptr+offset) -> flag) & FLAG_READ;
-            if (flag    != FLAG_READ)
+            dptr               = (memory+page)  -> data;
+            flag               = ((dptr+offset) -> flag) & FLAG_READ;
+            if (flag          != FLAG_READ)
             {
-                fprintf (stderr, "[ERROR] CART address 0x%.8X not readable!\n", address);
-                exit (MEMORY_READ_ERROR);
+                if (sys_force == FALSE)
+                {
+                    fprintf (stderr, "[ERROR] CART address 0x%.8X not readable!\n", address);
+                    exit (MEMORY_READ_ERROR);
+                }
+                sys_force      = FALSE;
             }
             break;
 
         case V32_PAGE_MEMC:
-            if (address >  MEMC_LAST_ADDR)
+            if (address       >  MEMC_LAST_ADDR)
             {
                 fprintf (stderr, "[ERROR] invalid MEMC access at 0x%.3hX\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr         = (memory+page)  -> data;
-            flag         = ((dptr+offset) -> flag) & FLAG_READ;
-            if (flag    != FLAG_READ)
+            dptr               = (memory+page)  -> data;
+            flag               = ((dptr+offset) -> flag) & FLAG_READ;
+            if (flag          != FLAG_READ)
             {
-                fprintf (stderr, "[ERROR] MEMC address 0x%.8X not readable!\n", address);
-                exit (MEMORY_READ_ERROR);
+                if (sys_force == FALSE)
+                {
+                    fprintf (stderr, "[ERROR] MEMC address 0x%.8X not readable!\n", address);
+                    exit (MEMORY_READ_ERROR);
+                }
+                sys_force      = FALSE;
             }
             break;
     }
 
-    dptr                 = (memory+page)  -> data;
-    wptr                 = &(dptr+offset) -> value;
+    dptr                       = (memory+page)  -> data;
+    wptr                       = &(dptr+offset) -> value;
     return (wptr);
 }
 
-void    memory_set (uint32_t  address, word_t *dataword)
+void    memory_set (uint32_t  address, uint32_t  dataword)
 {
-    uint32_t  page       = (address & 0xF0000000) >> 28;
-    uint32_t  offset     = (address & 0x0FFFFFFF);
-    uint8_t   flag       = FLAG_NONE;
+    data_t   *dptr              = NULL;
+    uint32_t  page              = (address & 0xF0000000) >> 28;
+    uint32_t  offset            = (address & 0x0FFFFFFF);
+    uint8_t   flag              = FLAG_NONE;
 
+    switch (page)
+    {
+        case V32_PAGE_RAM:
+            if (address        >  RAM_LAST_ADDR)
+            {
+                fprintf (stderr, "[ERROR] invalid RAM access at 0x%.3hX\n", address);
+                exit (MEMORY_BAD_ACCESS);
+            }
+
+            dptr                = (memory+page)  -> data;
+            flag                = ((dptr+offset) -> flag) & FLAG_WRITE;
+            if (flag           != FLAG_WRITE)
+            {
+                if (sys_force  == FALSE)
+                {
+                    fprintf (stderr, "[ERROR] RAM address 0x%.8X not writable!\n", address);
+                    exit (MEMORY_WRITE_ERROR);
+                }
+                sys_force       = FALSE;
+            }
+            break;
+
+        case V32_PAGE_BIOS:
+            if (address        >  BIOS_LAST_ADDR)
+            {
+                fprintf (stderr, "[ERROR] invalid BIOS access at 0x%.3hX\n", address);
+                exit (MEMORY_BAD_ACCESS);
+            }
+
+            dptr                = (memory+page)  -> data;
+            flag                = ((dptr+offset) -> flag) & FLAG_WRITE;
+            if (flag           != FLAG_WRITE)
+            {
+                if (sys_force  == FALSE)
+                {
+                    fprintf (stderr, "[ERROR] BIOS address 0x%.8X not writable!\n", address);
+                    exit (MEMORY_WRITE_ERROR);
+                }
+                sys_force       = FALSE;
+            }
+            break;
+
+        case V32_PAGE_CART:
+            if (address        >  CART_LAST_ADDR)
+            {
+                fprintf (stderr, "[ERROR] invalid CART access at 0x%.3hX\n", address);
+                exit (MEMORY_BAD_ACCESS);
+            }
+
+            dptr                = (memory+page)  -> data;
+            flag                = ((dptr+offset) -> flag) & FLAG_WRITE;
+            if (flag           != FLAG_WRITE)
+            {
+                if (sys_force  == FALSE)
+                {
+                    fprintf (stderr, "[ERROR] CART address 0x%.8X not writable!\n", address);
+                    exit (MEMORY_WRITE_ERROR);
+                }
+                sys_force       = FALSE;
+            }
+            break;
+
+        case V32_PAGE_MEMC:
+            if (address        >  MEMC_LAST_ADDR)
+            {
+                fprintf (stderr, "[ERROR] invalid MEMC access at 0x%.3hX\n", address);
+                exit (MEMORY_BAD_ACCESS);
+            }
+
+            dptr                = (memory+page)  -> data;
+            flag                = ((dptr+offset) -> flag) & FLAG_WRITE;
+            if (flag           != FLAG_WRITE)
+            {
+                if (sys_force  == FALSE)
+                {
+                    fprintf (stderr, "[ERROR] MEMC address 0x%.8X not writable!\n", address);
+                    exit (MEMORY_WRITE_ERROR);
+                }
+                sys_force       = FALSE;
+            }
+            break;
+    }
+
+    dptr                        = (memory+page)  -> data;
+    (dptr+offset) -> value.i32  = dataword;
 }
 
 int32_t   word2int     (word_t *info)
