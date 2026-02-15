@@ -31,6 +31,9 @@
 #define  FILE_OPEN_ERROR     11
 #define  FILE_POSITION_ERROR 12
 
+#define  STRING_ALLOC_FAIL   13
+#define  DATA_ALLOC_FAIL     14
+
 #define  NUM_MEMORY_PAGES    4
 
 #define  NUM_PORT_CATEGORIES 7
@@ -245,14 +248,25 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     len                                = strlen (argv[1]) + 1;
     cartfile                           = (int8_t *) malloc (len);
+    if (cartfile                      == NULL)
+    {
+        fprintf (stderr, "[ERROR] Allocation of string '%s' failed\n", "cartfile");
+        exit (STRING_ALLOC_FAIL);
+    }
+
     strcpy (cartfile, argv[1]);
-    program                            = fopen (argv[1], "r");
+    program                            = fopen (cartfile, "r");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Set up 'biosfile'
     //
     biosfile                           = (int8_t *) malloc (sizeof (int8_t) * 64);
+    if (biosfile                      == NULL)
+    {
+        fprintf (stderr, "[ERROR] Allocation of string '%s' failed\n", "biosfile");
+        exit (STRING_ALLOC_FAIL);
+    }
     strcpy (biosfile, "StandardBios.v32");
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -271,6 +285,12 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     len                                = sizeof (uint8_t) * 18;
     destination                        = (uint8_t *) malloc (len);
     source                             = (uint8_t *) malloc (len);
+    if ((destination                  == NULL) ||
+        (source                       == NULL))
+    {
+        fprintf (stderr, "[ERROR] Allocation of string failed\n");
+        exit (STRING_ALLOC_FAIL);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -280,6 +300,12 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     len                                = sizeof (uint8_t) * 256;
     input                              = (uint8_t *) malloc (len);
     arg                                = (uint8_t *) malloc (len);
+    if ((input                        == NULL) ||
+        (arg                          == NULL))
+    {
+        fprintf (stderr, "[ERROR] Allocation of string failed\n");
+        exit (STRING_ALLOC_FAIL);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -287,6 +313,11 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     len                                = sizeof (uint8_t) * wordsize;
     data                               = (uint8_t *) malloc (len);
+    if (data                          == NULL)
+    {
+        fprintf (stderr, "[ERROR] Allocation of string '%s' failed\n", data);
+        exit (STRING_ALLOC_FAIL);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -310,6 +341,12 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     len                                = sizeof (int32_t) * NUM_REGISTERS;
     reg                                = (word_t *) malloc (len);
+    if (reg                           == NULL)
+    {
+        fprintf (stderr, "[ERROR] Failed to allocate resources for registers\n");
+        exit    (DATA_ALLOC_FAIL);
+    }
+
     for (index                         = 0;
          index                        <  NUM_REGISTERS;
          index                         = index + 1)
@@ -1398,7 +1435,7 @@ void  init_ioports  (void)
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // ioports is the top-level (double pointer) nexus, each category is a single-
-	// pointer array hanging off of each element of ioports.
+    // pointer array hanging off of each element of ioports.
     //
     len                               = sizeof (data_t *) * NUM_PORT_CATEGORIES;
     ioports                           = (data_t **) malloc (len);
@@ -1426,7 +1463,7 @@ void  init_ioports  (void)
         (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
         nptr                          = (pptr+index) -> name;
 
-        switch (index)
+        switch (TIM_CurrentDate | index)
         {
             case TIM_CurrentDate:
                 sprintf (nptr, "TIM_CurrentDate");
@@ -1477,7 +1514,7 @@ void  init_ioports  (void)
         (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
         nptr                          = (pptr+index) -> name;
 
-        switch (index)
+        switch (GPU_Command | index)
         {
             case GPU_Command:
                 (pptr+index) -> flag  = FLAG_WRITE;
@@ -1571,11 +1608,12 @@ void  init_ioports  (void)
         (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
         nptr                          = (pptr+index) -> name;
 
-        switch (index)
+        switch (INP_SelectedGamepad | index)
         {
             case INP_SelectedGamepad:
                 (pptr+index) -> flag  = FLAG_READ | FLAG_WRITE;
                 strcpy ((pptr+index) -> name, "INP_SelectedGamepad");
+    //fprintf (stdout, "[%s] flag: %u, value: %u, at %p\n", (pptr+index) -> name, (pptr+index) -> flag, (pptr+index) -> value.i32, (pptr+index) -> name);
                 break;
 
             case INP_GamepadConnected:
@@ -1779,7 +1817,8 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
     data_t   *pptr           = *(ioports+type);             // pointer for sanity
 
     flag                     = (pptr+attr) -> flag;
-	fprintf (stdout, "[%s] flag: %u, value: %u\n", (pptr+attr) -> name, (pptr+attr) -> flag, (pptr+attr) -> value.i32);
+//    fprintf (stdout, "type: %u, attr: %u\n", type, attr); 
+    fprintf (stdout, "[%s] flag: %u, value: %u, at %p\n", (pptr+attr) -> name, (pptr+attr) -> flag, (pptr+attr) -> value.i32, (pptr+attr) -> name);
     if ((flag & FLAG_WRITE) != FLAG_WRITE)
     {
         if (sys_force       == FALSE)
