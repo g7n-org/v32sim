@@ -1917,8 +1917,7 @@ void    load_memory (uint32_t  page, int8_t *filename)
     //
     // Adjust offset to be at the start of the indicated page
     //
-    page              = page << 28;
-    offset            = offset | page;
+    offset            = offset | (page << 28);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
