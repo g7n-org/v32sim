@@ -497,34 +497,39 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                 switch (newcommand)
                 {
                     case 'c':
-                        processflag    = TRUE;
-                        runflag        = TRUE;
+                        processflag       = TRUE;
+                        runflag           = TRUE;
                         break;
 
                     case 'm':
-                        if (*(input+1) == ' ')
+                        if (*(input+1)   == ' ')
                         {
-                            arg         = strtok ((input+2), " ");
-                            value       = strtol (arg, NULL, 16);
+                            arg           = strtok ((input+2), " ");
+                            value         = strtol (arg, NULL, 16);
+                            fprintf (stdout, "value: 0x%.8X\n", value);
                             sprintf (source, "[%.8X]:", value);
-                            fprintf (stdout, "%-4s 0x%.8X\n", source, word2int (memory_get (value)));
-                            lastaddr    = value;
+                            fprintf (stdout, "%-4s 0x%.8X\n",
+                                             source, word2int (memory_get (value)));
+                            lastaddr      = value;
                         }
                         else
                         {
-                            if (lastaddr  <  0x0000004)
+                            value         = lastaddr & 0x0FFFFFFF;
+                            if (value    <  0x0000004)
                             {
-                                lastaddr   = 0x0000004;
+                                lastaddr  = lastaddr & 0xF0000000;
+                                lastaddr  = lastaddr | 0x00000004;
                             }
 
-                            for (index     = lastaddr - 4;
-                                 index    <  lastaddr + 4;
-                                 index     = index + 1)
+                            for (index    = lastaddr - 4;
+                                 index   <  lastaddr + 4;
+                                 index    = index + 1)
                             {
                                 sprintf (source, "[%.8X]:", index);
-                                fprintf (stdout, "%-11s 0x%.8X\n", source, word2int (memory_get (index)));
+                                fprintf (stdout, "%-11s 0x%.8X\n",
+                                                 source, word2int (memory_get (index)));
                             }
-                            lastaddr       = index;
+                            lastaddr      = index;
                         }
                         break;
 
@@ -1928,6 +1933,21 @@ void    load_memory (uint32_t  page, int8_t *filename)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // Adjust position in file to move beyond header data, based on page
+    //
+    switch (page)
+    {
+        case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (both BIOS and CART)
+        case V32_PAGE_CART:
+            fseek (fptr, (35 * wordsize), SEEK_SET);
+            break;
+
+        case V32_PAGE_MEMC: // we need to skip ahead to word ?? (check for value on MEMC)
+            break;
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // Continually read in words from the file until we reach EOF, placing each
     // read word in memory at the appropriate offset.
     //
@@ -1963,7 +1983,7 @@ word_t *memory_get (uint32_t  address)
         case V32_PAGE_RAM:
             if (address       >  RAM_LAST_ADDR)
             {
-                fprintf (stderr, "[ERROR] invalid RAM access at 0x%.3hX\n", address);
+                fprintf (stderr, "[ERROR] invalid RAM access at 0x%.8X\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
@@ -1983,7 +2003,7 @@ word_t *memory_get (uint32_t  address)
         case V32_PAGE_BIOS:
             if (address       >  BIOS_LAST_ADDR)
             {
-                fprintf (stderr, "[ERROR] invalid BIOS access at 0x%.3hX\n", address);
+                fprintf (stderr, "[ERROR] invalid BIOS access at 0x%.8X\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
@@ -2003,7 +2023,7 @@ word_t *memory_get (uint32_t  address)
         case V32_PAGE_CART:
             if (address       >  CART_LAST_ADDR)
             {
-                fprintf (stderr, "[ERROR] invalid CART access at 0x%.3hX\n", address);
+                fprintf (stderr, "[ERROR] invalid CART access at 0x%.8X\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
@@ -2023,7 +2043,7 @@ word_t *memory_get (uint32_t  address)
         case V32_PAGE_MEMC:
             if (address       >  MEMC_LAST_ADDR)
             {
-                fprintf (stderr, "[ERROR] invalid MEMC access at 0x%.3hX\n", address);
+                fprintf (stderr, "[ERROR] invalid MEMC access at 0x%.8X\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
