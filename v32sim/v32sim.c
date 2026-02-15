@@ -172,9 +172,6 @@ word_t   *reg;
 // Variables related to IOPorts
 //
 data_t  **ioports;
-int32_t   date_day;
-int32_t   date_year;
-int32_t   time_day;
 uint8_t   sys_force;
 
 uint8_t  *data;
@@ -198,6 +195,8 @@ void      init_memory  (void);                        // initialize memory
 void      load_memory  (uint32_t, int8_t *);          // load contents into memory
 word_t   *memory_get   (uint32_t);                    // get value from memory
 void      memory_set   (uint32_t, uint32_t);          // set value to memory
+void      update_cycle (void);                        // updating of TIM_CycleCounter
+void      update_frame (void);                        // updating of TIM_FrameCounter
 int32_t   word2int     (word_t *);
 float     word2float   (word_t *);
 
@@ -211,8 +210,6 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     int32_t    value                   = 0;
     int32_t    lastaddr                = 0;
     size_t     len                     = 0;
-    struct tm *current_time_tm;
-    time_t     current_time_raw;
     uint8_t   *input                   = NULL;
     uint8_t   *arg                     = NULL;
     uint8_t    newcommand              = '\0';
@@ -231,13 +228,6 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     // initialize variables
     //
     rom_offset                         = 0x00000000;
-    current_time_raw                   = time (NULL); // obtain current time (raw)
-    current_time_tm                    = localtime (&current_time_raw);
-    date_day                           = current_time_tm -> tm_yday + 1;
-    date_year                          = current_time_tm -> tm_year + 1900;
-    time_day                           = current_time_tm -> tm_hour * 3600;
-    time_day                          += current_time_tm -> tm_min  * 60;
-    time_day                          += current_time_tm -> tm_sec  * 60;
     wordsize                           = 4;
     haltflag                           = FALSE;
     waitflag                           = FALSE;
@@ -545,7 +535,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                             sys_force   = TRUE;
                             index       = strtol (arg, NULL, 16);
                             value       = ioports_get (index);
-                            fprintf (stdout, "[input]: '%s', arg: '%s', index: 0x%.4hX\n", input, arg, index);
+                            //fprintf (stdout, "[input]: '%s', arg: '%s', index: 0x%.4hX\n", input, arg, index);
                             fprintf (stdout, "[%s]: 0x%.8X\n", arg, value);
                         }
                         break;
@@ -598,19 +588,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
         //
         // update the Cycle Counter
         //
-        value                          = ioports_get (TIM_CycleCounter);
-        value                          = value + 1;
-        sys_force                      = TRUE;
-        ioports_set (TIM_CycleCounter, value);
-
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // update the Frame Counter
-        //
-        value                          = ioports_get (TIM_FrameCounter);
-        value                          = value + 1;
-        sys_force                      = TRUE;
-        ioports_set (TIM_FrameCounter, value);
+        update_cycle ();
 
         (reg+IV) -> i32                = immediate; // immediate value
     }
@@ -746,29 +724,17 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
 
             if (processflag       == TRUE)
             {
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // waitflag will trigger TIM_CycleCounter to reset
+                //
                 waitflag           = TRUE;
 
                 ////////////////////////////////////////////////////////////////////////
                 //
-                // reset the Cycle Counter to 0
+                // update the Frame Counter (forces reset of Cycle Counter)
                 //
-                value                          = ioports_get (TIM_CycleCounter);
-                value                          = value + 1;
-                sys_force                      = TRUE;
-                ioports_set (TIM_CycleCounter, 0);
-
-                ////////////////////////////////////////////////////////////////////////
-                //
-                // update the Frame Counter
-                //
-                value                          = ioports_get (TIM_FrameCounter);
-                value                          = value + 1;
-                sys_force                      = TRUE;
-                ioports_set (TIM_FrameCounter, value);
-                if ((value % 60)  == 0)
-                {
-                    time_day       = time_day   + 1;
-                }
+                update_frame ();
             }
             break;
 
@@ -1427,19 +1393,22 @@ void  init_ioports  (void)
     //
     // Declare and initialize variables
     //
-    int32_t  index                    = 0;
-    int8_t  *nptr                     = NULL;
-    data_t  *pptr                     = NULL;
-    size_t   len                      = 0;
+    int32_t    index                       = 0;
+    int32_t    value                       = 0;
+    int8_t    *nptr                        = NULL;
+    data_t    *pptr                        = NULL;
+    size_t     len                         = 0;
+    struct tm *current_time_tm;
+    time_t     current_time_raw;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // ioports is the top-level (double pointer) nexus, each category is a single-
     // pointer array hanging off of each element of ioports.
     //
-    len                               = sizeof (data_t *) * NUM_PORT_CATEGORIES;
-    ioports                           = (data_t **) malloc (len);
-    if (ioports                      == NULL)
+    len                                    = sizeof (data_t *) * NUM_PORT_CATEGORIES;
+    ioports                                = (data_t **) malloc (len);
+    if (ioports                           == NULL)
     {
         fprintf (stderr, "[error] failed to allocate memory for 'ioports'\n");
         exit (IOPORTS_ALLOC_FAIL);
@@ -1449,27 +1418,37 @@ void  init_ioports  (void)
     //
     // TIM ports: allocate and initialize
     //
-    len                               = sizeof (data_t)   * NUM_TIM_PORTS;
-    *(ioports+TIM_PORT)               = (data_t *) malloc (len);
-    pptr                              = *(ioports+TIM_PORT);
+    len                                    = sizeof (data_t)   * NUM_TIM_PORTS;
+    *(ioports+TIM_PORT)                    = (data_t *) malloc (len);
+    pptr                                   = *(ioports+TIM_PORT);
 
+    current_time_raw                       = time (NULL); // obtain current time (raw)
+    current_time_tm                        = localtime (&current_time_raw);
 
-    for (index                        = 0;
-         index                       <  NUM_TIM_PORTS;
-         index                        = index + 1)
+    for (index                             = 0;
+         index                            <  NUM_TIM_PORTS;
+         index                             = index + 1)
     {
-        (pptr+index) -> value.i32     = 0x00000000;
-        (pptr+index) -> flag          = FLAG_READ;
-        (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
-        nptr                          = (pptr+index) -> name;
+        (pptr+index) -> value.i32          = 0x00000000;
+        (pptr+index) -> flag               = FLAG_READ;
+        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                               = (pptr+index) -> name;
 
         switch (TIM_CurrentDate | index)
         {
             case TIM_CurrentDate:
+                value                      = current_time_tm -> tm_year + 1900;
+                value                      = value << 16;
+                value                     |= current_time_tm -> tm_yday + 1;
+                (pptr+index) -> value.i32  = value;
                 sprintf (nptr, "TIM_CurrentDate");
                 break;
 
             case TIM_CurrentTime:
+                value                      = current_time_tm -> tm_hour * 3600;
+                value                     += current_time_tm -> tm_min  * 60;
+                value                     += current_time_tm -> tm_sec  * 60;
+                (pptr+index) -> value.i32  = value;
                 sprintf (nptr, "TIM_CurrentTime");
                 break;
 
@@ -1491,7 +1470,7 @@ void  init_ioports  (void)
     *(ioports+RNG_PORT)               = (data_t *) malloc (len);
     pptr                              = *(ioports+RNG_PORT);
 
-    (pptr+0) -> value.i32             = 0x00000000;
+    (pptr+0) -> value.i32             = 0x00000000; //rand ();
     (pptr+0) -> flag                  = FLAG_READ | FLAG_WRITE;
     (pptr+0) -> name                  = (int8_t *) malloc (sizeof (int8_t) * 32);
     nptr                              = (pptr+0) -> name;
@@ -1539,7 +1518,7 @@ void  init_ioports  (void)
                 break;
 
             case GPU_SelectedTexture:
-                sprintf ((pptr+index) -> name, "GPU_SelectedTexture");
+                sprintf (nptr, "GPU_SelectedTexture");
                 break;
 
             case GPU_SelectedRegion:
@@ -1612,7 +1591,8 @@ void  init_ioports  (void)
         {
             case INP_SelectedGamepad:
                 (pptr+index) -> flag  = FLAG_READ | FLAG_WRITE;
-                strcpy ((pptr+index) -> name, "INP_SelectedGamepad");
+                //strcpy ((pptr+index) -> name, "INP_SelectedGamepad");
+                sprintf (nptr, "INP_SelectedGamepad");
     //fprintf (stdout, "[%s] flag: %u, value: %u, at %p\n", (pptr+index) -> name, (pptr+index) -> flag, (pptr+index) -> value.i32, (pptr+index) -> name);
                 break;
 
@@ -1694,111 +1674,13 @@ int32_t  ioports_get  (uint16_t  portaddr)
 
     switch (portaddr)
     {
-        case TIM_CurrentDate:
-        case TIM_CurrentTime:
-        case TIM_FrameCounter:
-        case TIM_CycleCounter:
-            value           = (pptr+attr) -> value.i32;
-            break;
-
         case RNG_CurrentValue: // obtain pseudorandom value, place in port
             *dptr           = rand ();
             value           = (pptr+attr) -> value.i32;
             break;
 
-        case GPU_RemainingPixels:
-        case GPU_ClearColor:
-        case GPU_MultiplyColor:
-        case GPU_ActiveBlending:
-        case GPU_SelectedTexture:
-        case GPU_SelectedRegion:
-        case GPU_DrawingPointX:
-        case GPU_DrawingPointY:
-        case GPU_DrawingScaleX:
-        case GPU_DrawingScaleY:
-        case GPU_DrawingAngle:
-        case GPU_RegionMinX:
-        case GPU_RegionMinY:
-        case GPU_RegionMaxX:
-        case GPU_RegionMaxY:
-        case GPU_RegionHotspotX:
-        case GPU_RegionHotspotY:
+        default:
             value           = (pptr+attr) -> value.i32;
-//            fprintf (stdout, "[ioport_get] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
-//            fprintf (stdout, "[ioport_get] attr: %u (0x%.8X)\n", attr, attr);
-//            fprintf (stdout, "[ioport_get] type: %u (0x%.8X)\n", type, type);
-//            fprintf (stdout, "[ioport_get] value: %d (0x%.8X)\n", value, value);
-//            fprintf (stdout, "[ioport_get] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
-            break;
-
-        case SPU_GlobalVolume:
-            break;
-
-        case SPU_SelectedSound:
-            break;
-
-        case SPU_SelectedChannel:
-            break;
-
-        case SPU_SoundLength:
-            break;
-
-        case SPU_SoundPlayWithLoop:
-            break;
-
-        case SPU_SoundLoopStart:
-            break;
-
-        case SPU_SoundLoopEnd:
-            break;
-
-        case SPU_ChannelState:
-            break;
-
-        case SPU_ChannelAssignedSound:
-            break;
-
-        case SPU_ChannelVolume:
-            break;
-
-        case SPU_ChannelSpeed:
-            break;
-
-        case SPU_ChannelLoopEnabled:
-            break;
-
-        case SPU_ChannelPosition:
-            break;
-
-        case INP_SelectedGamepad:
-        case INP_GamepadConnected:
-        case INP_GamepadLeft:
-        case INP_GamepadRight:
-        case INP_GamepadUp:
-        case INP_GamepadDown:
-        case INP_GamepadButtonStart:
-        case INP_GamepadButtonA:
-        case INP_GamepadButtonB:
-        case INP_GamepadButtonX:
-        case INP_GamepadButtonY:
-        case INP_GamepadButtonL:
-        case INP_GamepadButtonR:
-            value           = (pptr+attr) -> value.i32;
-            break;
-
-        case CAR_Connected:
-            break;
-
-        case CAR_ProgramROMSize:
-            break;
-
-        case CAR_NumberOfTextures:
-            break;
-
-        case CAR_NumberOfSounds:
-            break;
-
-        case MEM_Connected:
             break;
     }
 
@@ -1817,8 +1699,7 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
     data_t   *pptr           = *(ioports+type);             // pointer for sanity
 
     flag                     = (pptr+attr) -> flag;
-//    fprintf (stdout, "type: %u, attr: %u\n", type, attr); 
-    fprintf (stdout, "[%s] flag: %u, value: %u, at %p\n", (pptr+attr) -> name, (pptr+attr) -> flag, (pptr+attr) -> value.i32, (pptr+attr) -> name);
+    //fprintf (stdout, "[ioports_set] type: %u, attr: %u, setting to: %u\n", type, attr, value); 
     if ((flag & FLAG_WRITE) != FLAG_WRITE)
     {
         if (sys_force       == FALSE)
@@ -1895,110 +1776,16 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value)
             srand (value);
             break;
 
-        case GPU_Command:
-        case GPU_ClearColor:
-        case GPU_MultiplyColor:
-        case GPU_ActiveBlending:
-        case GPU_SelectedTexture:
-        case GPU_SelectedRegion:
-        case GPU_DrawingPointX:
-        case GPU_DrawingPointY:
+        default: // catch all- the standard transaction for external setting
             (pptr+attr) -> value.i32  = value;
-//            fprintf (stdout, "[ioport_set] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
-//            fprintf (stdout, "[ioport_set] attr: %u (0x%.8X)\n", attr, attr);
-//            fprintf (stdout, "[ioport_set] type: %u (0x%.8X)\n", type, type);
-//            fprintf (stdout, "[ioport_set] value: %d (0x%.8X)\n", value, value);
-//            fprintf (stdout, "[ioport_set] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
-            break;
-
-        case GPU_DrawingScaleX:
-            break;
-
-        case GPU_DrawingScaleY:
-            break;
-
-        case GPU_DrawingAngle:
-            break;
-
-        case GPU_RegionMinX:
-            break;
-
-        case GPU_RegionMinY:
-            break;
-
-        case GPU_RegionMaxX:
-            break;
-
-        case GPU_RegionMaxY:
-            break;
-
-        case GPU_RegionHotspotX:
-            break;
-
-        case GPU_RegionHotspotY:
-            break;
-
-        case SPU_Command:
-            break;
-
-        case SPU_GlobalVolume:
-            break;
-
-        case SPU_SelectedSound:
-            break;
-
-        case SPU_SelectedChannel:
-            break;
-
-        case SPU_SoundLength:
-            break;
-
-        case SPU_SoundPlayWithLoop:
-            break;
-
-        case SPU_SoundLoopStart:
-            break;
-
-        case SPU_SoundLoopEnd:
-            break;
-
-        case SPU_ChannelState:
-            break;
-
-        case SPU_ChannelAssignedSound:
-            break;
-
-        case SPU_ChannelVolume:
-            break;
-
-        case SPU_ChannelSpeed:
-            break;
-
-        case SPU_ChannelLoopEnabled:
-            break;
-
-        case SPU_ChannelPosition:
-            break;
-
-        case INP_SelectedGamepad:
-            (pptr+attr) -> value.i32  = value;
-            break;
-
-        case CAR_Connected:
-            break;
-
-        case CAR_ProgramROMSize:
-            break;
-
-        case CAR_NumberOfTextures:
-            break;
-
-        case CAR_NumberOfSounds:
-            break;
-
-        case MEM_Connected:
             break;
     }
+    //fprintf (stdout, "[ioport_set] pptr: %p, (pptr+attr): %p\n", pptr, (pptr+attr));
+    //fprintf (stdout, "[ioport_set] attr: %u (0x%.8X)\n", attr, attr);
+    //fprintf (stdout, "[ioport_set] type: %u (0x%.8X)\n", type, type);
+    //fprintf (stdout, "[ioport_set] value: %d (0x%.8X)\n", value, value);
+    //fprintf (stdout, "[ioport_set] (pptr+attr) -> value.i32: %d (0x%.8X)\n", (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
+    //fprintf (stdout, "[%s] flag: %u, value: %u, at %p\n", (pptr+attr) -> name, (pptr+attr) -> flag, (pptr+attr) -> value.i32, (pptr+attr) -> value.i32);
 }
 
 void    init_memory (void)
@@ -2361,6 +2148,101 @@ int32_t   word2int     (word_t *info)
 float     word2float   (word_t *info)
 {
     return (info -> f32);
+}
+
+void      update_cycle (void)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize variables
+    //
+    uint32_t  value    = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // If we are not WAITing, increment TIM_CycleCounter
+    //
+    if (waitflag      == FALSE)
+    {
+        value          = ioports_get (TIM_CycleCounter);
+        value          = value + 1;
+    }
+    else
+    {
+        waitflag       = FALSE;  // reset waitflag
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Check for frame roll-over
+    //
+    if (value         >= 250000)
+    {
+        update_frame ();
+        value          = 0;
+    }
+
+    sys_force          = TRUE;
+    ioports_set (TIM_CycleCounter, value);
+}
+
+void      update_frame (void)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize variables
+    //
+    uint32_t  value    = 0;
+    uint32_t  upper    = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // increment frame counter
+    //
+    value              = ioports_get (TIM_FrameCounter);
+    value              = value + 1;
+    sys_force          = TRUE; // system override on a read-only port
+    ioports_set (TIM_FrameCounter, value);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // adjust TIM_CurrentTime, if enough frames have elapsed
+    //
+    if ((value % 60)  == 0)
+    {
+        value          = ioports_get (TIM_CurrentTime);
+        value          = value + 1;
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // adjust TIM_CurrentDate, if enough seconds have elapsed in TIM_CurrentTime
+        //
+        if (value     >= 86400)
+        {
+            value      = ioports_get (TIM_CurrentDate);
+            upper      = value & 0xFFFF0000; // isolate year from TIM_CurrentDate
+            value      = value & 0x0000FFFF; // isolate day  from TIM_CurrentDate
+            value      = value + 1;          // increment the day
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // larger adjustment of TIM_CurrentDate if year needs incrementing
+            //
+            if (value >= 365)                // TODO: compensate for leap years
+            {
+                value  = 0;                  // new year, reset the day to 0
+                upper  = upper + 0x00010000; // increment the year
+                value  = upper;              // recombine YEAR and DAY
+            }
+            sys_force  = TRUE;
+            ioports_set (TIM_CurrentDate, value);
+
+            value      = 0;                  // TIM_CurrentTime resets to 0
+        }
+
+        sys_force      = TRUE;
+        ioports_set (TIM_CurrentTime, value);
+    }
 }
 
 size_t    get_filesize (int8_t *filename)
