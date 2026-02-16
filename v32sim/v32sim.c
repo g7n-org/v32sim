@@ -197,7 +197,7 @@ word_t   *memory_get   (uint32_t);                    // get value from memory
 void      memory_set   (uint32_t, uint32_t);          // set value to memory
 void      update_cycle (void);                        // updating of TIM_CycleCounter
 void      update_frame (void);                        // updating of TIM_FrameCounter
-int32_t   word2int     (word_t *);
+uint32_t  word2int     (word_t *);
 float     word2float   (word_t *);
 
 int32_t   main     (int32_t  argc, uint8_t **argv)
@@ -245,7 +245,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     }
 
     strcpy (cartfile, argv[1]);
-    program                            = fopen (cartfile, "r");
+    //program                            = fopen (cartfile, "r");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -348,6 +348,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     //
     // Verify we have a valid Vircon32 binary file (first two words)
     //
+    /*
     fread (data, sizeof (uint8_t), wordsize, program);
     index                              = strncmp (data, "V32-", 4);
     if (index                         != 0)
@@ -407,7 +408,8 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
         //
         fseek (program, 5 * wordsize, SEEK_CUR);
     }
-
+*/
+    /* these should be read in load_memory()
     vbinoffset                         = get_word (program) / wordsize;
     word                               = get_word (program);
     vtexoffset                         = get_word (program) / wordsize;
@@ -420,21 +422,36 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
     {
         word                           = get_word (program);
     }
+    */
+    rom_offset                         = 0x20000000;
 
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
     fprintf (stdout, "vtexoffset: %.8X\n", vtexoffset);
     fprintf (stdout, "vsndoffset: %.8X\n", vsndoffset);
 
+    (reg+PC) -> i32                    = rom_offset;
+    /*
     while ((!feof (program)) &&
-           (*(input+0)                != EOF))
+           (*(input+0)                != EOF)) */
+    while ((*(input+0)                != EOF) &&
+           (*(input+0)                != 'q'))
     {
-        word                           = get_word (program);
+        // STATUS: need to investigate why reading from memory in CART memory does not 
+        // give us the instructions. Program is now reading from memory, and not from
+        // a file
+
+        fprintf (stdout, "(reg+PC)->i32: 0x%.8X\n", (reg+PC) -> i32);
+        //word                           = get_word (program);
+        word                           = word2int (memory_get ((reg+PC) -> i32));
+        fprintf (stdout, "word: %.8X\n(reg+PC)->i32: %.8X\n", word, (reg+PC) -> i32);
 
         immediate                      = word & 0x02000000;
         if (immediate                 == 0x02000000)
         {
-            immediate                  = get_word (program);
+            (reg+PC) -> i32            = (reg+PC) -> i32 + 1;
+            //immediate                  = get_word (program);
+            immediate                  = word2int (memory_get ((reg+PC) -> i32));
             decodeflags                = FLAG_IMMEDIATE;
         }
         else
@@ -588,6 +605,7 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
 
         (reg+PC) -> i32                = rom_offset;  // location
         (reg+IP) -> i32                = word;        // current instruction
+        (reg+IV) -> i32                = immediate;   // immediate value
 
         ////////////////////////////////////////////////////////////////////////////////
         //
@@ -595,7 +613,6 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
         //
         update_cycle ();
 
-        (reg+IV) -> i32                = immediate; // immediate value
     }
     
     return (0);
@@ -748,11 +765,8 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             {
                 if (processflag     == TRUE)
                 {
-                    value            = (reg+dst) -> i32;
-                    if (value       == TRUE)
-                    {
-                        (reg+PC) -> i32         = immediate;
-                    }
+                    (reg+PC) -> i32  = immediate;
+                    rom_offset       = (reg+PC)  -> i32;
                 }
                 sprintf (destination, "0x%.8X", immediate);
             }
@@ -760,11 +774,8 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             {
                 if (processflag     == TRUE)
                 {
-                    value            = (reg+dst) -> i32;
-                    if (value       == TRUE)
-                    {
-                        (reg+PC) -> i32         = (reg+dst) -> i32;
-                    }
+                    (reg+PC) -> i32  = (reg+dst) -> i32;
+                    rom_offset       = (reg+PC)  -> i32;
                 }
                 sprintf (destination, "R%u",    dst);
             }
@@ -790,7 +801,6 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 {
                     (reg+PC) -> i32    = immediate;
                     rom_offset         = (reg+PC) -> i32;
-                    fseek (program, rom_offset + 0x24, SEEK_SET);
                 }
                 sprintf (destination, "0x%.8X", immediate);
             }
@@ -799,8 +809,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 if (processflag       == TRUE)
                 {
                     (reg+PC) -> i32    = (reg+dst) -> i32;
-                    rom_offset         = (reg+PC) -> i32;
-                    fseek (program, rom_offset + 0x24, SEEK_SET);
+                    rom_offset         = (reg+PC)  -> i32;
                 }
                 sprintf (destination, "R%u",    dst);
             }
@@ -830,6 +839,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     ((reg+dst) -> i32 == TRUE))
                 {
                     (reg+PC) -> i32    = immediate;
+                    rom_offset         = (reg+PC)  -> i32;
                 }
                 sprintf (source, "0x%.8X", immediate);
             }
@@ -839,6 +849,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     ((reg+dst) -> i32 == TRUE))
                 {
                     (reg+PC) -> i32    = (reg+src) -> i32;
+                    rom_offset         = (reg+PC)  -> i32;
                 }
                 sprintf (source, "R%u",    src);
             }
@@ -853,6 +864,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     ((reg+dst) -> i32 == FALSE))
                 {
                     (reg+PC) -> i32    = immediate;
+                    rom_offset         = (reg+PC)  -> i32;
                 }
                 sprintf (source, "0x%.8X", immediate);
             }
@@ -862,6 +874,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                     ((reg+dst) -> i32 == FALSE))
                 {
                     (reg+PC) -> i32    = (reg+src) -> i32;
+                    rom_offset         = (reg+PC)  -> i32;
                 }
                 sprintf (source, "R%u",    src);
             }
@@ -1938,7 +1951,7 @@ void    load_memory (uint32_t  page, int8_t *filename)
     {
         case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (both BIOS and CART)
         case V32_PAGE_CART:
-            fseek (fptr, (35 * wordsize), SEEK_SET);
+            fseek (fptr, (35 * wordsize), SEEK_CUR);
             break;
 
         case V32_PAGE_MEMC: // we need to skip ahead to word ?? (check for value on MEMC)
@@ -2159,7 +2172,7 @@ void    memory_set (uint32_t  address, uint32_t  dataword)
     (dptr+offset) -> value.i32  = dataword;
 }
 
-int32_t   word2int     (word_t *info)
+uint32_t  word2int     (word_t *info)
 {
     return (info -> i32);
 }
