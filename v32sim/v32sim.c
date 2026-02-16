@@ -429,82 +429,86 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
                 // newcommand will be the character recently input; if newline,
                 // repeat lastcommand
                 //
-                newcommand             = *(input+0);
-                if (*(input+0)        == '\n')
+                newcommand                 = *(input+0);
+                if (*(input+0)            == '\n')
                 {
-                    *(input+1)         = '\0';
-                    newcommand         = lastcommand;
+                    *(input+1)             = '\0';
+                    newcommand             = lastcommand;
                 }
                 *(input+index-1)           = '\0';
                 
                 switch (newcommand)
                 {
                     case 'c':
-                        processflag       = TRUE;
-                        runflag           = TRUE;
+                        processflag        = TRUE;
+                        runflag            = TRUE;
                         break;
 
                     case 'd':
-                        arg               = strtok ((input+2), " ");
+                        arg                = strtok ((input+2), " ");
                         fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
-                        if (*(arg+0)     == 'r')
+                        if (*(arg+0)      == 'r')
                         {
-                            value         = atoi ((arg+1));
-                            fprintf (stdout, "adding to display, R%u\n", value);
-                            dtmp          = newdispnode (LIST_REG, new_word_i32 (&value, 1), 1);
-                            display       = display_add (display, dtmp);
+                            value          = atoi ((arg+1));
+                            dtmp           = newdispnode (LIST_REG, new_word_i32 (&value, 1), 1);
+                            display        = display_add (display, dtmp);
                         }
-						newcommand        = '\0';
+                        else if (*(arg+0) == 'm')
+                        {
+                            value          = atoi ((arg+1));
+                            dtmp           = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
+                            display        = display_add (display, dtmp);
+                        }
+                        newcommand         = '\0';
                         break;
 
                     case 'm':
-                        if (*(input+1)   == ' ')
+                        if (*(input+1)    == ' ')
                         {
-                            arg           = strtok ((input+2), " ");
-                            value         = strtol (arg, NULL, 16);
-                            fprintf (stdout, "value: 0x%.8X\n", value);
+                            arg            = strtok ((input+2), " ");
+                            value          = strtol (arg, NULL, 16);
                             sprintf (source, "[%.8X]:", value);
                             fprintf (stdout, "%-4s 0x%.8X\n",
                                              source, word2int (memory_get (value)));
-                            lastaddr      = value;
+                            lastaddr       = value;
                         }
                         else
                         {
-                            value         = lastaddr & 0x0FFFFFFF;
-                            if (value    <  0x0000004)
+                            value          = lastaddr & 0x0FFFFFFF;
+                            if (value     <  0x0000004)
                             {
-                                lastaddr  = lastaddr & 0xF0000000;
-                                lastaddr  = lastaddr | 0x00000004;
+                                lastaddr   = lastaddr & 0xF0000000;
+                                lastaddr   = lastaddr | 0x00000004;
                             }
 
-                            for (index    = lastaddr - 4;
-                                 index   <  lastaddr + 4;
-                                 index    = index + 1)
+                            for (index     = lastaddr - 4;
+                                 index    <  lastaddr + 4;
+                                 index     = index    + 1)
                             {
                                 sprintf (source, "[%.8X]:", index);
                                 fprintf (stdout, "%-11s 0x%.8X\n",
                                                  source, word2int (memory_get (index)));
                             }
-                            lastaddr      = index;
+                            lastaddr       = index;
                         }
                         break;
 
                     case 'P':
-                        if (*(input+1) == ' ')
+                        if (*(input+1)    == ' ')
                         {
-                            arg         = strtok ((input+2), " ");
-                            sys_force   = TRUE;
-                            index       = strtol (arg, NULL, 16);
-                            value       = ioports_get (index);
+                            arg            = strtok ((input+2), " ");
+                            sys_force      = TRUE;
+                            index          = strtol (arg, NULL, 16);
+                            value          = ioports_get (index);
                             fprintf (stdout, "[%s]: 0x%.8X\n", arg, value);
                         }
                         break;
 
                     case 'r':
-                        if (*(input+1) == ' ')
+                        if (*(input+1)    == ' ')
                         {
-                            arg         = strtok ((input+2), " ");
-                            value       = atoi (arg+1);
+                            arg            = strtok ((input+2), " ");
+                            value          = atoi (arg+1);
                             sprintf (source, "R%u:", value);
                             fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+value) -> i32);
                         }
@@ -521,8 +525,8 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
                         break;
 
                     case 's':
-                        processflag    = TRUE;
-                        lastcommand    = 's';
+                        processflag        = TRUE;
+                        lastcommand        = 's';
                         break;
 
                     case '?':
@@ -534,16 +538,16 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
                         fprintf (stdout, "  s        - step to next instruction\n");
                         break;
                 }
-                lastcommand            = newcommand;
+                lastcommand                = newcommand;
             }
-            while (processflag        == FALSE);
+            while (processflag            == FALSE);
         }
 
         decode (word, immediate, decodeflags | FLAG_PROCESS);
 
-        (reg+PC) -> i32                = rom_offset;  // location
-        (reg+IP) -> i32                = word;        // current instruction
-        (reg+IV) -> i32                = immediate;   // immediate value
+        (reg+PC) -> i32                    = rom_offset;  // location
+        (reg+IP) -> i32                    = word;        // current instruction
+        (reg+IV) -> i32                    = immediate;   // immediate value
 
         ////////////////////////////////////////////////////////////////////////////////
         //
