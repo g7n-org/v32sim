@@ -33,6 +33,11 @@
 
 #define  STRING_ALLOC_FAIL   13
 #define  DATA_ALLOC_FAIL     14
+#define  LIST_ALLOC_FAIL     15
+
+#define  LIST_REG            0
+#define  LIST_MEM            1
+#define  LIST_IOP            2
 
 #define  NUM_MEMORY_PAGES    4
 
@@ -142,6 +147,15 @@ union  word_type
 };
 typedef union word_type word_t;
 
+typedef struct display_list display_l;
+struct display_list
+{
+    uint8_t    type;
+    uint8_t    num;
+    word_t    *list;
+    display_l *next;
+};
+
 struct data_type
 {
     word_t   value;
@@ -187,28 +201,33 @@ uint32_t  rom_offset;
 //
 // Function prototypes
 //
-size_t    get_filesize (int8_t *);
-uint32_t  get_word     (FILE *);
-void      put_word     (uint32_t, uint8_t);
-void      decode       (uint32_t, uint32_t, uint8_t);
-void      init_ioports (void);                        // initialize IOPorts
-int32_t   ioports_get  (uint16_t);                    // get value from port
-void      ioports_set  (uint16_t, int32_t);           // set value to port
-void      init_memory  (void);                        // initialize memory
-void      load_memory  (uint32_t, int8_t *);          // load contents into memory
-word_t   *memory_get   (uint32_t);                    // get value from memory
-void      memory_set   (uint32_t, uint32_t);          // set value to memory
-void      update_cycle (void);                        // updating of TIM_CycleCounter
-void      update_frame (void);                        // updating of TIM_FrameCounter
-uint32_t  word2int     (word_t *);
-float     word2float   (word_t *);
+size_t     get_filesize (int8_t *);
+uint32_t   get_word     (FILE *);
+void       put_word     (uint32_t, uint8_t);
+void       decode       (uint32_t, uint32_t, uint8_t);
+void       init_ioports (void);                        // initialize IOPorts
+int32_t    ioports_get  (uint16_t);                    // get value from port
+void       ioports_set  (uint16_t, int32_t);           // set value to port
+void       init_memory  (void);                        // initialize memory
+void       load_memory  (uint32_t, int8_t *);          // load contents into memory
+word_t    *memory_get   (uint32_t);                    // get value from memory
+void       memory_set   (uint32_t, uint32_t);          // set value to memory
+word_t    *new_word_i32 (uint32_t *, uint8_t);
+void       update_cycle (void);                        // updating of TIM_CycleCounter
+void       update_frame (void);                        // updating of TIM_FrameCounter
+uint32_t   word2int     (word_t *);
+float      word2float   (word_t *);
+display_l *newdispnode  (uint8_t,     word_t *, uint8_t);
+display_l *display_add  (display_l *, display_l *);
 
-int32_t   main     (int32_t  argc, uint8_t **argv)
+int32_t    main     (int32_t  argc, uint8_t **argv)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // declare and initialize variables
     //
+    display_l *display                 = NULL;
+    display_l *dtmp                    = NULL;
     int32_t    index                   = 0;
     int32_t    value                   = 0;
     int32_t    lastaddr                = 0;
@@ -389,6 +408,8 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
             processflag                = FALSE;
             do
             {
+                displayshow  (display, 0);
+
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Display the prompt (filter out trailing newline)
@@ -421,6 +442,19 @@ int32_t   main     (int32_t  argc, uint8_t **argv)
                     case 'c':
                         processflag       = TRUE;
                         runflag           = TRUE;
+                        break;
+
+                    case 'd':
+                        arg               = strtok ((input+2), " ");
+                        fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
+                        if (*(arg+0)     == 'r')
+                        {
+                            value         = atoi ((arg+1));
+                            fprintf (stdout, "adding to display, R%u\n", value);
+                            dtmp          = newdispnode (LIST_REG, new_word_i32 (&value, 1), 1);
+                            display       = display_add (display, dtmp);
+                        }
+						newcommand        = '\0';
                         break;
 
                     case 'm':
@@ -2223,4 +2257,100 @@ size_t    get_filesize (int8_t *filename)
     fclose (fptr);
 
     return (size);
+}
+
+display_l *newdispnode  (uint8_t  type, word_t *list, uint8_t  num)
+{
+    display_l *newnode          = (display_l *) malloc (sizeof (display_l) * 1);
+    if (newnode                == NULL)
+    {
+        fprintf (stderr, "[ERROR] Could not allocate memory for displaylist node!\n");
+        exit (LIST_ALLOC_FAIL);
+    }
+
+    newnode -> type             = type;
+    newnode -> num              = num;
+    newnode -> list             = list;
+    newnode -> next             = NULL;
+
+    return (newnode);
+}
+
+display_l *display_add  (display_l *list, display_l *node)
+{
+    display_l *tmp              = NULL;
+
+    if (node                   != NULL)
+    {
+        if (list               != NULL)
+        {
+            tmp                 = list;
+            while (tmp -> next != NULL)
+            {
+                tmp             = tmp -> next;
+            }
+
+            tmp -> next         = node;
+        }
+        else
+        {
+            list                = node;
+        }
+    }
+    return (list);
+}
+
+void       displayshow  (display_l *list, uint8_t    flag)
+{
+    display_l *dtmp             = NULL;
+    int32_t    index            = 0;
+    uint32_t   count            = 0;
+    uint32_t   value            = 0;
+    word_t    *wtmp             = NULL;
+
+    dtmp                        = list;
+    while (dtmp                != NULL)
+    {
+        fprintf (stdout, "[%2u] ", count);
+        wtmp                    = dtmp -> list;
+        switch (dtmp -> type)
+        {
+            case LIST_REG:
+
+                value           = (wtmp+index) -> i32;
+                fprintf (stdout, "R%u: 0x%.8X\n", value, (reg+value) -> i32);
+                break;
+
+            case LIST_MEM:
+                for (index      = 0;
+                     index     <  list -> num;
+                     index      = index + 1)
+                {
+                    value       = word2int (memory_get ((wtmp+index) -> i32));
+                    fprintf (stdout, "[0x%.8X] 0x%.8X\n", value);
+                }
+                break;
+
+            case LIST_IOP:
+                break;
+        }
+
+        count                   = count + 1;
+        dtmp                    = dtmp -> next;
+    }
+}
+
+word_t    *new_word_i32 (uint32_t *value, uint8_t  num)
+{
+    int32_t  index               = 0;
+    word_t  *new_word            = (word_t *) malloc (sizeof (word_t) * num);
+
+    for (index                   = 0;
+         index                  <  num;
+         index                   = index + 1)
+    {
+        (new_word+index) -> i32  = *(value+index);
+    }
+
+    return (new_word);
 }
