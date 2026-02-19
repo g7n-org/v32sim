@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <getopt.h>
 #include <time.h>
 #include "ioports.h"
 
@@ -192,6 +193,7 @@ data_t  **ioports;
 uint8_t   sys_force;
 
 uint8_t  *data;
+uint8_t   runflag;
 uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
@@ -220,6 +222,8 @@ float      word2float   (word_t *);
 display_l *newdispnode  (uint8_t,     word_t *,    uint8_t);
 display_l *display_add  (display_l *, display_l *);
 void       displayshow  (display_l *, uint8_t);
+void       process_args (int32_t,     int8_t **);
+void       usage        (int8_t *);
 
 int32_t    main     (int32_t  argc, uint8_t **argv)
 {
@@ -238,7 +242,6 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
     uint8_t    newcommand              = '\0';
     uint8_t    lastcommand             = '\0';
     uint8_t    decodeflags             = FLAG_NONE;
-    uint8_t    runflag                 = FALSE;
     uint8_t    processflag             = FALSE;
     uint32_t   immediate               = 0x00000000;
     uint32_t   vbinoffset              = 0x00000000;
@@ -250,36 +253,45 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
     //
     // initialize variables
     //
+    biosfile                           = NULL;
+    cartfile                           = NULL;
     rom_offset                         = 0x00000000;
+    runflag                            = FALSE;
     wordsize                           = 4;
     haltflag                           = FALSE;
     waitflag                           = FALSE;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // Process command-line arguments
+    //
+    process_args ((int32_t) argc, (int8_t **) argv);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // Open the indicated V32 file
     //
-    len                                = strlen (argv[1]) + 1;
-    cartfile                           = (int8_t *) malloc (len);
     if (cartfile                      == NULL)
     {
-        fprintf (stderr, "[ERROR] Allocation of string '%s' failed\n", "cartfile");
-        exit (STRING_ALLOC_FAIL);
+        fprintf (stderr, "[ERROR] Must specify Vircon32 cartridge file!\n");
+        exit (1);
     }
-
-    strcpy (cartfile, argv[1]);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Set up 'biosfile'
     //
-    biosfile                           = (int8_t *) malloc (sizeof (int8_t) * 64);
     if (biosfile                      == NULL)
     {
-        fprintf (stderr, "[ERROR] Allocation of string '%s' failed\n", "biosfile");
-        exit (STRING_ALLOC_FAIL);
+        len                            = strlen (BIOS_DEFAULT_PATH) + 1;
+        biosfile                       = (int8_t *) malloc (len);
+        if (biosfile                  == NULL)
+        {
+            fprintf (stderr, "[ERROR] Allocation for '%s' failed\n", "biosfile");
+            exit (STRING_ALLOC_FAIL);
+        }
+        strcpy (biosfile, BIOS_DEFAULT_PATH);
     }
-    strcpy (biosfile, "StandardBios.v32");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -365,8 +377,10 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
     {
         (reg+index) -> i32             = 0x00000000;
     }
+    (reg+BP)        -> i32             = 0x003FFFFF;
+    (reg+SP)        -> i32             = 0x003FFFFF;
 
-    rom_offset                         = 0x20000000;
+    rom_offset                         = 0x10000004;
 
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
@@ -2373,4 +2387,77 @@ word_t    *new_word_i32 (uint32_t *value, uint8_t  num)
     }
 
     return (new_word);
+}
+
+void       process_args (int32_t  argc, int8_t **argv)
+{
+    int32_t   opt                  = 0;
+    int32_t   option_index         = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // getopt(3) long options and mapping to short options
+    //
+    struct option long_options[]   = {
+       { "biosfile",       required_argument, 0, 'B' },
+       { "binary",         no_argument,       0, 'b' },
+       { "cartfile",       required_argument, 0, 'C' },
+       { "colors",         no_argument,       0, 'c' },
+       { "fullstep",       no_argument,       0, 'F' },
+       { "stop-at",        required_argument, 0, 's' },
+       { "verbose",        no_argument,       0, 'v' },
+       { "help",           no_argument,       0, 'h' },
+       { 0,                0,                 0,  0  }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Process command-line arguments, via getopt(3)
+    //
+    opt                            = getopt_long (argc, argv,
+                                                  "B:bC:cFs:vh",
+                                                  long_options,
+                                                  &option_index);
+    while (opt                    != -1)
+    {
+        switch (opt)
+        {
+            case 'B':
+                biosfile           = optarg;
+                break;
+
+            case 'b':
+                //binaryflag         = 1;
+                break;
+
+            case 'C':
+                cartfile           = optarg;
+                break;
+
+            case 'c':
+                //fancyflag          = FANCY_COLORS;
+                break;
+
+            case 'F':
+                runflag            = TRUE;
+                break;
+
+            case 's':
+                //start              = strtol (optarg, NULL, 16);
+				break;
+
+            case 'h':
+                usage ((int8_t *) argv[0]);
+                break;
+        }
+        opt                        = getopt_long (argc, argv,
+                                                  "B:bC:cFs:vh",
+                                                  long_options,
+                                                  &option_index);
+    }
+}
+
+void  usage (int8_t *program)
+{
+    fprintf (stdout, "%s: \n", program);
 }
