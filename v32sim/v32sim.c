@@ -200,6 +200,7 @@ uint8_t   sys_reg_show;
 
 uint8_t  *data;
 uint8_t   runflag;
+uint8_t   doneflag;
 uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
@@ -263,6 +264,7 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
     biosfile                           = NULL;
     cartfile                           = NULL;
     rom_offset                         = 0x00000000;
+    doneflag                           = FALSE;
     runflag                            = FALSE;
     wordsize                           = 4;
     haltflag                           = FALSE;
@@ -396,8 +398,14 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
     fprintf (stdout, "vsndoffset: %.8X\n", vsndoffset);
 
     while ((*(input+0)                != EOF) &&
-           (*(input+0)                != 'q'))
+           (*(input+0)                != 'q') &&
+           (haltflag                  == FALSE))
     {
+        if (doneflag                  == TRUE)
+        {
+            rom_offset                 = rom_offset   + 1;
+            doneflag                   = FALSE;
+        }
         IP_REG                         = rom_offset;
         word                           = word2int (memory_get (IP_REG));
         IR_REG                         = word;        // current instruction
@@ -442,7 +450,6 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
             put_word (word, FLAG_DISPLAY);
         }
         decode   (word, immediate, decodeflags | FLAG_DISPLAY);
-        rom_offset                     = rom_offset   + 1;
 
         if (FLAG_IMMEDIATE            == (decodeflags & FLAG_IMMEDIATE))
         {
@@ -613,11 +620,17 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
 
                     case '?':
                     case 'h':
-                        fprintf (stdout, "  c        - resume execution\n");
-                        fprintf (stdout, "  m [addr] - display memory address\n");
-                        fprintf (stdout, "  P ioaddr - display IOPort content\n");
-                        fprintf (stdout, "  r [r#]   - display register(s)\n");
-                        fprintf (stdout, "  s        - step to next instruction\n");
+                        fprintf (stdout, "  c          - resume execution\n");
+                        fprintf (stdout, "  d XYZ      - add displaylist item\n");
+                        fprintf (stdout, "    R#       - general register\n");
+                        fprintf (stdout, "    I(P|R|V) - system register\n");
+                        fprintf (stdout, "    0xaddr   - memory address\n");
+                        fprintf (stdout, "    0xioaddr - IOPort\n");
+                        fprintf (stdout, "  c          - resume execution\n");
+                        fprintf (stdout, "  m [addr]   - display memory address\n");
+                        fprintf (stdout, "  P ioaddr   - display IOPort content\n");
+                        fprintf (stdout, "  r [r#]     - display register(s)\n");
+                        fprintf (stdout, "  s          - step to next instruction\n");
                         break;
                 }
                 lastcommand                = newcommand;
@@ -641,6 +654,8 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
 
     }
     
+    fprintf (stdout, "SYSTEM HALTED\n");
+
     return (0);
 }
 
@@ -708,7 +723,7 @@ void      put_word (uint32_t  word, uint8_t  flag)
     //
     if (flag         == FLAG_DISPLAY)
     {
-        fprintf (stdout, "[%.8X] ", rom_offset);
+        fprintf (stdout, "[%.8X] ", IP_REG);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -817,8 +832,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             if (processflag           == TRUE)
             {
                 SP_REG                 = SP_REG - 1;
-                value                  = SP_REG;
-                memory_set (value, IP_REG);
+                memory_set (SP_REG, (IP_REG + 1));
             }
 
             if (immflag               == TRUE)
@@ -850,8 +864,8 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             //
             if (processflag           == TRUE)
             {
-                value                  = SP_REG;
-                IP_REG                 = word2int (memory_get (value));
+                IP_REG                 = word2int (memory_get (SP_REG));
+                rom_offset             = IP_REG;
                 SP_REG                 = SP_REG + 1;
             }
             fprintf (display,     "%-5s ", "RET");
@@ -1174,8 +1188,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             if (processflag             == TRUE)
             {
                 SP_REG                   = SP_REG - 1;
-                value                    = SP_REG;
-                memory_set (value, DSTREG);
+                memory_set (SP_REG, DSTREG);
             }
 
             sprintf (destination, "R%u",    dst);
@@ -1191,9 +1204,9 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             //
             if (processflag             == TRUE)
             {
-                value                    = SP_REG;
-                DSTREG                   = word2int (memory_get (value));
+                value                    = word2int (memory_get (SP_REG));
                 SP_REG                   = SP_REG + 1;
+                DSTREG                   = value;
             }
             sprintf (destination, "R%u",    dst);
             fprintf (display,      "%-5s %-16s", "POP", destination);
@@ -1428,6 +1441,10 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             break;
     }
 
+    if (processflag         == TRUE)
+    {
+        doneflag             = TRUE;
+    }
     fprintf (stdout, "\n");
 }
 
@@ -2406,7 +2423,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
         {
             case LIST_REG:
 
-                value           = (wtmp+index) -> i32;
+                value           = wtmp -> i32;
                 switch (value)
                 {
                     case CR:
@@ -2430,7 +2447,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                         break;
 
                     default:
-                        sprintf (entry,  "R%u", value);
+                        sprintf (entry,  "R%u",    value);
                         fprintf (stdout, "%10s: ", entry);
                         break;
                 }
