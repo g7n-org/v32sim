@@ -405,8 +405,8 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
         immediate                      = word & 0x02000000;
         if (immediate                 == 0x02000000)
         {
-            IP_REG                     = IP_REG + 1;
-            immediate                  = word2int (memory_get (IP_REG));
+            rom_offset                 = rom_offset + 1;
+            immediate                  = word2int (memory_get (IP_REG + 1));
             decodeflags                = FLAG_IMMEDIATE;
         }
         else
@@ -446,9 +446,30 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
 
         if (FLAG_IMMEDIATE            == (decodeflags & FLAG_IMMEDIATE))
         {
-            put_word (immediate, FLAG_DISPLAY);
-            fprintf (stdout, "\n");
-            rom_offset                 = rom_offset   + 1;
+            if (sys_reg_show          == TRUE)
+            {
+                switch ((IP_REG & 0x30000000) >> 28)
+                {
+                    case V32_PAGE_RAM:
+                        fprintf (stdout, " [RAM]");
+                        break;
+                    case V32_PAGE_BIOS:
+                        fprintf (stdout, "[BIOS]");
+                        break;
+                    case V32_PAGE_CART:
+                        fprintf (stdout, "[CART]");
+                        break;
+                    case V32_PAGE_MEMC:
+                        fprintf (stdout, "[MEMC]");
+                        break;
+                }
+                fprintf  (stdout, "[%.8X]: 0x%.8X", (IP_REG + 1), IV_REG);
+            }
+            else
+            {
+                put_word (immediate, FLAG_DISPLAY);
+            }
+            fprintf  (stdout, "\n");
         }
 
         if (runflag                   == FALSE)
