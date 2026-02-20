@@ -200,7 +200,7 @@ uint8_t   sys_reg_show;
 
 uint8_t  *data;
 uint8_t   runflag;
-uint8_t   doneflag;
+uint8_t   branchflag;
 uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
@@ -264,7 +264,7 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
     biosfile                           = NULL;
     cartfile                           = NULL;
     rom_offset                         = 0x00000000;
-    doneflag                           = FALSE;
+    branchflag                         = FALSE;
     runflag                            = FALSE;
     wordsize                           = 4;
     haltflag                           = FALSE;
@@ -401,11 +401,6 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
            (*(input+0)                != 'q') &&
            (haltflag                  == FALSE))
     {
-        if (doneflag                  == TRUE)
-        {
-            rom_offset                 = rom_offset   + 1;
-            doneflag                   = FALSE;
-        }
         IP_REG                         = rom_offset;
         word                           = word2int (memory_get (IP_REG));
         IR_REG                         = word;        // current instruction
@@ -652,6 +647,18 @@ int32_t    main     (int32_t  argc, uint8_t **argv)
         //
         update_cycle ();
 
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Increment rom_offset but only if we have not branched
+        //
+        if (branchflag                == TRUE)
+        {
+            branchflag                 = FALSE;
+        }
+        else
+        {
+            rom_offset                 = rom_offset   + 1;
+        }
     }
     
     fprintf (stdout, "SYSTEM HALTED\n");
@@ -808,6 +815,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 {
                     IP_REG           = immediate;
                     rom_offset       = IP_REG;
+                branchflag             = TRUE;
                 }
                 sprintf (destination, "0x%.8X", immediate);
             }
@@ -817,6 +825,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 {
                     IP_REG           = DSTREG;
                     rom_offset       = IP_REG;
+                branchflag             = TRUE;
                 }
                 sprintf (destination, "R%u",    dst);
             }
@@ -833,6 +842,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             {
                 SP_REG                 = SP_REG - 1;
                 memory_set (SP_REG, (IP_REG + 1));
+                branchflag             = TRUE;
             }
 
             if (immflag               == TRUE)
@@ -867,6 +877,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 IP_REG                 = word2int (memory_get (SP_REG));
                 rom_offset             = IP_REG;
                 SP_REG                 = SP_REG + 1;
+              //  branchflag             = TRUE;
             }
             fprintf (display,     "%-5s ", "RET");
             break;
@@ -880,6 +891,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 {
                     IP_REG             = immediate;
                     rom_offset         = IP_REG;
+                branchflag             = TRUE;
                 }
                 sprintf (source, "0x%.8X", immediate);
             }
@@ -890,6 +902,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 {
                     IP_REG             = SRCREG;
                     rom_offset         = IP_REG;
+                branchflag             = TRUE;
                 }
                 sprintf (source, "R%u",    src);
             }
@@ -905,6 +918,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 {
                     IP_REG             = immediate;
                     rom_offset         = IP_REG;
+                branchflag             = TRUE;
                 }
                 sprintf (source, "0x%.8X", immediate);
             }
@@ -915,6 +929,7 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
                 {
                     IP_REG             = SRCREG;
                     rom_offset         = IP_REG;
+                branchflag             = TRUE;
                 }
                 sprintf (source, "R%u",    src);
             }
@@ -1441,10 +1456,6 @@ void  decode (uint32_t  instruction, uint32_t  immediate, uint8_t  flags)
             break;
     }
 
-    if (processflag         == TRUE)
-    {
-        doneflag             = TRUE;
-    }
     fprintf (stdout, "\n");
 }
 
