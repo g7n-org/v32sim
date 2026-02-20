@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <getopt.h>
+#include <time.h>
+#include "globals.h"
 #include "ioports.h"
 
 #define  BIOS_DEFAULT_PATH      "/usr/local/Vircon32/Emulator/Bios/StandardBios.v32"
@@ -143,6 +148,12 @@
 #define  IGE                    0x0A
 #define  ILT                    0x0B
 #define  ILE                    0x0C
+#define  FEQ                    0x0D
+#define  FNE                    0x0E
+#define  FGT                    0x0F
+#define  FGE                    0x10
+#define  FLT                    0x11
+#define  FLE                    0x12
 #define  MOV                    0x13
 #define  PUSH                   0x15
 #define  POP                    0x16

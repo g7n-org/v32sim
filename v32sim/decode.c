@@ -9,15 +9,8 @@ void  decode (uint32_t  instruction,
     //
     // Declare and initialize variables
     //
-    int32_t   value                = 0;
     uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
-    uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
     uint8_t   processflag          = (flags & FLAG_PROCESS)   ? TRUE : FALSE;
-    uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
-    uint32_t  dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
-    uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
-    uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
-    uint16_t  port                 = (instruction & IOPORT_MASK);
 
     ////////////////////////////////////////////////////////////////////////////////
     //
@@ -49,7 +42,6 @@ void  decode_display (uint32_t  instruction,
     //
     // Declare and initialize variables
     //
-    int32_t   value                = 0;
     uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
     uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
     uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
@@ -136,6 +128,7 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case IEQ:
+            sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
             {
                 sprintf (source, "0x%.8X", immediate);
@@ -148,6 +141,7 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case INE:
+            sprintf (destination, "R%u,", dst);
             if (immflag              == TRUE)
             {
                 sprintf (source, "0x%.8X", immediate);
@@ -160,6 +154,7 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case IGT:
+            sprintf (destination, "R%u,", dst);
             if (immflag              == TRUE)
             {
                 sprintf (source, "0x%.8X", immediate);
@@ -172,6 +167,7 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case IGE:
+            sprintf (destination, "R%u,", dst);
             if (immflag              == TRUE)
             {
                 sprintf (source, "0x%.8X", immediate);
@@ -184,6 +180,7 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case ILT:
+            sprintf (destination, "R%u,", dst);
             if (immflag              == TRUE)
             {
                 sprintf (source, "0x%.8X", immediate);
@@ -196,6 +193,7 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case ILE:
+            sprintf (destination, "R%u,", dst);
             if (immflag              == TRUE)
             {
                 sprintf (source, "0x%.8X", immediate);
@@ -205,6 +203,84 @@ void  decode_display (uint32_t  instruction,
                 sprintf (source, "R%u",    src);
             }
             fprintf (display,      "%-5s %-16s %-16s", "ILE", destination, source);
+            break;
+
+        case FEQ:
+            sprintf (destination, "R%u,", dst);
+            if (immflag               == TRUE)
+            {
+                sprintf (source, "%.2f", fimmediate);
+            }
+            else
+            {
+                sprintf (source, "R%u",    src);
+            }
+            fprintf (display,      "%-5s %-16s %-16s", "FEQ", destination, source);
+            break;
+
+        case FNE:
+            sprintf (destination, "R%u,", dst);
+            if (immflag              == TRUE)
+            {
+                sprintf (source, "%.2f", fimmediate);
+            }
+            else
+            {
+                sprintf (source, "R%u",    src);
+            }
+            fprintf (display,      "%-5s %-16s %-16s", "FNE", destination, source);
+            break;
+
+        case FGT:
+            sprintf (destination, "R%u,", dst);
+            if (immflag              == TRUE)
+            {
+                sprintf (source, "%.2f", fimmediate);
+            }
+            else
+            {
+                sprintf (source, "R%u",    src);
+            }
+            fprintf (display,      "%-5s %-16s %-16s", "FGT", destination, source);
+            break;
+
+        case FGE:
+            sprintf (destination, "R%u,", dst);
+            if (immflag              == TRUE)
+            {
+                sprintf (source, "%.2f", fimmediate);
+            }
+            else
+            {
+                sprintf (source, "R%u",    src);
+            }
+            fprintf (display,      "%-5s %-16s %-16s", "FGE", destination, source);
+            break;
+
+        case FLT:
+            sprintf (destination, "R%u,", dst);
+            if (immflag              == TRUE)
+            {
+                sprintf (source, "%.2f", fimmediate);
+            }
+            else
+            {
+                sprintf (source, "R%u",    src);
+            }
+            fprintf (display,      "%-5s %-16s %-16s", "FLT", destination, source);
+            break;
+
+        case FLE:
+            sprintf (destination, "R%u,", dst);
+            if (immflag              == TRUE)
+            {
+                sprintf (source, "%.2f", fimmediate);
+            }
+            else
+            {
+                sprintf (source, "R%u",    src);
+            }
+            fprintf (display,      "%-5s %-16s %-16s", "FLE", destination, source);
             break;
 
         case MOV:
@@ -518,7 +594,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case JMP:
-            IP_REG          = (immflag == TRUE)  ? immediate  : DSTREG;
+            IP_REG          = (immflag == TRUE)   ? immediate  : DSTREG;
             rom_offset      = IP_REG;
             branchflag      = TRUE;
             break;
@@ -526,7 +602,7 @@ void  decode_process (uint32_t  instruction,
         case CALL:
             SP_REG          = SP_REG - 1;   // PUSH IP_REG value to stack
             memory_set (SP_REG, (IP_REG + 1));
-            IPREG           = (immflag == TRUE)  ? immediate  : DSTREG;
+            IP_REG          = (immflag == TRUE)   ? immediate  : DSTREG;
             rom_offset      = IP_REG;
             branchflag      = TRUE;
             break;
@@ -540,49 +616,79 @@ void  decode_process (uint32_t  instruction,
         case JT:
             if (DSTREG     == TRUE)
             {
-                IP_REG      = (immflag == TRUE)  ? immediate  : SRCREG;
+                IP_REG      = (immflag == TRUE)   ? immediate  : SRCREG;
+                rom_offset  = IP_REG;
+                branchflag  = TRUE;
             }
-            rom_offset      = IP_REG;
-            branchflag      = TRUE;
             break;
 
         case JF:
             if (DSTREG     == FALSE)
             {
-                IP_REG      = (immflag == TRUE)  ? immediate  : SRCREG;
+                IP_REG      = (immflag == TRUE)   ? immediate  : SRCREG;
+                rom_offset  = IP_REG;
+                branchflag  = TRUE;
             }
-            rom_offset      = IP_REG;
-            branchflag      = TRUE;
             break;
 
         case IEQ:
-            value           = (immflag == TRUE)  ? immediate  : SRCREG;
-            DSTREG          = (DSTREG  == value) ? TRUE       : FALSE;
+            value           = (immflag == TRUE)   ? immediate  : SRCREG;
+            DSTREG          = (DSTREG  == value)  ? TRUE       : FALSE;
             break;
 
         case INE:
-            value           = (immflag == TRUE)  ? immediate  : SRCREG;
-            DSTREG          = (DSTREG  != value) ? TRUE       : FALSE;
+            value           = (immflag == TRUE)   ? immediate  : SRCREG;
+            DSTREG          = (DSTREG  != value)  ? TRUE       : FALSE;
             break;
 
         case IGT:
-            value           = (immflag == TRUE)  ? immediate  : SRCREG;
-            DSTREG          = (DSTREG  >  value) ? TRUE       : FALSE;
+            value           = (immflag == TRUE)   ? immediate  : SRCREG;
+            DSTREG          = (DSTREG  >  value)  ? TRUE       : FALSE;
             break;
 
         case IGE:
-            value           = (immflag == TRUE)  ? immediate  : SRCREG;
-            DSTREG          = (DSTREG  >= value) ? TRUE       : FALSE;
+            value           = (immflag == TRUE)   ? immediate  : SRCREG;
+            DSTREG          = (DSTREG  >= value)  ? TRUE       : FALSE;
             break;
 
         case ILT:
-            value           = (immflag == TRUE)  ? immediate  : SRCREG;
-            DSTREG          = (DSTREG  <  value) ? TRUE       : FALSE;
+            value           = (immflag == TRUE)   ? immediate  : SRCREG;
+            DSTREG          = (DSTREG  <  value)  ? TRUE       : FALSE;
             break;
 
         case ILE:
-            value           = (immflag == TRUE)  ? immediate  : SRCREG;
-            DSTREG          = (DSTREG  <= value) ? TRUE       : FALSE;
+            fvalue          = (immflag == TRUE)   ? immediate  : SRCREG;
+            DSTREG          = (DSTREG  <= value)  ? TRUE       : FALSE;
+            break;
+
+        case FEQ:
+            fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
+            FDSTREG         = (FDSTREG == fvalue) ? TRUE       : FALSE;
+            break;
+
+        case FNE:
+            fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
+            FDSTREG         = (FDSTREG != fvalue) ? TRUE       : FALSE;
+            break;
+
+        case FGT:
+            fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
+            FDSTREG         = (FDSTREG >  fvalue) ? TRUE       : FALSE;
+            break;
+
+        case FGE:
+            fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
+            FDSTREG         = (FDSTREG >= fvalue) ? TRUE       : FALSE;
+            break;
+
+        case FLT:
+            fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
+            FDSTREG         = (FDSTREG <  fvalue) ? TRUE       : FALSE;
+            break;
+
+        case FLE:
+            fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
+            FDSTREG         = (FDSTREG <= fvalue) ? TRUE       : FALSE;
             break;
 
         case MOV:
@@ -698,23 +804,23 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case FADD:
-            DSTREG         += (immflag == TRUE)  ? fimmediate : FSRCREG;
+            FDSTREG        += (immflag == TRUE)  ? fimmediate : FSRCREG;
             break;
 
         case FSUB:
-            DSTREG         -= (immflag == TRUE)  ? fimmediate : FSRCREG;
+            FDSTREG        -= (immflag == TRUE)  ? fimmediate : FSRCREG;
             break;
 
         case FMUL:
-            DSTREG         *= (immflag == TRUE)  ? fimmediate : FSRCREG;
+            FDSTREG        *= (immflag == TRUE)  ? fimmediate : FSRCREG;
             break;
 
         case FDIV:
-            DSTREG         /= (immflag == TRUE)  ? fimmediate : FSRCREG;
+            FDSTREG        /= (immflag == TRUE)  ? fimmediate : FSRCREG;
             break;
 
         case FMOD:
-            DSTREG         %= (immflag == TRUE)  ? fimmediate : FSRCREG;
+            //FDSTREG        %= (immflag == TRUE)  ? fimmediate : FSRCREG;
             break;
 
         default:

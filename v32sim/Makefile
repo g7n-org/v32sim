@@ -1,26 +1,30 @@
+ARCH = $(shell uname -m)
 LIBS =
-CFLAGS = -Wall --std=gnu18 -funsigned-char -Wno-unused-value -Wno-pointer-sign -Wno-main -Wno-int-conversion
+CFLAGS =  -Wall --std=gnu18 -funsigned-char -Wno-unused-value
+CFLAGS += -Wno-pointer-sign -Wno-main -Wno-int-conversion
 INC = 
 CC = gcc
 SRC = $(wildcard *.c)
-OBJ = $(SRC:.c=)
-BIN = v32sim
-all: $(SRC) $(OBJ) $(BIN)
+OBJ = $(SRC:.c=.o)
+TARGET = v32sim
+all: $(TARGET)
 
 debug: CFLAGS += -DDEBUG -g
 debug: DEBUG = debug
-debug: $(SRC) $(BIN)
+debug: $(SRC) $(OBJ) $(TARGET)
 
-.c:
-	@mkdir -p ../bin
-	$(CC)  $(INC) -c $< $(CFLAGS) $(LIBS)
+%.o: %.c
+	$(CC) $(INC) $(CFLAGS) -c $< -o $@ $(LIBS)
 
-v32sim:
-	$(CC)  $(INC) -o ../bin/$@ $< $(CFLAGS) $(LIBS)
+$(TARGET): $(OBJ)
+	$(CC) $(INC) $(CFLAGS)    $^ -o $@ $(LIBS)
 
 install:
 	@mkdir -p /home/$(USER)/bin
-	@cp -av ../bin/* /home/$(USER)/bin/
+	@if [ -d "/home/$(USER)/bin/bin.$(ARCH)/" ]; then cp -av $(TARGET) /home/$(USER)/bin/bin.$(ARCH)/; else cp -av $(TARGET) /home/$(USER)/bin/; fi
 
+
+# Phony target for cleaning up generated files
+.PHONY: clean
 clean:
-	@rm -vf .*.sw[op] *.save* *~ ../bin/* core errors
+	@rm -vf .*.sw[op] *.save* *~ $(TARGET) $(OBJ) core errors
