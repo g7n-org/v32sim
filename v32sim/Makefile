@@ -3,8 +3,9 @@ CFLAGS = -Wall --std=gnu18 -funsigned-char -Wno-unused-value -Wno-pointer-sign -
 INC = 
 CC = gcc
 SRC = $(wildcard *.c)
-BIN = $(SRC:.c=)
-all: $(SRC) $(BIN)
+OBJ = $(SRC:.c=)
+BIN = v32sim
+all: $(SRC) $(OBJ) $(BIN)
 
 debug: CFLAGS += -DDEBUG -g
 debug: DEBUG = debug
@@ -12,6 +13,9 @@ debug: $(SRC) $(BIN)
 
 .c:
 	@mkdir -p ../bin
+	$(CC)  $(INC) -c $< $(CFLAGS) $(LIBS)
+
+v32sim:
 	$(CC)  $(INC) -o ../bin/$@ $< $(CFLAGS) $(LIBS)
 
 install:
