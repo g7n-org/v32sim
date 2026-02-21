@@ -25,23 +25,25 @@
 #define  MEMC_LAST_ADDR         0x3003FFFF
 
 #define  NO_CART_ERROR          1
+#define  REGEX_COMPILE_ERROR    2
+#define  REGEX_EXECUTE_ERROR    3
 
-#define  IOPORTS_ALLOC_FAIL     3
-#define  IOPORTS_READ_ERROR     4
-#define  IOPORTS_WRITE_ERROR    5
-#define  IOPORTS_BAD_PORT       6
+#define  IOPORTS_ALLOC_FAIL     4
+#define  IOPORTS_READ_ERROR     5
+#define  IOPORTS_WRITE_ERROR    6
+#define  IOPORTS_BAD_PORT       7
 
-#define  MEMORY_ALLOC_FAIL      7
-#define  MEMORY_READ_ERROR      8
-#define  MEMORY_WRITE_ERROR     9
-#define  MEMORY_BAD_ACCESS      10
+#define  MEMORY_ALLOC_FAIL      8
+#define  MEMORY_READ_ERROR      9
+#define  MEMORY_WRITE_ERROR     10
+#define  MEMORY_BAD_ACCESS      11
 
-#define  FILE_OPEN_ERROR        11
-#define  FILE_POSITION_ERROR    12
+#define  FILE_OPEN_ERROR        12
+#define  FILE_POSITION_ERROR    13
 
-#define  STRING_ALLOC_FAIL      13
-#define  DATA_ALLOC_FAIL        14
-#define  LIST_ALLOC_FAIL        15
+#define  STRING_ALLOC_FAIL      14
+#define  DATA_ALLOC_FAIL        15
+#define  LIST_ALLOC_FAIL        16
 
 #define  BIOS_START_OFFSET       0x10000004
 #define  BIOS_ERROR_OFFSET       0x10000000

@@ -1,6 +1,13 @@
 #ifndef  _GLOBALS_H
 #define  _GLOBALS_H
 
+// Simplify opcode display
+struct instruction_opcode
+{
+    uint8_t  name[7];
+};
+typedef struct instruction_opcode opcode_t;
+
 union  word_type
 {
     int32_t  i32;
@@ -92,5 +99,7 @@ void       displayshow    (display_l *, uint8_t);
 void       show_sysregs   (void);
 void       process_args   (int32_t,     int8_t **);
 void       usage          (int8_t *);
+uint8_t    tokenize_input (uint8_t *);
+uint8_t   *get_input      (FILE *,      const uint8_t *);
 
 #endif

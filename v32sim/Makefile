@@ -1,5 +1,5 @@
 ARCH = $(shell uname -m)
-LIBS =
+LIBS =    -lreadline -lhistory
 CFLAGS =  -Wall --std=gnu18 -funsigned-char -Wno-unused-value
 CFLAGS += -Wno-pointer-sign -Wno-main -Wno-int-conversion
 INC = 

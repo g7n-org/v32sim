@@ -1,0 +1,10 @@
+# v32sim
+
+A  text-based  Vircon32  simulator/debugger,  predominantly  for  use  in
+debugging/studying the system.
+
+## DEPENDENCIES
+
+  * GNU readline
+
+

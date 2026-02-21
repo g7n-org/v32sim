@@ -50,6 +50,30 @@ void  decode_display (uint32_t  instruction,
     uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port                 = (instruction & IOPORT_MASK);
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // initialize our opcodes array with the available instructions
+    //
+    opcode_t  lookup[64]           =
+    {
+        { "HLT"  }, { "WAIT"  }, { "JMP"   }, { "CALL" },
+        { "RET"  }, { "JT"    }, { "JF"    }, { "IEQ"  },
+        { "INE"  }, { "IGT"   }, { "IGE"   }, { "ILT"  },
+        { "ILE"  }, { "FEQ"   }, { "FNE"   }, { "FGT"  },
+        { "FGE"  }, { "FLT"   }, { "FLE"   }, { "MOV"  },
+        { "LEA"  }, { "PUSH"  }, { "POP"   }, { "IN"   },
+        { "OUT"  }, { "MOVS"  }, { "SETS"  }, { "CMPS" },
+        { "CIF"  }, { "CFI"   }, { "CIB"   }, { "CFB"  },
+        { "NOT"  }, { "AND"   }, { "OR"    }, { "XOR"  },
+        { "BNOT" }, { "SHL"   }, { "IADD"  }, { "ISUB" },
+        { "IMUL" }, { "IDIV"  }, { "IMOD"  }, { "ISGN" },
+        { "IMIN" }, { "IMAX"  }, { "IABS"  }, { "FADD" },
+        { "FSUB" }, { "FMUL"  }, { "FDIV"  }, { "FMOD" },
+        { "FSGN" }, { "FMIN"  }, { "FMAX"  }, { "FABS" },
+        { "FLR"  }, { "CEIL"  }, { "ROUND" }, { "SIN"  },
+        { "ACOS" }, { "ATAN2" }, { "LOG"   }, { "POW"  }
+    };
+
     ////////////////////////////////////////////////////////////////////////////////
     //
     // Set display FILE pointer to appropriate destination (based on flags)
@@ -62,18 +86,22 @@ void  decode_display (uint32_t  instruction,
     //
     switch (opcode)
     {
-        case HLT:
-            if (instruction       == 0x00000000)
+        case HLT: // special case for HLT to try and distinguish from data
+            if (instruction         == 0x00000000)
             {
-                fprintf (display, "%-5s ", "HLT");
+                fprintf (display,     "%-5s ",
+                                      lookup[opcode].name);
             }
             break;
 
         case WAIT:
-            fprintf (display,     "%-5s ", "WAIT");
+        case RET:
+            fprintf (display,         "%-5s\n",
+                                      lookup[opcode].name);
             break;
 
         case JMP:
+        case CALL:
             if (immflag             == TRUE)
             {
                 sprintf (destination, "0x%.8X", immediate);
@@ -82,52 +110,27 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (destination, "R%u",    dst);
             }
-            fprintf (display,      "%-5s %-16s", "JMP", destination);
-            break;
-
-        case CALL:
-            if (immflag               == TRUE)
-            {
-                sprintf (destination, "0x%.8X", immediate);
-            }
-            else
-            {
-                sprintf (destination, "R%u",    dst);
-            }
-            fprintf (display,      "%-5s %-16s", "CALL", destination);
-            break;
-
-        case RET:
-            fprintf (display,     "%-5s ", "RET");
+            fprintf (display,         "%-5s %-16s\n",
+                                      lookup[opcode].name, destination);
             break;
 
         case JT:
-            sprintf (destination, "R%u,", dst);
-            if (immflag               == TRUE)
-            {
-                sprintf (source, "0x%.8X", immediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "JT", destination, source);
-            break;
-
         case JF:
-            sprintf (destination, "R%u,", dst);
-            if (immflag               == TRUE)
-            {
-                sprintf (source, "0x%.8X", immediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "JF", destination, source);
-            break;
-
         case IEQ:
+        case INE:
+        case IGT:
+        case IGE:
+        case ILT:
+        case ILE:
+        case AND:
+        case OR:
+        case XOR:
+        case SHL:
+        case IADD:
+        case ISUB:
+        case IMUL:
+        case IDIV:
+        case IMOD:
             sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
             {
@@ -137,75 +140,16 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source, "R%u",    src);
             }
-            fprintf (display,      "%-5s %-16s %-16s", "IEQ", destination, source);
-            break;
-
-        case INE:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "0x%.8X", immediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "INE", destination, source);
-            break;
-
-        case IGT:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "0x%.8X", immediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "IGT", destination, source);
-            break;
-
-        case IGE:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "0x%.8X", immediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "IGE", destination, source);
-            break;
-
-        case ILT:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "0x%.8X", immediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "ILT", destination, source);
-            break;
-
-        case ILE:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "0x%.8X", immediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "ILE", destination, source);
+            fprintf (display,    "%-5s %-16s %-16s\n",
+                                 lookup[opcode].name, destination, source);
             break;
 
         case FEQ:
+        case FNE:
+        case FGT:
+        case FGE:
+        case FLT:
+        case FLE:
             sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
             {
@@ -215,72 +159,8 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source, "R%u",    src);
             }
-            fprintf (display,      "%-5s %-16s %-16s", "FEQ", destination, source);
-            break;
-
-        case FNE:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "%.2f", fimmediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FNE", destination, source);
-            break;
-
-        case FGT:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "%.2f", fimmediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FGT", destination, source);
-            break;
-
-        case FGE:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "%.2f", fimmediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FGE", destination, source);
-            break;
-
-        case FLT:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "%.2f", fimmediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FLT", destination, source);
-            break;
-
-        case FLE:
-            sprintf (destination, "R%u,", dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source, "%.2f", fimmediate);
-            }
-            else
-            {
-                sprintf (source, "R%u",    src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FLE", destination, source);
+            fprintf (display,      "%-5s %-16s %-16s\n",
+                                   lookup[opcode].name, destination, source);
             break;
 
         case MOV:
@@ -326,24 +206,28 @@ void  decode_display (uint32_t  instruction,
                     sprintf (source,      "R%u",           src);
                     break;
             }
-            fprintf (display,      "%-5s %-16s %-16s", "MOV", destination, source);
+            fprintf (display,     "%-5s %-16s %-16s\n",
+                                  lookup[opcode].name, destination, source);
             break;
 
         case PUSH:
-            sprintf (destination, "R%u",    dst);
-            fprintf (display,      "%-5s %-16s", "PUSH", destination);
-            break;
-            break;
-
         case POP:
+        case CIF:
+        case CFI:
+        case CIB:
+        case CFB:
+        case NOT:
+        case BNOT:
             sprintf (destination, "R%u",    dst);
-            fprintf (display,      "%-5s %-16s", "POP", destination);
+            fprintf (display,     "%-5s %-16s\n",
+                                  lookup[opcode].name, destination);
             break;
 
         case IN:
             sprintf (destination, "R%u,",    dst);
             sprintf (source,      "0x%.3X",  port);
-            fprintf (display,      "%-5s %-16s %-16s", "IN", destination, source);
+            fprintf (display,     "%-5s %-16s %-16s\n",
+                                  lookup[opcode].name, destination, source);
             break;
 
         case OUT:
@@ -356,208 +240,14 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source,  "R%u",     dst);
             }
-            fprintf (display,      "%-5s %-16s %-16s", "OUT", destination, source);
-            break;
-
-        case CIF:
-            sprintf (destination, "R%u",     dst);
-            fprintf (display,      "%-5s %-16s", "CIF", destination);
-            break;
-
-        case CFI:
-            sprintf (destination, "R%u",     dst);
-            fprintf (display,      "%-5s %-16s", "CFI", destination);
-            break;
-
-        case CIB:
-            sprintf (destination, "R%u",     dst);
-            fprintf (display,      "%-5s %-16s", "CIB", destination);
-            break;
-
-        case CFB:
-            sprintf (destination, "R%u",     dst);
-            fprintf (display,      "%-5s %-16s", "CFB", destination);
-            break;
-
-        case NOT:
-            sprintf (destination, "R%u",     dst);
-            fprintf (display,      "%-5s %-16s", "NOT", destination);
-            break;
-
-        case AND:
-            sprintf (destination, "R%u",     dst);
-            if (immflag                 == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "AND", destination, source);
-            break;
-
-        case OR:
-            sprintf (destination, "R%u",     dst);
-            if (immflag                 == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "OR", destination, source);
-            break;
-
-        case XOR:
-            sprintf (destination, "R%u",     dst);
-            if (immflag                 == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "XOR", destination, source);
-            break;
-
-        case BNOT:
-            sprintf (destination, "R%u",     dst);
-            fprintf (display,      "%-5s %-16s", "BNOT", destination);
-            break;
-
-        case SHL:
-            sprintf (destination, "R%u",    dst);
-            if (immflag                 == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "SHL", destination, source);
-            break;
-
-        case IADD:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag                 == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "IADD", destination, source);
-            break;
-
-        case ISUB:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag                 == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "ISUB", destination, source);
-            break;
-
-        case IMUL:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "IMUL", destination, source);
-            break;
-
-        case IDIV:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag              == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "IDIV", destination, source);
-            break;
-
-        case IMOD:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag           == TRUE)
-            {
-                sprintf (source,  "0x%.8X",  immediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "IMOD", destination, source);
+            fprintf (display,     "%-5s %-16s %-16s\n",
+                                  lookup[opcode].name, destination, source);
             break;
 
         case FADD:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag           == TRUE)
-            {
-                sprintf (source,  "%.3f",  fimmediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FADD", destination, source);
-            break;
-
         case FSUB:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag           == TRUE)
-            {
-                sprintf (source,  "%.3f",  fimmediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FSUB", destination, source);
-            break;
-
         case FMUL:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag           == TRUE)
-            {
-                sprintf (source,  "%.3f",  fimmediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FMUL", destination, source);
-            break;
-
         case FDIV:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag           == TRUE)
-            {
-                sprintf (source,  "%.3f",  fimmediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
-            }
-            fprintf (display,      "%-5s %-16s %-16s", "FDIV", destination, source);
-            break;
-
         case FMOD:
             sprintf (destination, "R%u,",    dst);
             if (immflag           == TRUE)
@@ -568,11 +258,10 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source,  "R%u",     src);
             }
-            fprintf (display,      "%-5s %-16s %-16s", "FMOD", destination, source);
+            fprintf (display,     "%-5s %-16s %-16s\n",
+                                  lookup[opcode].name, destination, source);
             break;
     }
-
-    fprintf (stdout, "\n");
 }
 
 void  decode_process (uint32_t  instruction,

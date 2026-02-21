@@ -304,17 +304,26 @@ int32_t    main (int32_t  argc, uint8_t **argv)
 
                 ////////////////////////////////////////////////////////////////////////
                 //
-                // Display the prompt (filter out trailing newline)
+                // Display the prompt and obtain input
                 //
+                if (input             != NULL)
+                {
+                    free (input);
+                }
+                input                  = get_input (stdin, "v32sim> ");
+                tokenize_input (input);
+                /*
                 fprintf (stdout, "v32sim> ");
 
                 index                  = 0;
                 do
                 {
+uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                     *(input+index)     = fgetc (stdin);
                     index              = index + 1;
                 }
                 while (*(input+(index-1)) != '\n');
+                */
                 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -322,7 +331,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                 // repeat lastcommand
                 //
                 newcommand                 = *(input+0);
-                if (*(input+0)            == '\n')
+                if (*(input+0)            == '\0')
                 {
                     *(input+1)             = '\0';
                     newcommand             = lastcommand;
@@ -408,6 +417,10 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                         }
                         break;
 
+                    case 'q':
+                        processflag        = 2;
+                        break;
+
                     case 'r':
                         if (*(input+1)    == ' ')
                         {
@@ -441,7 +454,6 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                         fprintf (stdout, "    I(P|R|V) - system register\n");
                         fprintf (stdout, "    0xaddr   - memory address\n");
                         fprintf (stdout, "    0xioaddr - IOPort\n");
-                        fprintf (stdout, "  c          - resume execution\n");
                         fprintf (stdout, "  m [addr]   - display memory address\n");
                         fprintf (stdout, "  P ioaddr   - display IOPort content\n");
                         fprintf (stdout, "  r [r#]     - display register(s)\n");
