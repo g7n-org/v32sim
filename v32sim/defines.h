@@ -24,6 +24,8 @@
 #define  CART_LAST_ADDR         0x27FFFFFF
 #define  MEMC_LAST_ADDR         0x3003FFFF
 
+#define  NO_CART_ERROR          1
+
 #define  IOPORTS_ALLOC_FAIL     3
 #define  IOPORTS_READ_ERROR     4
 #define  IOPORTS_WRITE_ERROR    5
@@ -41,6 +43,11 @@
 #define  DATA_ALLOC_FAIL        14
 #define  LIST_ALLOC_FAIL        15
 
+#define  BIOS_START_OFFSET       0x10000004
+#define  BIOS_ERROR_OFFSET       0x10000000
+#define  CART_START_OFFSET       0x20000000
+
+#define  ERROR_NONE             -1
 #define  ERROR_MEMORY_READ       0
 #define  ERROR_MEMORY_WRITE      1
 #define  ERROR_PORT_READ         2

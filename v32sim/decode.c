@@ -796,7 +796,15 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case IDIV:
-            DSTREG         /= (immflag == TRUE)  ? immediate  : SRCREG;
+            value           = (immflag == TRUE)  ? immediate  : SRCREG;
+            if (value      != 0)
+            {
+                DSTREG      = DSTREG / value;
+            }
+            else
+            {
+                sys_error   = ERROR_DIVISION;
+            }
             break;
 
         case IMOD:

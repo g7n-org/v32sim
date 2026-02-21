@@ -7,6 +7,7 @@
 FILE     *display;
 FILE     *devnull;
 FILE     *program;
+FILE     *verbose;
 uint8_t  *data;
 uint8_t  *destination;
 uint8_t  *source;
@@ -20,7 +21,7 @@ word_t   *reg;
 //
 data_t  **ioports;
 mem_t    *memory;
-uint8_t   sys_error;
+int8_t    sys_error;
 uint8_t   sys_force;
 uint8_t   sys_reg_show;
 
@@ -34,6 +35,7 @@ uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
 uint32_t  rom_offset;
+uint32_t  seek_word;
 
 int32_t    main (int32_t  argc, uint8_t **argv)
 {
@@ -66,12 +68,14 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     biosfile                           = NULL;
     cartfile                           = NULL;
-    rom_offset                         = 0x10000004;
+    rom_offset                         = BIOS_START_OFFSET;
     branchflag                         = FALSE;
     runflag                            = FALSE;
+    seek_word                          = 0xFFFFFFFF;
     wordsize                           = 4;
     haltflag                           = FALSE;
     waitflag                           = FALSE;
+    sys_error                          = ERROR_NONE;
     sys_reg_show                       = FALSE;
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -82,12 +86,22 @@ int32_t    main (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // Open /dev/null
+    //
+    devnull                            = fopen ("/dev/null", "w");
+    if (verbose                       == NULL)
+    {
+        verbose                        = devnull;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // Open the indicated V32 file
     //
     if (cartfile                      == NULL)
     {
         fprintf (stderr, "[ERROR] Must specify Vircon32 cartridge file!\n");
-        exit (1);
+        exit (NO_CART_ERROR);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -105,12 +119,6 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         }
         strcpy (biosfile, BIOS_DEFAULT_PATH);
     }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Open /dev/null
-    //
-    devnull                            = fopen ("/dev/null", "w");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -202,6 +210,15 @@ int32_t    main (int32_t  argc, uint8_t **argv)
            (*(input+0)                != 'q') &&
            (haltflag                  == FALSE))
     {
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Check for delayed break to single-step via seek_word (argument)
+        //
+        if (rom_offset                == seek_word)
+        {
+            runflag                    = FALSE;
+        }
+
         IP_REG                         = rom_offset;
         word                           = word2int (memory_get (IP_REG));
         IR_REG                         = word;        // current instruction
@@ -436,13 +453,41 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             while (processflag            == FALSE);
         }
 
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // process the current instruction
+        //
         decode (word, immediate, fimmediate, decodeflags | FLAG_PROCESS);
 
-        /*
-        IP_REG                             = rom_offset;  // location
-        IR_REG                             = word;        // current instruction
-        IV_REG                             = immediate;   // immediate value
-        */
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // check for and react to system error
+        //
+        if (sys_error                     != ERROR_NONE)
+        {
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Per Vircon32  specifications, when a system  error occurs,
+            // the  system  error   value,  InstructionPointer  (IP_REG),
+            // InstructionRegister (IR_REG),  and ImmediateValue (IV_REG)
+            // are stored in R0, R1, R2,  and R3 respectively, the SP and
+            // BP registers wiped, and flow  redirected to the BIOS error
+            // handler at 0x10000000.
+            //
+            // To check: does  the cycle counter of  the instruction that
+            // the error occurred on get incremented?
+            //
+            (reg+R0) -> i32                = sys_error;
+            (reg+R1) -> i32                = IP_REG;
+            (reg+R2) -> i32                = IR_REG;
+            (reg+R3) -> i32                = IV_REG;
+
+            SP_REG                         = 0x00000000;
+            BP_REG                         = 0x00000000;
+
+            IP_REG                         = BIOS_ERROR_OFFSET;
+            continue; // kick to next iteration
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         //

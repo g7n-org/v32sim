@@ -38,11 +38,12 @@ typedef struct memory_type mem_t;
 extern FILE     *display;
 extern FILE     *devnull;
 extern FILE     *program;
+extern FILE     *verbose;
 extern uint8_t  *destination;
 extern uint8_t  *source;
-extern uint8_t   sys_error;
 extern int8_t   *biosfile;
 extern int8_t   *cartfile;
+extern int8_t    sys_error;
 extern mem_t    *memory;
 extern word_t   *reg;
 
@@ -61,6 +62,7 @@ extern uint8_t   haltflag;
 extern uint8_t   waitflag;
 extern uint8_t   wordsize;
 extern uint32_t  rom_offset;
+extern uint32_t  seek_word;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
