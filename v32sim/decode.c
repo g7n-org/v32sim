@@ -359,9 +359,24 @@ void  decode_display (uint32_t  instruction,
             fprintf (display,      "%-5s %-16s %-16s", "OUT", destination, source);
             break;
 
+        case CIF:
+            sprintf (destination, "R%u",     dst);
+            fprintf (display,      "%-5s %-16s", "CIF", destination);
+            break;
+
+        case CFI:
+            sprintf (destination, "R%u",     dst);
+            fprintf (display,      "%-5s %-16s", "CFI", destination);
+            break;
+
         case CIB:
             sprintf (destination, "R%u",     dst);
             fprintf (display,      "%-5s %-16s", "CIB", destination);
+            break;
+
+        case CFB:
+            sprintf (destination, "R%u",     dst);
+            fprintf (display,      "%-5s %-16s", "CFB", destination);
             break;
 
         case NOT:
@@ -747,8 +762,20 @@ void  decode_process (uint32_t  instruction,
             ioports_set (port, value);
             break;
 
+        case CIF:
+            FDSTREG         = (float) DSTREG;
+            break;
+
+        case CFI:
+            DSTREG          = (int32_t) FDSTREG;
+            break;
+
         case CIB:
             DSTREG          = (DSTREG  != FALSE) ? TRUE       : FALSE;
+            break;
+
+        case CFB:
+            DSTREG          = (FDSTREG != 0.0)   ? TRUE       : FALSE;
             break;
 
         case NOT:

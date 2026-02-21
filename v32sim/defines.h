@@ -166,7 +166,10 @@
 #define  POP                    0x16
 #define  IN                     0x17
 #define  OUT                    0x18
+#define  CIF                    0x1C
+#define  CFI                    0x1D
 #define  CIB                    0x1E
+#define  CFB                    0x1F
 #define  NOT                    0x20
 #define  AND                    0x21
 #define  OR                     0x22
