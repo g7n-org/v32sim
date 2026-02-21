@@ -99,6 +99,7 @@ void       displayshow    (display_l *, uint8_t);
 void       show_sysregs   (void);
 void       process_args   (int32_t,     int8_t **);
 void       usage          (int8_t *);
+uint32_t   tokenize_asm   (uint8_t *);
 uint8_t    tokenize_input (uint8_t *);
 uint8_t   *get_input      (FILE *,      const uint8_t *);
 

@@ -311,6 +311,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                     free (input);
                 }
                 input                  = get_input (stdin, "v32sim> ");
+                tokenize_asm   (input);
                 tokenize_input (input);
                 /*
                 fprintf (stdout, "v32sim> ");
