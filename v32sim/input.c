@@ -354,6 +354,10 @@ uint32_t  tokenize_asm (uint8_t *string)
     regex_t     regex;
     regmatch_t  match[4];
     uint8_t    *pattern          = "^ *([a-zA-Z][a-zA-Z2]{1,4}) +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *, +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *$";
+    //uint8_t   **pattern         = NULL;
+    //uint8_t    *form0           = "^ *(HLT|WAIT|RET|MOVS|SETS) *$";   // 0 operand
+    //uint8_t    *form0           = "^ *([rR][0-9]|[rR]1[0-5]) *$";   // 1 operand
+    //uint8_t    *form0           = "^ *([rR][0-9]|[rR]1[0-5]) *$";   // 2 operand
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -446,9 +450,6 @@ uint32_t  tokenize_asm (uint8_t *string)
         //
         sprintf (destination, "%.*s", (int) (match[2].rm_eo - match[2].rm_so),
                                       (string + match[2].rm_so));
-		sprintf (source,      "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
-        sprintf (source,      "%.*s", (int) (match[3].rm_eo - match[3].rm_so),
-                                      (string + match[3].rm_so));
         switch (opcode)
         {
             case HLT:
@@ -482,11 +483,14 @@ uint32_t  tokenize_asm (uint8_t *string)
                 }
                 else
                 {
-					fprintf (verbose, "dstreg: %u\n", dstreg);
+                    fprintf (verbose, "dstreg: R%u\n", dstreg);
                     dderef       = ((dstreg & 0x80)  >  0) ? TRUE : FALSE;
                     dstreg       = dstreg & 0x1F;
                     //sysflag      = ((dstreg >  0x0F) >  0) ? TRUE : FALSE;
                 }
+
+                sprintf (source,      "%.*s", (int) (match[3].rm_eo - match[3].rm_so),
+                                              (string + match[3].rm_so));
 
                 srcreg           = parse_reg (source);
                 if (srcreg      == 0xFF) // was not a valid register, try immediate
@@ -497,7 +501,7 @@ uint32_t  tokenize_asm (uint8_t *string)
                 }
                 else
                 {
-					fprintf (verbose, "srcreg: %u\n", srcreg);
+                    fprintf (verbose, "srcreg: R%u\n", srcreg);
                     sderef       = ((srcreg & 0x80)  >  0) ? TRUE : FALSE;
                     srcreg       = srcreg & 0x1F;
                     /*
@@ -507,7 +511,6 @@ uint32_t  tokenize_asm (uint8_t *string)
                     }
                     */
                 }
-		exit(0);
 
                 if ((dstreg     != 0xFF)   && // MOV DSTREG, Immediate
                     (srcreg     == 0xFF)   &&
