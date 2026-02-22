@@ -18,7 +18,7 @@ uint64_t   parse_imm (uint8_t *token)
     regmatch_t  match[2];
     uint8_t   **pattern      = NULL;
     uint8_t    *form0        = "^ *(0x[0-9a-fA-F]{1,8}) *$";             // hex
-    uint8_t    *form1        = "^ *s[[] *(0x[0-9a-fA-F]{1,8}) *[]] *$";  // hex ptr
+    uint8_t    *form1        = "^ *[[] *(0x[0-9a-fA-F]{1,8}) *[]] *$";   // hex ptr
     uint8_t    *form2        = "^ *([0-9a-fA-F]{1,8}[hH]) *$";           // hex
     uint8_t    *form3        = "^ *[[] *([0-9a-fA-F]{1,8}[hH]) *[]] *$"; // hex ptr
     uint8_t    *form4        = "^ *(0b[01]{1,32}) *$";                   // bin
@@ -27,6 +27,8 @@ uint64_t   parse_imm (uint8_t *token)
     uint8_t    *form7        = "^ *[[] *(0[0-7]{1,10}) *[]] *$";         // oct ptr
     uint8_t    *form8        = "^ *([0-9]|[1-9][0-9]*) *$";              // dec
     uint8_t    *form9        = "^ *[[] *([0-9]|[1-9][0-9]*) *[]] *$";    // dec ptr
+
+    fprintf (verbose, "[parse_imm] passed token: '%s'\n", token);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -78,27 +80,32 @@ uint64_t   parse_imm (uint8_t *token)
             if (index       <= 1) // hex
             {
                 result       = strtol (token, NULL, 16);
+                fprintf (verbose, "[parse_imm] imm type: hex (0x%.8X)\n", result);
             }
             else if ((index >= 2) && // hex
                      (index <= 3))
             {
                 //trim the suffixing H/h
                 result       = strtol (token, NULL, 16);
+                fprintf (verbose, "[parse_imm] imm type: hex (%.8XH)\n",  result);
             }
             else if ((index >= 4) &&
                      (index <= 5))   // bin
             {
                 //trim the prefixing 0b
                 result       = strtol (token, NULL, 2);
+                fprintf (verbose, "[parse_imm] imm type: binary\n",       result);
             }
             else if ((index >= 6) &&
                      (index <= 7))   // oct
             {
                 result       = strtol (token, NULL, 8);
+                fprintf (verbose, "[parse_imm] imm type: octal (0%o)\n",  result);
             }
             else
             {
                 result       = strtol (token, NULL, 10);
+                fprintf (verbose, "[parse_imm] imm type: decimal (%u)\n", result);
             }
 
             ////////////////////////////////////////////////////////////////////////////
@@ -109,6 +116,7 @@ uint64_t   parse_imm (uint8_t *token)
             if ((index % 1) == 1)
             {
                 result       = result | 0x8000000000000000;
+                fprintf (verbose, "[parse_imm] form: indirect\n",         result);
             }
 
             regfree (&regex);
@@ -121,7 +129,7 @@ uint64_t   parse_imm (uint8_t *token)
         //
         else
         {
-            fprintf (stderr, "[ERROR] RegEx execution failed\n");
+            fprintf (stderr, "[parse_imm] ERROR: RegEx execution failed\n");
             exit    (REGEX_EXECUTE_ERROR);
         }
 
@@ -134,92 +142,136 @@ uint64_t   parse_imm (uint8_t *token)
     return  (result);
 }
 
-uint8_t   parse_reg (uint8_t *string)
+uint8_t   parse_reg (uint8_t *token)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // declare and initialize variables
     //
     int32_t     check           = 0;
+    int32_t     index           = 0;
     int32_t     value           = 0;
     uint8_t     byte            = 0;
     uint8_t     result          = 0xFF;
     regex_t     regex;
     regmatch_t  match[2];
-    uint8_t    *pattern         = "^ *([rR][0-9]|[rR]1[0-5]|[sS][pP]|[bB][pP]|[cC][rR]|[sS][rR]|[dD][rR]|[iI][pP]|[iI][rR]|[iI][vV]) *$";
+    uint8_t   **pattern         = NULL;
+    uint8_t    *form0           = "^ *([rR][0-9]|[rR]1[0-5]) *$";   // reg
+    uint8_t    *form1           = "^ *[[] *([rR][0-9]|[rR]1[0-5]) *[]] *$"; // reg ptr
+    uint8_t    *form2           = "^ *([sSbB][pP]) *$";             // stack alias
+    uint8_t    *form3           = "^ *[[] ([sSbB][pP]) *[]] *$";    // stack alias ptr
+    uint8_t    *form4           = "^ *([cCsSdD][rR]) *$";           // str alias
+    uint8_t    *form5           = "^ *[[] *([cCsSdD][rR]) *[]] *$"; // str alias ptr
+    uint8_t    *form6           = "^ *([iI][pPrRvV]) *$";           // sys reg
+    uint8_t    *form7           = "^ *[[] *([iI][pPrRvV]) *[]] *$"; // sys reg ptr
+
+    fprintf (verbose, "[parse_reg] passed token: '%s'\n", token);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // RegEx compilation: compile pattern into our regex for processing
+    // allocate and populate pattern array
     //
-    check                       = regcomp (&regex, pattern, REG_EXTENDED);
-    if (check                  != 0)
-    {
-        fprintf (stderr, "[ERROR] RegEx compilation failed\n");
-        exit    (REGEX_COMPILE_ERROR);
-    }
+    pattern                     = (uint8_t **) malloc (sizeof (uint8_t *) * 8);
+    *(pattern+0)                = form0;
+    *(pattern+1)                = form1;
+    *(pattern+2)                = form2;
+    *(pattern+3)                = form3;
+    *(pattern+4)                = form4;
+    *(pattern+5)                = form5;
+    *(pattern+6)                = form6;
+    *(pattern+7)                = form7;
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // RegEx execution: make sure input conforms to provided pattern
-    //
-    check                       = regexec (&regex, string, 2, match, 0);
-    if (check                  == REG_NOMATCH)
+    for (index                  = 0;
+         index                 <  8;
+         index                  = index + 1)
     {
-        fprintf (stderr, "ERROR: invalid register\n");
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // RegEx execution success! Display the results
-    //
-    else if (check             == 0)
-    {
-        byte                    = (string + match[1].rm_so);
-        switch (byte)
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx compilation: compile pattern into our regex for processing
+        //
+        check                   = regcomp (&regex, *(pattern+index), REG_EXTENDED);
+        if (check              != 0)
         {
-            case 'r':
-            case 'R':
-                value           = atoi ((string + match[1].rm_so + 1));
+            fprintf (stderr, "[ERROR] RegEx compilation failed\n");
+            exit    (REGEX_COMPILE_ERROR);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution: make sure input conforms to provided pattern
+        //
+        check                   = regexec (&regex, token, 2, match, 0);
+        if (check              == REG_NOMATCH)
+        {
+            fprintf (stderr, "ERROR: invalid register\n");
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution success! Display the results
+        //
+        else if (check         == 0)
+        {
+            sprintf (source, "%.*s", (int) (match[1].rm_eo - match[1].rm_so),
+                                     (token + match[1].rm_so));
+
+            if (index          <= 1) // regular register
+            {
+                value           = atoi ((source+1));
                 result          = value & 0x000000FF;
-                fprintf (stdout, "[parse_reg] result: %u\n", result);
-                break;
-
-            case 'b':
-            case 'B':
-                result          = BP; // BP (R14)
-                break;
-
-            case 'c':
-            case 'C':
-                result          = CR; // CR (R11)
-                break;
-
-            case 'd':
-            case 'D':
-                result          = DR; // DR (R13)
-                break;
-
-            case 's':
-            case 'S':
-                byte            = *(string + match[1].rm_so + 2);
+                fprintf (verbose, "[parse_reg] identified: R%u\n", result);
+            }
+            else if ((index    >= 2) && // stack register
+                     (index    <= 3))
+            {
+                byte            = *(source);
                 switch (byte)
                 {
-                    case 'p':
-                    case 'P':
+                    case 'b':
+                    case 'B':
+                        result  = BP; // BP (R14)
+                        break;
+
+                    case 's':
+                    case 'S':
                         result  = SP; // SP (R15)
                         break;
 
-                    case 'r':
-                    case 'R':
-                        result  = SR; // SR (R12)
+                    default:
+                        fprintf (verbose, "[parse_reg] impossible situation\n");
                         break;
                 }
-                break;
+            }
+            else if ((index    >= 4) && // string register
+                     (index    <= 5))
+            {
+                byte            = *(source);
+                switch (byte)
+                {
+                    case 'c':
+                    case 'C':
+                        result  = CR; // CR (R11)
+                        break;
 
-            case 'i':
-            case 'I':
-                byte            = *(string + match[1].rm_so + 2);
+                    case 's':
+                    case 'S':
+                        result  = SR; // SR (R12)
+                        break;
+
+                    case 'd':
+                    case 'D':
+                        result  = DR; // DR (R13)
+                        break;
+
+                    default:
+                        fprintf (verbose, "[parse_reg] impossible situation\n");
+                        break;
+                }
+            }
+            else if ((index    >= 6) && // system register
+                     (index    <= 7))
+            {
+                byte            = *(source+1);
                 switch (byte)
                 {
                     case 'p':
@@ -236,24 +288,45 @@ uint8_t   parse_reg (uint8_t *string)
                     case 'V':
                         result  = IV; // ImmediateValue
                         break;
+
+                    default:
+                        fprintf (verbose, "[parse_reg] impossible situation\n");
+                        break;
                 }
-                break;
+            }
+            else
+            {
+                fprintf (verbose, "[parse_reg] impossible situation\n");
+            }
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // for odd values of index, we have a dereference case; set the MSB
+            // of result high.
+            //
+            if ((index % 1) == 1)
+            {
+                result       = result | 0x80;
+            }
+
+            regfree (&regex);
+            break;
         }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution error: bail out
+        //
+        else
+        {
+            fprintf (stderr, "[parse_reg] ERROR: RegEx execution failed\n");
+            exit    (REGEX_EXECUTE_ERROR);
+        }
+
+        regfree (&regex);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // RegEx execution error: bail out
-    //
-    else
-    {
-        fprintf (stderr, "[ERROR] RegEx execution failed\n");
-        exit    (REGEX_EXECUTE_ERROR);
-    }
-
-    regfree (&regex);
-
-    fprintf (verbose, "[parse_reg] result: %hhu (%.2hhX)\n", result, result);
+    fprintf (verbose, "[parse_reg] register numberic ID: %hhu\n", result);
 
     return (result);
 }
@@ -268,12 +341,16 @@ uint32_t  tokenize_asm (uint8_t *string)
     int32_t     index            = 0;
     uint64_t    result           = 0x0000000000000000;
     uint32_t    instruction      = 0x00000000;
-    uint8_t     opcode           = 0;
-    uint8_t     immflag          = 0;
-    uint8_t     dstreg           = 0;
-    uint8_t     srcreg           = 0;
-    uint8_t     addr             = 0;
-    uint16_t    port             = 0;
+    uint8_t     opcode           = 0x00;
+    uint8_t     immflag          = 0x00;
+    uint8_t     dstreg           = 0x00;
+    uint8_t     srcreg           = 0x00;
+    uint8_t     addr             = 0x00;
+    uint16_t    port             = 0x0000;
+    uint8_t     dderef           = FALSE;
+    uint8_t     sderef           = FALSE;
+    uint8_t     dindex           = FALSE;
+    uint8_t     sindex           = FALSE;
     regex_t     regex;
     regmatch_t  match[4];
     uint8_t    *pattern          = "^ *([a-zA-Z][a-zA-Z2]{1,4}) +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *, +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *$";
@@ -309,7 +386,7 @@ uint32_t  tokenize_asm (uint8_t *string)
     check                        = regcomp (&regex, pattern, REG_EXTENDED);
     if (check                   != 0)
     {
-        fprintf (stderr, "[ERROR] RegEx compilation failed\n");
+        fprintf (stderr, "[tokenize_asm] ERROR: RegEx compilation failed\n");
         exit    (REGEX_COMPILE_ERROR);
     }
 
@@ -320,7 +397,7 @@ uint32_t  tokenize_asm (uint8_t *string)
     check                        = regexec (&regex, string, 4, match, 0);
     if (check                   == REG_NOMATCH)
     {
-        fprintf (stderr, "ERROR: malformed input on ASM\n");
+        fprintf (stderr, "[tokenize_asm] ERROR: malformed input on ASM\n");
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -333,7 +410,7 @@ uint32_t  tokenize_asm (uint8_t *string)
              index              <  4;
              index               = index + 1)
         {
-            fprintf (stdout, "match[%d]: %.*s (%lld - %lld)\n",
+            fprintf (verbose, "[tokenize_asm] match[%d]: %.*s (%lld - %lld)\n",
                              index,
                              (int) (match[index].rm_eo - match[index].rm_so),
                              (string + match[index].rm_so),
@@ -346,55 +423,184 @@ uint32_t  tokenize_asm (uint8_t *string)
         // determine the opcode
         //
         result                   = 0x0000000000000000;
+        sprintf (source, "%.*s", (int) (match[1].rm_eo-match[1].rm_so),
+                                 (string + match[1].rm_so));
         for (index               = 0;
              index              <  64;
              index               = index + 1)
         {
-            check                = strcmp ((string+match[2].rm_so), lookup[index].name);
-			fprintf (stdout, "[check: %u] token: '%s', opcode: '%s'\n", check, (string+match[2].rm_so), lookup[index].name);
+            check                = strcasecmp (source, lookup[index].name);
+            fprintf (verbose, "[tokenize_asm] check: %d, token: '%s', opcode: '%s'\n",
+                              check, source, lookup[index].name);
             if (check           == 0)
             {
                 opcode           = index;
                 break;
             }
         }
-		fprintf (stdout, "opcode is: 0x%.2hhX\n", opcode);
+        fprintf (verbose, "[tokenize_asm] opcode identified as: 0x%.2hhX\n", opcode);
 
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // parse the instruction tokens
+        // parse the instruction tokens: process the operands
         //
+        sprintf (destination, "%.*s", (int) (match[2].rm_eo - match[2].rm_so),
+                                      (string + match[2].rm_so));
+		sprintf (source,      "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
+        sprintf (source,      "%.*s", (int) (match[3].rm_eo - match[3].rm_so),
+                                      (string + match[3].rm_so));
         switch (opcode)
         {
             case HLT:
             case WAIT:
             case RET:
-                instruction      = opcode << 26;
                 break;
 
             case CALL:
             case JMP:
-                dstreg           = parse_reg ((string + match[2].rm_so));
+                dstreg           = parse_reg (destination);
                 if (dstreg      == 0xFF) // was not a valid register, try immediate
                 {
-                    result       = parse_imm ((string + match[2].rm_so));
+                    result       = parse_imm (destination);
                     immflag      = 1;
+                }
+                else
+                {
+                    dderef       = ((dstreg & 0x80) >  0)  ? TRUE : FALSE;
+                    dstreg       = dstreg & 0x1F;
+                    //sysflag      = ((dstreg >  0x0F) >  0) ? TRUE : FALSE;
                 }
                 break;
 
-			case MOV:
-				fprintf (stdout, "[MOV]\n");
-                dstreg           = parse_reg ((string + match[2].rm_so));
+            case MOV:
+                dstreg           = parse_reg (destination);
                 if (dstreg      == 0xFF) // was not a valid register, try immediate
                 {
-                    result       = parse_imm ((string + match[2].rm_so));
-                    immflag      = 1;
+                    result       = parse_imm (destination);
+                    dderef       = ((dstreg & 0x8000000000000000) >  0) ? TRUE : FALSE;
+                    result       = result & 0x00000000FFFFFFFF;
                 }
+                else
+                {
+					fprintf (verbose, "dstreg: %u\n", dstreg);
+                    dderef       = ((dstreg & 0x80)  >  0) ? TRUE : FALSE;
+                    dstreg       = dstreg & 0x1F;
+                    //sysflag      = ((dstreg >  0x0F) >  0) ? TRUE : FALSE;
+                }
+
+                srcreg           = parse_reg (source);
+                if (srcreg      == 0xFF) // was not a valid register, try immediate
+                {
+                    result       = parse_imm (source);
+                    sderef       = ((srcreg & 0x8000000000000000) >  0) ? TRUE : FALSE;
+                    result       = result & 0x00000000FFFFFFFF;
+                }
+                else
+                {
+					fprintf (verbose, "srcreg: %u\n", srcreg);
+                    sderef       = ((srcreg & 0x80)  >  0) ? TRUE : FALSE;
+                    srcreg       = srcreg & 0x1F;
+                    /*
+                    if (sysflag == FALSE)
+                    {
+                        sysflag  = ((srcreg >  0x0F) >  0) ? TRUE : FALSE;
+                    }
+                    */
+                }
+		exit(0);
+
+                if ((dstreg     != 0xFF)   && // MOV DSTREG, Immediate
+                    (srcreg     == 0xFF)   &&
+                    (dderef     == FALSE)  &&
+                    (sderef     == FALSE)  &&
+                    (dindex     == FALSE)  &&
+                    (sindex     == FALSE))
+                {
+                    addr        == 0x0;
+                }
+                
+                if ((dstreg     != 0xFF)   && // MOV DSTREG, SRCREG
+                    (srcreg     != 0xFF)   &&
+                    (dderef     == FALSE)  &&
+                    (sderef     == FALSE)  &&
+                    (dindex     == FALSE)  &&
+                    (sindex     == FALSE))
+                {
+                    addr        == 0x1;
+                }
+
+                if ((dstreg     != 0xFF)   && // MOV DSTREG, [Immediate]
+                    (srcreg     == 0xFF)   &&
+                    (dderef     == FALSE)  &&
+                    (sderef     == TRUE)   &&
+                    (dindex     == FALSE)  &&
+                    (sindex     == FALSE))
+                {
+                    addr        == 0x2;
+                }
+                
+                if ((dstreg     != 0xFF)   && // MOV DSTREG, [SRCREG]
+                    (srcreg     != 0xFF)   &&
+                    (dderef     == FALSE)  &&
+                    (sderef     == TRUE)   &&
+                    (dindex     == FALSE)  &&
+                    (sindex     == FALSE))
+                {
+                    addr        == 0x3;
+                }
+                
+                if ((dstreg     != 0xFF)   && // MOV DSTREG, [SRCREG+Immediate]
+                    (srcreg     != 0xFF)   &&
+                    (dderef     == FALSE)  &&
+                    (sderef     == TRUE)   &&
+                    (dindex     == FALSE)  &&
+                    (sindex     == TRUE))
+                {
+                    addr        == 0x4;
+                }
+                
+                if ((dstreg     == 0xFF)   && // MOV [Immediate], SRCREG
+                    (srcreg     != 0xFF)   &&
+                    (dderef     == TRUE)   &&
+                    (sderef     == FALSE)  &&
+                    (dindex     == FALSE)  &&
+                    (sindex     == FALSE))
+                {
+                    addr        == 0x5;
+                }
+                
+                if ((dstreg     != 0xFF)   && // MOV [DSTREG], SRCREG
+                    (srcreg     != 0xFF)   &&
+                    (dderef     == TRUE)   &&
+                    (sderef     == FALSE)  &&
+                    (dindex     == FALSE)  &&
+                    (sindex     == FALSE))
+                {
+                    addr        == 0x6;
+                }
+
+                if ((dstreg     != 0xFF)   && // MOV [DSTREG+Immediate], SRCREG
+                    (srcreg     != 0xFF)   &&
+                    (dderef     == TRUE)   &&
+                    (sderef     == FALSE)  &&
+                    (dindex     == TRUE)   &&
+                    (sindex     == FALSE))
+                {
+                    addr        == 0x7;
+                }
+
+                // possibility: use bits 13 and 12 of port field to record
+                // system register bits (none, 1=IP, 2=IR, 3=IV)
+                port             = 0x0000;
                 break;
         }
-        instruction              = (opcode  << 26);
-        instruction             |= (immflag << 25);
-        instruction             |= (dstreg  << 21);
+
+        instruction              = (opcode  << OPCODESHIFT);
+        instruction             |= (immflag << IMMED_SHIFT);
+        instruction             |= (dstreg  << DSTREGSHIFT);
+        instruction             |= (srcreg  << SRCREGSHIFT);
+        instruction             |= (addr    << MOVADRSHIFT);
+        instruction             |= port;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

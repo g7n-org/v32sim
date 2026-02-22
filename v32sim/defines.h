@@ -91,6 +91,7 @@
 #define  MOVADR_MASK            0x0001C000
 #define  IOPORT_MASK            0x00003FFF
 #define  OPCODESHIFT            26
+#define  IMMED_SHIFT            25
 #define  DSTREGSHIFT            21
 #define  SRCREGSHIFT            17
 #define  MOVADRSHIFT            14
