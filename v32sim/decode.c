@@ -42,6 +42,7 @@ void  decode_display (uint32_t  instruction,
     //
     // Declare and initialize variables
     //
+    int8_t    sign                 = '+';
     uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
     uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
     uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
@@ -188,7 +189,9 @@ void  decode_display (uint32_t  instruction,
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
                     sprintf (destination, "R%u,",          dst);
-                    sprintf (source,      "[R%u+0x%.8X]",  src, immediate);
+                   // sprintf (source,      "[R%u+0x%.8X]",  src, immediate);
+                    sign  = (immediate >= 0) ? '+' : '-';
+                    sprintf (source,      "[R%u%c%d]",  src, sign, abs (immediate));
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
@@ -202,7 +205,8 @@ void  decode_display (uint32_t  instruction,
                     break;
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
-                    sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
+                    //sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
+                    sprintf (destination, "[R%u%c%d],", dst, sign, abs (immediate));
                     sprintf (source,      "R%u",           src);
                     break;
             }

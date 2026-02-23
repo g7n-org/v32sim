@@ -170,21 +170,21 @@ void    load_memory (uint32_t  page, int8_t *filename)
     //
     // Declare and initialize variables
     //
-    FILE     *fptr    = NULL;
-    uint32_t  offset  = 0x00000000;
+    FILE     *fptr     = NULL;
+    uint32_t  offset   = 0x00000000;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Adjust offset to be at the start of the indicated page
     //
-    offset            = offset | (page << 28);
+    offset             = offset | (page << 28);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Open indicated filename for reading
     //
-    fptr              = fopen (filename, "rb");
-    if (fptr         == NULL)
+    fptr               = fopen (filename, "rb");
+    if (fptr          == NULL)
     {
         fprintf (stderr, "[ERROR] Could not open '%s' for reading\n", filename);
         exit    (FILE_OPEN_ERROR);
@@ -196,9 +196,19 @@ void    load_memory (uint32_t  page, int8_t *filename)
     //
     switch (page)
     {
-        case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (both BIOS and CART)
         case V32_PAGE_CART:
-            fseek (fptr, (35 * wordsize), SEEK_CUR);
+            fseek (fptr, (22 * wordsize), SEEK_SET);
+			sys_force  = TRUE;
+			ioports_set (CAR_NumberOfTextures, get_word (fptr));
+			sys_force  = TRUE;
+			ioports_set (CAR_NumberOfSounds,   get_word (fptr));
+			get_word (fptr);
+			sys_force  = TRUE;
+			ioports_set (CAR_ProgramROMSize,   get_word (fptr));
+			sys_force  = TRUE;
+			ioports_set (CAR_Connected,        TRUE);
+        case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (both BIOS and CART)
+            fseek (fptr, (35 * wordsize), SEEK_SET);
             break;
 
         case V32_PAGE_MEMC: // we need to skip ahead to word ?? (check for value on MEMC)
@@ -212,11 +222,11 @@ void    load_memory (uint32_t  page, int8_t *filename)
     //
     while (!feof (fptr))
     {
-        sys_force     = TRUE;
+        sys_force      = TRUE;
         memory_set (offset, get_word (fptr));
         if (!feof (fptr))
         {
-            offset    = offset + 1;
+            offset     = offset + 1;
         }
     }
 

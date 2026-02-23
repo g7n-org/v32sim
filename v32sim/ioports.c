@@ -256,6 +256,43 @@ void  init_ioports  (void)
                 break;
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // CAR ports: allocate and initialize
+    //
+    len                               = sizeof (data_t)   * NUM_CAR_PORTS;
+    *(ioports+CAR_PORT)               = (data_t *) malloc (len);
+    pptr                              = *(ioports+CAR_PORT);
+
+    for (index                        = 0;
+         index                       <  NUM_CAR_PORTS;
+         index                        = index + 1)
+    {
+        (pptr+index) -> value.i32     = 0x00000000;
+        (pptr+index) -> flag          = FLAG_READ;
+        (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                          = (pptr+index) -> name;
+
+        switch (CAR_Connected | index)
+        {
+            case CAR_Connected:
+                sprintf (nptr, "CAR_Connected");
+                break;
+
+            case CAR_ProgramROMSize:
+                sprintf (nptr, "CAR_ProgramROMSize");
+                break;
+
+            case CAR_NumberOfTextures:
+                sprintf (nptr, "CAR_NumberOfTextures");
+                break;
+
+            case CAR_NumberOfSounds:
+                sprintf (nptr, "CAR_NumberOfSounds");
+                break;
+        }
+    }
 }
 
 int32_t  ioports_get  (uint16_t  portaddr)

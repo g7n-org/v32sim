@@ -17,16 +17,16 @@ uint64_t   parse_imm (uint8_t *token)
     regex_t     regex;
     regmatch_t  match[2];
     uint8_t   **pattern      = NULL;
-    uint8_t    *form0        = "^ *(0x[0-9a-fA-F]{1,8}) *$";             // hex
-    uint8_t    *form1        = "^ *[[] *(0x[0-9a-fA-F]{1,8}) *[]] *$";   // hex ptr
-    uint8_t    *form2        = "^ *([0-9a-fA-F]{1,8}[hH]) *$";           // hex
-    uint8_t    *form3        = "^ *[[] *([0-9a-fA-F]{1,8}[hH]) *[]] *$"; // hex ptr
-    uint8_t    *form4        = "^ *(0b[01]{1,32}) *$";                   // bin
-    uint8_t    *form5        = "^ *[[] *(0b[01]{1,32}) *[]] *$";         // bin ptr
-    uint8_t    *form6        = "^ *(0[0-7]{1,10}) *$";                   // oct
-    uint8_t    *form7        = "^ *[[] *(0[0-7]{1,10}) *[]] *$";         // oct ptr
-    uint8_t    *form8        = "^ *([0-9]|[1-9][0-9]*) *$";              // dec
-    uint8_t    *form9        = "^ *[[] *([0-9]|[1-9][0-9]*) *[]] *$";    // dec ptr
+    uint8_t    *form0        = "^ *(0x[0-9A-F]{1,8}) *$";             // hex
+    uint8_t    *form1        = "^ *[[] *(0x[0-9A-F]{1,8}) *[]] *$";   // hex ptr
+    uint8_t    *form2        = "^ *([0-9A-F]{1,8}[hH]) *$";           // hex
+    uint8_t    *form3        = "^ *[[] *([0-9A-F]{1,8}[hH]) *[]] *$"; // hex ptr
+    uint8_t    *form4        = "^ *(0b[01]{1,32}) *$";                // bin
+    uint8_t    *form5        = "^ *[[] *(0b[01]{1,32}) *[]] *$";      // bin ptr
+    uint8_t    *form6        = "^ *(0[0-7]{1,10}) *$";                // oct
+    uint8_t    *form7        = "^ *[[] *(0[0-7]{1,10}) *[]] *$";      // oct ptr
+    uint8_t    *form8        = "^ *([0-9]|[1-9][0-9]*) *$";           // dec
+    uint8_t    *form9        = "^ *[[] *([0-9]|[1-9][0-9]*) *[]] *$"; // dec ptr
 
     fprintf (verbose, "[parse_imm] passed token: '%s'\n", token);
 
@@ -54,7 +54,9 @@ uint64_t   parse_imm (uint8_t *token)
         //
         // RegEx compilation: compile current pattern into our regex for processing
         //
-        check                = regcomp (&regex, *(pattern+index), REG_EXTENDED);
+        check                = regcomp (&regex,
+                                        *(pattern+index),
+                                        REG_EXTENDED | REG_ICASE);
         if (check           != 0)
         {
             fprintf (stderr, "[ERROR] RegEx compilation failed\n");
@@ -156,14 +158,14 @@ uint8_t   parse_reg (uint8_t *token)
     regex_t     regex;
     regmatch_t  match[2];
     uint8_t   **pattern         = NULL;
-    uint8_t    *form0           = "^ *([rR][0-9]|[rR]1[0-5]) *$";   // reg
-    uint8_t    *form1           = "^ *[[] *([rR][0-9]|[rR]1[0-5]) *[]] *$"; // reg ptr
-    uint8_t    *form2           = "^ *([sSbB][pP]) *$";             // stack alias
-    uint8_t    *form3           = "^ *[[] ([sSbB][pP]) *[]] *$";    // stack alias ptr
-    uint8_t    *form4           = "^ *([cCsSdD][rR]) *$";           // str alias
-    uint8_t    *form5           = "^ *[[] *([cCsSdD][rR]) *[]] *$"; // str alias ptr
-    uint8_t    *form6           = "^ *([iI][pPrRvV]) *$";           // sys reg
-    uint8_t    *form7           = "^ *[[] *([iI][pPrRvV]) *[]] *$"; // sys reg ptr
+    uint8_t    *form0           = "^ *(R[0-9]|R1[0-5]) *$";           // reg
+    uint8_t    *form1           = "^ *[[] *(R[0-9]|R1[0-5]) *[]] *$"; // reg ptr
+    uint8_t    *form2           = "^ *([SB]P) *$";                    // stack alias
+    uint8_t    *form3           = "^ *[[] ([SB]P) *[]] *$";           // stack alias ptr
+    uint8_t    *form4           = "^ *([CSD]R) *$";                   // str alias
+    uint8_t    *form5           = "^ *[[] *([CSD]R) *[]] *$";         // str alias ptr
+    uint8_t    *form6           = "^ *(I[PRV]) *$";                   // sys reg
+    uint8_t    *form7           = "^ *[[] *(I[PRV]) *[]] *$";         // sys reg ptr
 
     fprintf (verbose, "[parse_reg] passed token: '%s'\n", token);
 
@@ -189,7 +191,9 @@ uint8_t   parse_reg (uint8_t *token)
         //
         // RegEx compilation: compile pattern into our regex for processing
         //
-        check                   = regcomp (&regex, *(pattern+index), REG_EXTENDED);
+        check                   = regcomp (&regex,
+                                           *(pattern+index),
+                                           REG_EXTENDED | REG_ICASE);
         if (check              != 0)
         {
             fprintf (stderr, "[ERROR] RegEx compilation failed\n");
@@ -353,7 +357,7 @@ uint32_t  tokenize_asm (uint8_t *string)
     uint8_t     sindex           = FALSE;
     regex_t     regex;
     regmatch_t  match[4];
-    uint8_t    *pattern          = "^ *([a-zA-Z][a-zA-Z2]{1,4}) +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *, +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *$";
+    uint8_t    *pattern          = "^ *([a-z][a-z2]{1,4}) +(R[0-9]|R1[0-5]|[SBCDS][PR]|0x[0-9A-F]{1,8}|[0-9]|[1-9][0-9]+) *, +(R[0-9]|R1[0-5]|[SBCDS][PR]|0x[0-9A-F]{1,8}|[0-9]|[1-9][0-9]+) *$";
     //uint8_t   **pattern         = NULL;
     //uint8_t    *form0           = "^ *(HLT|WAIT|RET|MOVS|SETS) *$";   // 0 operand
     //uint8_t    *form0           = "^ *([rR][0-9]|[rR]1[0-5]) *$";   // 1 operand
@@ -387,7 +391,9 @@ uint32_t  tokenize_asm (uint8_t *string)
     //
     // RegEx compilation: compile pattern into our regex for processing
     //
-    check                        = regcomp (&regex, pattern, REG_EXTENDED);
+    check                        = regcomp (&regex,
+                                            pattern,
+                                            REG_EXTENDED | REG_ICASE);
     if (check                   != 0)
     {
         fprintf (stderr, "[tokenize_asm] ERROR: RegEx compilation failed\n");
@@ -635,13 +641,13 @@ uint8_t  tokenize_input (uint8_t *string)
     regex_t     regex;
     regmatch_t  match[4];
 //uint8_t    *pattern    = "^ *([a-zA-Z][a-zA-Z2]{1,4}) +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *, +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *$";
-    uint8_t    *pattern    = "^ *([cC][oO][nN][tT][iI][nN][uU][eE]|[cC]|[sS][tT][eE][pP]|[sS]|[rR][eE][gG][iI][sS][tT][eE][rR]|[rR]|[dD][iI][sS][pP][lL][aA][yY]|[dD]) *$";
+    uint8_t    *pattern    = "^ *(continue|c|step|s|register|r|display|d|memory|m|help|h) *$";
 
     ////////////////////////////////////////////////////////////////////////////////
     //
     // RegEx compilation: compile pattern into our regex for processing
     //
-    result                 = regcomp (&regex, pattern, REG_EXTENDED);
+    result                 = regcomp (&regex, pattern, REG_EXTENDED | REG_ICASE);
     if (result            != 0)
     {
         fprintf (stderr, "[ERROR] RegEx compilation failed\n");
