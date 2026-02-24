@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+###
+### v32asm - attempt at a Vircon32 assembler written in bash; initially,
+###          to assist in prototyping and testing some RegEx that I need
+###          for v32sim's live assembly injection.
+###
+########################################################################################
+
+########################################################################################
+##
+## Establish RegEx patterns for tokens
+##
+OPCODE='\<[A-Z][A-Z2]{1,4}\>'
+INT_TWO_OPCODE="\<JT|JF|IEQ|INE|IGT|IGE|ILT|ILE|MOV|LEA|IN|OUT|AND|OR|XOR|SHL"
+INT_TWO_OPCODE="${INT_TWO_OPCODE}|IADD|ISUB|IMUL|IDIV|IMOD|IMIN|IMAX"
+FLOAT_TWO_OPCODE="\<FEQ|FNE|FGT|FGE|FLT|FLE|FADD"
+FLOAT_TWO_OPCODE="${FLOAT_TWO_OPCODE}|FSUB|FMUL|FDIV|FMOD|FMIN|FMAX|ATAN2|POW\>"
+REGISTER='\<R[0-9]|R1[0-5]\>'
+HEX1='\<0x[0-9A-F]{1,8}\>'
+HEX2='\<[0-9A-F]{1,8}H\>'
+OCT='\<0[0-7]+\>'
+BIN='\<0b[01]{,32}\>'
+DEC='\<[0-9]|[1-9][0-9]+\>'
+IMMEDIATE="${BIN}|${OCT}|${DEC}|${HEX1}|${HEX2}"
+INDEX="${REGISTER}[-+]${IMMEDIATE}"
+DEREF="[[](${REGISTER}|${IMMEDIATE}|${INDEX})[]]"
+OPERAND="(${DEREF}|${REGISTER}|${IMMEDIATE})"
+ZERO_OPCODE='\<HLT|WAIT|RET|MOVS|SETS\>'
+ONE_OPCODE="\<JMP|CALL|PUSH|POP|CMPS|CIF|CFI|CIB|CFB|NOT|BNOT|ISGN|IABS|FSGN|FABS"
+ONE_OPCODE="${ONE_OPCODE}|FLR|CEIL|ROUND|SIN|ACOS|LOG\>"
+ZEROOPER="[^;]*${ZERO_OPCODE}"
+ONE_OPER="[^;]*${ONE_OPCODE} *${OPERAND}"
+TWO_OPER="[^;]*${TWO_OPCODE} *${OPERAND} *, *${OPERAND}"
+echo "mov R4, R5" | egrep -io '\<[a-z][a-z2]{1,4}\>' | tr '[:lower:]' '[:upper:]'
+
+read -e line_input
+
+line_input=$(echo  "${line_input}" | tr '[:lower:]' '[:upper:]')
+
+echo "line_input:  ${line_input}"
+
+the_opcode=$(echo   "${line_input}"      | egrep -o "${OPCODE}")
+num_operands=$(echo "${line_input}"      | egrep -o "${TWO_OPER}"    | wc -l)
+destination=$(echo  "${line_input}"      | egrep -o "${OPERAND}"     | head -1)
+
+## TODO: need to check for indexed first, then dereferenced, then register, then immediate
+## probably write a function to do this
+
+echo "destination: ${destination}"
+d_type=$(echo       "${destination}"     | egrep -o "^${REGISTER}$"  | wc -l)
+
+if [ ! "${d_type}" -eq 1 ]; then
+    d_type=$(echo   "${destination}"     | egrep -o "^${IMMEDIATE}$" | wc -l)
+    if [ ! "${d_type}" -eq 1 ]; then
+        d_type=$(echo   "${destination}" | egrep -o "^${INDEX}$"     | wc -l)
+        if [ ! "${d_type}" -eq 1 ]; then
+            echo "indexed:"
+            echo "${destination}" | tr -d '[' | tr -d ']' | egrep -o "${REGISTER}"
+            d_type=$(echo "${destination}" | tr -d '[' | tr -d ']' | egrep -o "${REGISTER}" | wc -l)
+            if [   "${d_type}" -eq 1 ]; then
+                dest_type="dr"
+            else
+                dest_type="di"
+            fi
+        else
+            dest_type="dx"
+        fi
+    else
+        dest_type="i"
+    fi
+else
+    dest_type="r"
+fi    
+
+echo "dest_type: ${dest_type}"
+
+
+the_source=$(echo   "${line_input}"  | egrep -o "${OPERAND}"     | head -2 | tail -1)
+
+echo "the opcode:  ${the_opcode}"
+
+if [ "${num_operands}" -eq 0 ]; then
+    num_operands=$(echo    "${line_input}" | egrep -o "${ONE_OPER}" | wc -l)
+    if [ "${num_operands}" -eq 0 ]; then
+        num_operands=$(echo    "${line_input}" | egrep -o "${ZEROOPER}" | wc -l)
+        if [ "${num_operands}" -eq 0 ]; then
+            echo "invalid instruction"
+            exit 1
+        else
+            num_operands="0"
+        fi
+    else
+        num_operands="1"
+        echo "destination: ${destination}"
+    fi
+else
+    num_operands="2"
+    echo "destination: ${destination}"
+    echo "the source:  ${the_source}"
+fi
+echo "opcode type: ${num_operands} operand instruction"
+
+exit 0
