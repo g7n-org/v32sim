@@ -90,6 +90,9 @@ void       init_memory    (void);                              // initialize mem
 void       load_memory    (uint32_t,    int8_t *);             // load file into memory
 word_t    *memory_get     (uint32_t);                          // get value from memory
 void       memory_set     (uint32_t,    uint32_t);             // set value to memory
+void       init_registers (void);
+word_t    *reg_get        (uint8_t,     uint8_t);
+void       reg_set        (uint8_t,     uint32_t,    uint8_t);
 word_t    *new_word_i32   (uint32_t *,  uint8_t);
 void       update_cycle   (void);                              // updating CycleCounter
 void       update_frame   (void);                              // updating FrameCounter

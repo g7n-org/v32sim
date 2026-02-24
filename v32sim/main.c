@@ -13,7 +13,7 @@ uint8_t  *destination;
 uint8_t  *source;
 int8_t   *biosfile;
 int8_t   *cartfile;
-word_t   *reg;
+data_t   *reg;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -413,7 +413,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                             arg            = strtok ((input+2), " ");
                             value          = atoi (arg+1);
                             sprintf (source, "R%u:", value);
-                            fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+value) -> i32);
+                            fprintf (stdout, "%-4s 0x%.8X\n", source, REG(value));
                         }
                         else
                         {
@@ -422,7 +422,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                                  index     = index + 1)
                             {
                                 sprintf (source, "R%u:", index);
-                                fprintf (stdout, "%-4s 0x%.8X\n", source, (reg+index) -> i32);
+                                fprintf (stdout, "%-4s 0x%.8X\n", source, REG(index));
                             }
                         }
                         break;
@@ -475,10 +475,10 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
             // To check: does  the cycle counter of  the instruction that
             // the error occurred on get incremented?
             //
-            (reg+R0) -> i32                = sys_error;
-            (reg+R1) -> i32                = IP_REG;
-            (reg+R2) -> i32                = IR_REG;
-            (reg+R3) -> i32                = IV_REG;
+			REG(R0)                        = sys_error;
+            REG(R1)                        = IP_REG;
+            REG(R2)                        = IR_REG;
+            REG(R3)                        = IV_REG;
 
             SP_REG                         = 0x00000000;
             BP_REG                         = 0x00000000;

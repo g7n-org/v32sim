@@ -87,7 +87,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                         fprintf (stdout, "%10s: ", entry);
                         break;
                 }
-                fprintf (stdout, "0x%.8X\n", (reg+value) -> i32);
+                fprintf (stdout, "0x%.8X\n", REG(value));
                 break;
 
             case LIST_MEM:
@@ -139,6 +139,6 @@ void  show_sysregs (void)
                 fprintf (stdout, "%16s: ", "IV");
                 break;
         }
-        fprintf (stdout, "0x%.8X\n", (reg+index) -> i32);
+        fprintf (stdout, "0x%.8X\n", REG(index));
     }
 }
