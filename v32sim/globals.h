@@ -10,8 +10,9 @@ typedef struct instruction_opcode opcode_t;
 
 union  word_type
 {
-    int32_t  i32;
-    float    f32;
+    int32_t   i32;
+    float     f32;
+	uint32_t  raw;
 };
 typedef union word_type word_t;
 
@@ -28,6 +29,7 @@ struct data_type
 {
     word_t   value;
     uint8_t  flag;
+	uint8_t  mode;
     int8_t  *name;
 };
 typedef struct data_type data_t;
@@ -52,7 +54,7 @@ extern int8_t   *biosfile;
 extern int8_t   *cartfile;
 extern int8_t    sys_error;
 extern mem_t    *memory;
-extern word_t   *reg;
+extern data_t   *reg;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //

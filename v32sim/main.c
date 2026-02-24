@@ -184,22 +184,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // Our registers will be in a word_t array
     //
-    len                                = sizeof (int32_t) * NUM_REGISTERS;
-    reg                                = (word_t *) malloc (len);
-    if (reg                           == NULL)
-    {
-        fprintf (stderr, "[ERROR] Failed to allocate resources for registers\n");
-        exit    (DATA_ALLOC_FAIL);
-    }
-
-    for (index                         = 0;
-         index                        <  NUM_REGISTERS;
-         index                         = index + 1)
-    {
-        (reg+index) -> i32             = 0x00000000;
-    }
-    BP_REG                             = 0x003FFFFF;
-    SP_REG                             = 0x003FFFFF;
+	init_registers ();
 
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);

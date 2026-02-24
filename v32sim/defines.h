@@ -126,16 +126,25 @@
 #define  IR                     17
 #define  IV                     18
 
-#define  DSTREG                 (reg+dst) -> i32
-#define  SRCREG                 (reg+src) -> i32
-#define  BP_REG                 (reg+BP)  -> i32
-#define  SP_REG                 (reg+SP)  -> i32
-#define  IP_REG                 (reg+IP)  -> i32
-#define  IR_REG                 (reg+IR)  -> i32
-#define  IV_REG                 (reg+IV)  -> i32
-#define  FDSTREG                (reg+dst) -> f32
-#define  FSRCREG                (reg+src) -> f32
-#define  FIV_REG                (reg+IV)  -> f32
+#define  REGNAME(x)             (reg+x)   -> name
+#define  REGALIAS(x)            (reg+x)   -> alias
+#define  REGMODE(x)             (reg+x)   -> mode
+#define  REG(x)                 (reg+x)   -> value.i32
+#define  DSTREG                 (reg+dst) -> value.i32
+#define  SRCREG                 (reg+src) -> value.i32
+#define  BP_REG                 (reg+BP)  -> value.i32
+#define  SP_REG                 (reg+SP)  -> value.i32
+#define  IP_REG                 (reg+IP)  -> value.i32
+#define  IR_REG                 (reg+IR)  -> value.i32
+#define  IV_REG                 (reg+IV)  -> value.i32
+#define  FREG(x)                (reg+x)   -> value.f32
+#define  FDSTREG                (reg+dst) -> value.f32
+#define  FSRCREG                (reg+src) -> value.f32
+#define  FIV_REG                (reg+IV)  -> value.f32
+
+#define  REG_RAW                0
+#define  REG_INT                1
+#define  REG_FLOAT              2
 
 #define  FLAG_NONE              0
 #define  FLAG_DISPLAY           1
