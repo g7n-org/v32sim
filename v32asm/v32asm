@@ -20,20 +20,21 @@ HEX1='\<0x[0-9A-F]{1,8}\>'
 HEX2='\<[0-9A-F]{1,8}H\>'
 OCT='\<0[0-7]+\>'
 BIN='\<0[Bb][01]{1,32}\>'
-DEC1='\<[0-9]|[1-9][0-9]+\>'
-DEC2='\<#[0-9]|[1-9][0-9]+\>'
+DEC1='\<[0-9]|[1-9][0-9]*\>'
+DEC2='\<#[0-9]|[1-9][0-9]*\>'
 IMMEDIATE="${BIN}|${OCT}|${DEC1}|${DEC2}|${HEX1}|${HEX2}"
 #INDEX="${REGISTER}[-+]${IMMEDIATE}"
 INDEX="[-+]"
 #DEREF="[[](${REGISTER}|${IMMEDIATE}|${INDEX})[]]"
 DEREF="[[].*[]]"
 OPERAND="(${DEREF}|${REGISTER}|${IMMEDIATE})"
+#OPERAND="[[]?(${REGISTER}|${IMMEDIATE}|${REGISTER}${INDEX}${IMMEDIATE})[]]?"
 ZERO_OPCODE='\<HLT|WAIT|RET|MOVS|SETS\>'
 ONE_OPCODE="\<JMP|CALL|PUSH|POP|CMPS|CIF|CFI|CIB|CFB|NOT|BNOT|ISGN|IABS|FSGN|FABS"
 ONE_OPCODE="${ONE_OPCODE}|FLR|CEIL|ROUND|SIN|ACOS|LOG\>"
 ZEROOPER="[^;]*${ZERO_OPCODE}"
 ONE_OPER="[^;]*${ONE_OPCODE} *${OPERAND}"
-TWO_OPER="[^;]*${TWO_OPCODE} *${OPERAND} *, *${OPERAND}"
+TWO_OPER="[^;]*${INT_TWO_OPCODE} *${OPERAND} *, *${OPERAND}"
 declare -A OTYPE
 OTYPE["index"]="${INDEX}"
 OTYPE["deref"]="${DEREF}"
@@ -47,6 +48,21 @@ ITYPE["oct"]="${OCT}"
 ITYPE["bin"]="${BIN}"
 ITYPE["dec"]="${DEC1}"
 ITYPE["dec2"]="${DEC2}"
+
+declare -a PTYPE
+PTYPE[0]="${ZERO_OPCODE}"
+PTYPE[1]="${ONE_OPCODE}"
+PTYPE[2]="${INT_TWO_OPCODE}"
+PTYPE[3]="${FLOAT_TWO_OPCODE}"
+
+IMM_TALLY=0
+
+function parse_reg()
+{
+    token="${1}"
+	the_reg=$(echo "${token}" | egrep -o "${REGISTER}")
+    echo "${the_reg}"
+}
 
 ########################################################################################
 ##
@@ -65,31 +81,52 @@ function parse_imm()
 {
     token="${1}"
     for attr in bin oct dec1 dec2 hex2; do
+        d_imm=$(echo "${token}"  | egrep -o "${ITYPE[${attr}]}")
+        t_imm=$(echo "${token}"  | egrep -o "${ITYPE[${attr}]}" | wc -l)
+        if [ "${t_imm}" -eq 1 ]; then
+            case "${attr}" in
+                "bin")
+                    d_imm=$(echo "${token}" | tr -d 'B' | tr -d 'b')
+                    d_imm=$(echo "obase=16; ibase=2; ${d_imm}" | bc)
+                    ;;
+
+                "oct")
+                    d_imm=$(echo "obase=16; ibase=8; ${d_imm}" | bc)
+                    ;;
+
+                "dec1")
+                    d_imm=$(echo "obase=16; ibase=10; ${d_imm}" | bc)
+                    ;;
+
+                "dec2")
+                    d_imm=$(echo "${token}" | tr -d '#')
+                    d_imm=$(echo "obase=16; ibase=10; ${d_imm}" | bc)
+                    ;;
+
+                "hex2")
+                    d_imm=$(echo "${token}" | tr -d 'H')
+                    ;;
+            esac
+            d_imm=$(echo "${d_imm}"   | tr    'X' 'x' | cut -d'x' -f2)
+            d_imm=$(printf "0x%8s" "${d_imm}" | tr ' ' '0')
+            break
+        fi
+    done
+    echo "${d_imm}"
+}
+
+function parse_operator()
+{
+    token="${1}"
+    for attr in bin oct dec1 dec2 hex2; do
         p_data=$(echo "${token}"  | egrep -o "${ITYPE[${attr}]}")
         p_type=$(echo "${token}"  | egrep -o "${ITYPE[${attr}]}" | wc -l)
         if [ "${p_type}" -eq 1 ]; then
             case "${attr}" in
-                "bin")
-                    p_data=$(echo "${token}" | tr -d 'B' | tr -d 'b')
-                    p_data=$(echo "obase=16; ibase=2; ${p_data}" | bc)
-                    ;;
-
-                "oct")
-                    p_data=$(echo "obase=16; ibase=8; ${p_data}" | bc)
-                    ;;
-
-                "dec1")
-                    p_data=$(echo "obase=16; ibase=10; ${p_data}" | bc)
-                    ;;
-
-                "dec2")
-                    p_data=$(echo "${token}" | tr -d '#')
-                    p_data=$(echo "obase=16; ibase=10; ${p_data}" | bc)
-                    ;;
-
-                "hex2")
-                    p_data=$(echo "${token}" | tr -d 'H')
-                    ;;
+                "+")
+					;;
+				"-")
+					;;
             esac
             p_data=$(echo "${p_data}"   | tr    'X' 'x' | cut -d'x' -f2)
             p_data=$(printf "0x%8s" "${p_data}" | tr ' ' '0')
@@ -97,22 +134,86 @@ function parse_imm()
         fi
     done
     echo "${p_data}"
+
 }
 
 function parse_param()
 {
     token="${1}"
+	i_data=
+	o_data=
+	r_data=
     for attr in index deref register immediate; do
         p_data=$(echo "${token}"  | egrep -o "${OTYPE[${attr}]}")
         p_type=$(echo "${token}"  | egrep -o "${OTYPE[${attr}]}" | wc -l)
 
         if [ "${p_type}" -eq 1 ]; then
-            r_data=$(echo "${token}" | egrep -o "${REGISTER}")
-            o_data=$(echo "${token}" | egrep -o "${INDEX}")
-            i_data=$(parse_imm "${token}")
-            echo "[parse_param] r_data: ${r_data}"
-            echo "[parse_param] o_data: ${o_data}"
-            echo "[parse_param] i_data: ${i_data}"
+			case "${attr}" in
+				"index")
+					token=$(echo  "${token}" | tr -d '[' | tr -d ']')
+					o_data=$(echo "${token}" | egrep -o "${INDEX}")
+					reg_t=$(echo  "${token}" | cut -d"${o_data}" -f1)
+					r_data=$(parse_reg "${reg_t}")
+					imm_t=$(echo  "${token}" | cut -d"${o_data}" -f2)
+					i_data=$(parse_imm "${imm_t}")
+					#echo "token: ${token}, imm_t: ${imm_t}, i_data: ${i_data}"
+					if [ -z "${r_data}" ]; then
+						reg_t=$(echo  "${token}" | cut -d"${o_data}" -f2)
+						r_data=$(parse_reg "${reg_t}")
+						imm_t=$(echo  "${token}" | cut -d"${o_data}" -f1)
+						i_data=$(parse_imm "${imm_t}")
+					#	echo "i_data: ${i_data}"
+						if [ ! "${o_data}" = "+" ]; then # subtraction
+							echo "ERROR: malformed operand (R#+Imm)"
+							exit 2
+						fi
+					fi
+
+					if [ ! "${o_data}" = "+" ]; then # subtraction
+						o_data="+"
+					#	echo "./negate ${i_data}"
+						i_data=$(./negate ${i_data})
+					fi
+
+					x_data="[${r_data}+${i_data}]"
+
+					if [ -z "${r_data}" ]; then
+						echo "ERROR: malformed operand (no register found)!"
+						exit 2
+					fi
+
+					if [ -z "${i_data}" ]; then
+						echo "ERROR: malformed operand (no immediate value found)!"
+						exit 2
+					fi
+					let IMM_TALLY=IMM_TALLY+1
+					;;
+
+				"deref")
+					d_data="${token}"
+					token=$(echo       "${token}" | tr -d '[' | tr -d ']')
+					r_data=$(parse_reg "${token}")
+					i_data=$(parse_imm "${token}")
+					[ ! -z "${r_data}" ] && d_data="[${r_data}]"
+					[ ! -z "${i_data}" ] && d_data="[${i_data}]"
+					[ ! -z "${i_data}" ] && let IMM_TALLY=IMM_TALLY+1
+					;;
+
+				"register")
+					r_data=$(parse_reg "${token}")
+					;;
+
+				"immediate")
+					i_data=$(parse_imm "${token}")
+					[ ! -z "${i_data}" ] && let IMM_TALLY=IMM_TALLY+1
+					;;
+			esac
+
+			#echo "[parse_param] attr:   ${attr}"
+			echo "${attr}:${r_data}:${i_data}:${d_data}:${x_data}"
+			#[ ! -z "${r_data}" ] && echo "[parse_param] r_data: ${r_data} (register)"
+			#[ ! -z "${o_data}" ] && echo "[parse_param] o_data: ${o_data} (index)"
+			#[ ! -z "${i_data}" ] && echo "[parse_param] i_data: ${i_data} (immediate)"
             break
         fi
     done
@@ -125,11 +226,84 @@ line_input=$(echo  "${line_input}" | tr '[:lower:]' '[:upper:]')
 echo "line_input:  ${line_input}"
 
 the_opcode=$(echo   "${line_input}" | egrep -o "${OPCODE}")
-num_operands=$(echo "${line_input}" | egrep -o "${TWO_OPER}" | wc -l)
-destination=$(echo  "${line_input}" | egrep -o "${OPERAND}"  | head -1)
+#num_operands=$(echo "${line_input}" | egrep -o "${TWO_OPER}" | wc -l)
 
-echo "destination: ${destination}"
-parse_param "${destination}"
+for ((index=0; index<4; index++)); do
+	chk=$(echo "${line_input}" | egrep -o "${PTYPE[${index}]}" | wc -l)
+	if [ "${chk}" -eq 1 ]; then
+		num_operands="${index}"
+		break
+	fi
+done
+
+if [ "${num_operands}" -eq 3 ]; then
+	num_operands=2
+fi
+
+echo "the_opcode:     ${the_opcode}"
+echo "num_operands:   ${num_operands}"
+
+found_operands=$(echo "${line_input}" | egrep -o "${OPERAND}" | wc -l)
+echo "found_operands: ${found_operands}"
+
+if [ ! "${found_operands}" = "${num_operands}" ]; then
+	echo "ERROR: invalid operand for ${the_opcode}"
+	exit 1
+fi
+
+if [ "${num_operands}" -ge 1 ]; then
+	destination=$(echo  "${line_input}" | egrep -o "${OPERAND}"  | head -1)
+	#destination=$(echo "${line_input}" | 
+	echo
+	echo "destination: ${destination}"
+	result=$(parse_param "${destination}")
+
+	p_type=$(echo "${result}" | cut -d':' -f1)
+	case "${p_type}" in
+		"immediate")
+			echo "ERROR: destination can not be an immediate value!"
+			exit 4
+			;;
+
+		"register")
+			echo "DSTREG: $(echo "${result}" | cut -d':' -f2)"
+			;;
+	esac
+fi
+
+if [ "${num_operands}" -eq 2 ]; then
+	src=$(echo  "${line_input}"         | egrep -o "${OPERAND}"  | head -2 | tail -1)
+	echo
+	echo "source: ${src}"
+	result=$(parse_param "${src}")
+	echo "result: ${result}"
+	p_type=$(echo "${result}" | cut -d':' -f1)
+	echo "p_type: ${p_type}"
+	case "${p_type}" in
+		"index")
+			echo "INDEX:  $(echo "${result}" | cut -d':' -f5)"
+			;;
+
+		"deref")
+			echo "DEREF:  $(echo "${result}" | cut -d':' -f4)"
+			;;
+
+		"immediate")
+			echo "IMMVAL: $(echo "${result}" | cut -d':' -f3)"
+			;;
+
+		"register")
+			echo "SRCREG: $(echo "${result}" | cut -d':' -f2)"
+			;;
+	esac
+fi
+
+echo "IMM_TALLY: ${IMM_TALLY}"
+if [ "${IMM_TALLY}" -gt 1 ]; then
+	echo "ERROR: Exceeded maximum threshold for immediate values!"
+	exit 3
+fi
+
 echo "done"
 exit
 
