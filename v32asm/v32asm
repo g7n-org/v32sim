@@ -19,11 +19,14 @@ REGISTER='\<R[0-9]|R1[0-5]\>'
 HEX1='\<0x[0-9A-F]{1,8}\>'
 HEX2='\<[0-9A-F]{1,8}H\>'
 OCT='\<0[0-7]+\>'
-BIN='\<0b[01]{,32}\>'
-DEC='\<[0-9]|[1-9][0-9]+\>'
-IMMEDIATE="${BIN}|${OCT}|${DEC}|${HEX1}|${HEX2}"
-INDEX="${REGISTER}[-+]${IMMEDIATE}"
-DEREF="[[](${REGISTER}|${IMMEDIATE}|${INDEX})[]]"
+BIN='\<0[Bb][01]{1,32}\>'
+DEC1='\<[0-9]|[1-9][0-9]+\>'
+DEC2='\<#[0-9]|[1-9][0-9]+\>'
+IMMEDIATE="${BIN}|${OCT}|${DEC1}|${DEC2}|${HEX1}|${HEX2}"
+#INDEX="${REGISTER}[-+]${IMMEDIATE}"
+INDEX="[-+]"
+#DEREF="[[](${REGISTER}|${IMMEDIATE}|${INDEX})[]]"
+DEREF="[[].*[]]"
 OPERAND="(${DEREF}|${REGISTER}|${IMMEDIATE})"
 ZERO_OPCODE='\<HLT|WAIT|RET|MOVS|SETS\>'
 ONE_OPCODE="\<JMP|CALL|PUSH|POP|CMPS|CIF|CFI|CIB|CFB|NOT|BNOT|ISGN|IABS|FSGN|FABS"
@@ -31,7 +34,89 @@ ONE_OPCODE="${ONE_OPCODE}|FLR|CEIL|ROUND|SIN|ACOS|LOG\>"
 ZEROOPER="[^;]*${ZERO_OPCODE}"
 ONE_OPER="[^;]*${ONE_OPCODE} *${OPERAND}"
 TWO_OPER="[^;]*${TWO_OPCODE} *${OPERAND} *, *${OPERAND}"
-echo "mov R4, R5" | egrep -io '\<[a-z][a-z2]{1,4}\>' | tr '[:lower:]' '[:upper:]'
+declare -A OTYPE
+OTYPE["index"]="${INDEX}"
+OTYPE["deref"]="${DEREF}"
+OTYPE["register"]="${REGISTER}"
+OTYPE["immediate"]="${IMMEDIATE}"
+
+declare -A ITYPE
+ITYPE["hex"]="${HEX1}"
+ITYPE["hex2"]="${HEX2}"
+ITYPE["oct"]="${OCT}"
+ITYPE["bin"]="${BIN}"
+ITYPE["dec"]="${DEC1}"
+ITYPE["dec2"]="${DEC2}"
+
+########################################################################################
+##
+## parse_imm(): function to parse and convert immediate value to standard hex
+##              representation, leading '0x', and 8 total digits. It converts
+##              a number of recognized formats:
+##
+##              0bXXXX - binary value (1-32 bits)
+##              0XXXX  - octal value
+##              XXXX   - decimal value
+##              #XXXX  - decimal value
+##              0xXXXX - standard hexadecimal representation (the target)
+##              XXXXH  - alternate hexadecimal representation
+##
+function parse_imm()
+{
+    token="${1}"
+    for attr in bin oct dec1 dec2 hex2; do
+        p_data=$(echo "${token}"  | egrep -o "${ITYPE[${attr}]}")
+        p_type=$(echo "${token}"  | egrep -o "${ITYPE[${attr}]}" | wc -l)
+        if [ "${p_type}" -eq 1 ]; then
+            case "${attr}" in
+                "bin")
+                    p_data=$(echo "${token}" | tr -d 'B' | tr -d 'b')
+                    p_data=$(echo "obase=16; ibase=2; ${p_data}" | bc)
+                    ;;
+
+                "oct")
+                    p_data=$(echo "obase=16; ibase=8; ${p_data}" | bc)
+                    ;;
+
+                "dec1")
+                    p_data=$(echo "obase=16; ibase=10; ${p_data}" | bc)
+                    ;;
+
+                "dec2")
+                    p_data=$(echo "${token}" | tr -d '#')
+                    p_data=$(echo "obase=16; ibase=10; ${p_data}" | bc)
+                    ;;
+
+                "hex2")
+                    p_data=$(echo "${token}" | tr -d 'H')
+                    ;;
+            esac
+            p_data=$(echo "${p_data}"   | tr    'X' 'x' | cut -d'x' -f2)
+            p_data=$(printf "0x%8s" "${p_data}" | tr ' ' '0')
+            break
+        fi
+    done
+    echo "${p_data}"
+}
+
+function parse_param()
+{
+    token="${1}"
+    for attr in index deref register immediate; do
+        p_data=$(echo "${token}"  | egrep -o "${OTYPE[${attr}]}")
+        p_type=$(echo "${token}"  | egrep -o "${OTYPE[${attr}]}" | wc -l)
+
+        if [ "${p_type}" -eq 1 ]; then
+            r_data=$(echo "${token}" | egrep -o "${REGISTER}")
+            o_data=$(echo "${token}" | egrep -o "${INDEX}")
+            i_data=$(parse_imm "${token}")
+            echo "[parse_param] r_data: ${r_data}"
+            echo "[parse_param] o_data: ${o_data}"
+            echo "[parse_param] i_data: ${i_data}"
+            break
+        fi
+    done
+}
 
 read -e line_input
 
@@ -39,14 +124,18 @@ line_input=$(echo  "${line_input}" | tr '[:lower:]' '[:upper:]')
 
 echo "line_input:  ${line_input}"
 
-the_opcode=$(echo   "${line_input}"      | egrep -o "${OPCODE}")
-num_operands=$(echo "${line_input}"      | egrep -o "${TWO_OPER}"    | wc -l)
-destination=$(echo  "${line_input}"      | egrep -o "${OPERAND}"     | head -1)
+the_opcode=$(echo   "${line_input}" | egrep -o "${OPCODE}")
+num_operands=$(echo "${line_input}" | egrep -o "${TWO_OPER}" | wc -l)
+destination=$(echo  "${line_input}" | egrep -o "${OPERAND}"  | head -1)
+
+echo "destination: ${destination}"
+parse_param "${destination}"
+echo "done"
+exit
 
 ## TODO: need to check for indexed first, then dereferenced, then register, then immediate
 ## probably write a function to do this
 
-echo "destination: ${destination}"
 d_type=$(echo       "${destination}"     | egrep -o "^${REGISTER}$"  | wc -l)
 
 if [ ! "${d_type}" -eq 1 ]; then
