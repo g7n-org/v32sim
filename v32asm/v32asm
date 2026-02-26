@@ -32,6 +32,7 @@ OPERAND="(${DEREF}|${REGISTER}|${IMMEDIATE})"
 ZERO_OPCODE='\<HLT|WAIT|RET|MOVS|SETS\>'
 ONE_OPCODE="\<JMP|CALL|PUSH|POP|CMPS|CIF|CFI|CIB|CFB|NOT|BNOT|ISGN|IABS|FSGN|FABS"
 ONE_OPCODE="${ONE_OPCODE}|FLR|CEIL|ROUND|SIN|ACOS|LOG\>"
+ONE_BRANCH="\<JMP|CALL\>"
 ZEROOPER="[^;]*${ZERO_OPCODE}"
 ONE_OPER="[^;]*${ONE_OPCODE} *${OPERAND}"
 TWO_OPER="[^;]*${INT_TWO_OPCODE} *${OPERAND} *, *${OPERAND}"
@@ -49,6 +50,38 @@ ITYPE["bin"]="${BIN}"
 ITYPE["dec"]="${DEC1}"
 ITYPE["dec2"]="${DEC2}"
 
+declare -a ONE_BRANCH
+ONE_BRANCH[0]="${IMMEDIATE}"
+ONE_BRANCH[1]="${REGISTER}"
+
+declare -a ONE_PARAM
+ONE_PARAM[0]="${REGISTER}"
+
+declare -a TWO_PARAM
+TWO_PARAM[0]="${REGISTER} *, *${IMMEDIATE}"
+TWO_PARAM[1]="${REGISTER} *, *${REGISTER}"
+
+declare -a MOV_PARAM
+MOV_PARAM[0]="${REGISTER} *, *${IMMEDIATE}"
+MOV_PARAM[1]="${REGISTER} *, *${REGISTER}"
+MOV_PARAM[2]="${REGISTER} *, *[[]${IMMEDIATE}[]]"
+MOV_PARAM[3]="${REGISTER} *, *[[]${REGISTER}[]]"
+MOV_PARAM[4]="${REGISTER} *, *[[]${INDEX}[]]"
+MOV_PARAM[5]="[[]${IMMEDIATE}[]] *, *${REGISTER}"
+MOV_PARAM[6]="[[]${REGISTER}[]] *, *${REGISTER}"
+MOV_PARAM[7]="[[]${INDEX}[]] *, *${REGISTER}"
+
+declare -a LEA_PARAM
+LEA_PARAM[0]="${REGISTER} *, *[[]${REGISTER}[]]"
+LEA_PARAM[1]="${REGISTER} *, *[[]${INDEX}[]]"
+
+declare -a IN_PARAM
+IN_PARAM[0]="${REGISTER} *, *${PORT}"
+
+declare -a OUT_PARAM
+OUT_PARAM[0]="${PORT} *, *${IMMEDIATE}"
+OUT_PARAM[1]="${PORT} *, *${REGISTER}"
+
 declare -a PTYPE
 PTYPE[0]="${ZERO_OPCODE}"
 PTYPE[1]="${ONE_OPCODE}"
@@ -56,70 +89,70 @@ PTYPE[2]="${INT_TWO_OPCODE}"
 PTYPE[3]="${FLOAT_TWO_OPCODE}"
 
 declare -A opcode
-opcode["HLT"]="00"
-opcode["WAIT"]="01"
-opcode["JMP"]="02"
-opcode["CALL"]="03"
-opcode["RET"]="04"
-opcode["JT"]="05"
-opcode["JF"]="06"
-opcode["IEQ"]="07"
-opcode["INE"]="08"
-opcode["IGT"]="09"
-opcode["IGE"]="0A"
-opcode["ILT"]="0B"
-opcode["ILE"]="0C"
-opcode["FEQ"]="0D"
-opcode["FNE"]="0E"
-opcode["FGT"]="0F"
-opcode["FGE"]="10"
-opcode["FLT"]="11"
-opcode["FLE"]="12"
-opcode["MOV"]="13"
-opcode["LEA"]="14"
-opcode["PUSH"]="15"
-opcode["POP"]="16"
-opcode["IN"]="17"
-opcode["OUT"]="18"
-opcode["MOVS"]="19"
-opcode["SETS"]="1A"
-opcode["CMPS"]="1B"
-opcode["CIF"]="1C"
-opcode["CFI"]="1D"
-opcode["CIB"]="1E"
-opcode["CFB"]="1F"
-opcode["NOT"]="20"
-opcode["AND"]="21"
-opcode["OR"]="22"
-opcode["XOR"]="23"
-opcode["BNOT"]="24"
-opcode["SHL"]="25"
-opcode["IADD"]="26"
-opcode["ISUB"]="27"
-opcode["IMUL"]="28"
-opcode["IDIV"]="29"
-opcode["IMOD"]="2A"
-opcode["ISGN"]="2B"
-opcode["IMIN"]="2C"
-opcode["IMAX"]="2D"
-opcode["IABS"]="2E"
-opcode["FADD"]="2F"
-opcode["FSUB"]="30"
-opcode["FMUL"]="31"
-opcode["FDIV"]="32"
-opcode["FMOD"]="33"
-opcode["FSGN"]="34"
-opcode["FMIN"]="35"
-opcode["FMAX"]="36"
-opcode["FABS"]="37"
-opcode["FLR"]="38"
-opcode["CEIL"]="39"
-opcode["ROUND"]="3A"
-opcode["SIN"]="3B"
-opcode["ACOS"]="3C"
-opcode["ATAN2"]="3D"
-opcode["LOG"]="3E"
-opcode["POW"]="3F"
+opcode["HLT"]="000000"
+opcode["WAIT"]="000001"
+opcode["JMP"]="000010"
+opcode["CALL"]="000011"
+opcode["RET"]="000100"
+opcode["JT"]="000101"
+opcode["JF"]="000110"
+opcode["IEQ"]="000111"
+opcode["INE"]="001000"
+opcode["IGT"]="001001"
+opcode["IGE"]="001010"
+opcode["ILT"]="001011"
+opcode["ILE"]="001100"
+opcode["FEQ"]="001101"
+opcode["FNE"]="001110"
+opcode["FGT"]="001111"
+opcode["FGE"]="010000"
+opcode["FLT"]="010001"
+opcode["FLE"]="010010"
+opcode["MOV"]="010011"
+opcode["LEA"]="010100"
+opcode["PUSH"]="010101"
+opcode["POP"]="010110"
+opcode["IN"]="010111"
+opcode["OUT"]="011000"
+opcode["MOVS"]="011001"
+opcode["SETS"]="011010"
+opcode["CMPS"]="011011"
+opcode["CIF"]="011100"
+opcode["CFI"]="011101"
+opcode["CIB"]="011110"
+opcode["CFB"]="011111"
+opcode["NOT"]="100000"
+opcode["AND"]="100001"
+opcode["OR"]="100010"
+opcode["XOR"]="100011"
+opcode["BNOT"]="100100"
+opcode["SHL"]="100101"
+opcode["IADD"]="100110"
+opcode["ISUB"]="100111"
+opcode["IMUL"]="101000"
+opcode["IDIV"]="101001"
+opcode["IMOD"]="101010"
+opcode["ISGN"]="101011"
+opcode["IMIN"]="101100"
+opcode["IMAX"]="101101"
+opcode["IABS"]="101110"
+opcode["FADD"]="101111"
+opcode["FSUB"]="110000"
+opcode["FMUL"]="110001"
+opcode["FDIV"]="110010"
+opcode["FMOD"]="110011"
+opcode["FSGN"]="110100"
+opcode["FMIN"]="110101"
+opcode["FMAX"]="110110"
+opcode["FABS"]="110111"
+opcode["FLR"]="111000"
+opcode["CEIL"]="111001"
+opcode["ROUND"]="111010"
+opcode["SIN"]="111011"
+opcode["ACOS"]="111100"
+opcode["ATAN2"]="111101"
+opcode["LOG"]="111110"
+opcode["POW"]="111111"
 IMM_TALLY=0
 imm_flag=0
 
@@ -305,6 +338,23 @@ done
 if [ "${num_operands}" -eq 3 ]; then
 	num_operands=2
 fi
+
+case "${num_operands}" in
+	0)
+		echo "${the_opcode}00000000000000000000000000"
+		;;
+	
+	1)
+		#echo "${line_input}" | egrep -o "${ONE_BRANCH[
+#declare -a ONE_BRANCH
+#declare -a ONE_PARAM
+		;;
+	
+	2)
+		;;
+esac
+	
+
 
 echo "the_opcode:     ${the_opcode}"
 echo "num_operands:   ${num_operands}"
