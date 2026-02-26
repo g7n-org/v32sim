@@ -16,8 +16,8 @@ INT_TWO_OPCODE="${INT_TWO_OPCODE}|IADD|ISUB|IMUL|IDIV|IMOD|IMIN|IMAX"
 FLOAT_TWO_OPCODE="\<FEQ|FNE|FGT|FGE|FLT|FLE|FADD"
 FLOAT_TWO_OPCODE="${FLOAT_TWO_OPCODE}|FSUB|FMUL|FDIV|FMOD|FMIN|FMAX|ATAN2|POW\>"
 REGISTER='\<R[0-9]|R1[0-5]\>'
-HEX1='\<0x[0-9A-F]{1,8}\>'
-HEX2='\<[0-9A-F]{1,8}H\>'
+HEX1='\<0[Xx][0-9A-F]{1,8}\>'
+HEX2='\<[0-9A-F]{1,8}[Hh]\>'
 OCT='\<0[0-7]+\>'
 BIN='\<0[Bb][01]{1,32}\>'
 DEC1='\<[0-9]|[1-9][0-9]*\>'
@@ -55,7 +55,73 @@ PTYPE[1]="${ONE_OPCODE}"
 PTYPE[2]="${INT_TWO_OPCODE}"
 PTYPE[3]="${FLOAT_TWO_OPCODE}"
 
+declare -A opcode
+opcode["HLT"]="00"
+opcode["WAIT"]="01"
+opcode["JMP"]="02"
+opcode["CALL"]="03"
+opcode["RET"]="04"
+opcode["JT"]="05"
+opcode["JF"]="06"
+opcode["IEQ"]="07"
+opcode["INE"]="08"
+opcode["IGT"]="09"
+opcode["IGE"]="0A"
+opcode["ILT"]="0B"
+opcode["ILE"]="0C"
+opcode["FEQ"]="0D"
+opcode["FNE"]="0E"
+opcode["FGT"]="0F"
+opcode["FGE"]="10"
+opcode["FLT"]="11"
+opcode["FLE"]="12"
+opcode["MOV"]="13"
+opcode["LEA"]="14"
+opcode["PUSH"]="15"
+opcode["POP"]="16"
+opcode["IN"]="17"
+opcode["OUT"]="18"
+opcode["MOVS"]="19"
+opcode["SETS"]="1A"
+opcode["CMPS"]="1B"
+opcode["CIF"]="1C"
+opcode["CFI"]="1D"
+opcode["CIB"]="1E"
+opcode["CFB"]="1F"
+opcode["NOT"]="20"
+opcode["AND"]="21"
+opcode["OR"]="22"
+opcode["XOR"]="23"
+opcode["BNOT"]="24"
+opcode["SHL"]="25"
+opcode["IADD"]="26"
+opcode["ISUB"]="27"
+opcode["IMUL"]="28"
+opcode["IDIV"]="29"
+opcode["IMOD"]="2A"
+opcode["ISGN"]="2B"
+opcode["IMIN"]="2C"
+opcode["IMAX"]="2D"
+opcode["IABS"]="2E"
+opcode["FADD"]="2F"
+opcode["FSUB"]="30"
+opcode["FMUL"]="31"
+opcode["FDIV"]="32"
+opcode["FMOD"]="33"
+opcode["FSGN"]="34"
+opcode["FMIN"]="35"
+opcode["FMAX"]="36"
+opcode["FABS"]="37"
+opcode["FLR"]="38"
+opcode["CEIL"]="39"
+opcode["ROUND"]="3A"
+opcode["SIN"]="3B"
+opcode["ACOS"]="3C"
+opcode["ATAN2"]="3D"
+opcode["LOG"]="3E"
+opcode["POW"]="3F"
 IMM_TALLY=0
+imm_flag=0
 
 function parse_reg()
 {
@@ -244,6 +310,7 @@ echo "the_opcode:     ${the_opcode}"
 echo "num_operands:   ${num_operands}"
 
 found_operands=$(echo "${line_input}" | egrep -o "${OPERAND}" | wc -l)
+echo "${line_input}" | egrep -o "${OPERAND}"
 echo "found_operands: ${found_operands}"
 
 if [ ! "${found_operands}" = "${num_operands}" ]; then
@@ -256,17 +323,44 @@ if [ "${num_operands}" -ge 1 ]; then
 	#destination=$(echo "${line_input}" | 
 	echo
 	echo "destination: ${destination}"
-	result=$(parse_param "${destination}")
+	dstresult=$(parse_param "${destination}")
 
-	p_type=$(echo "${result}" | cut -d':' -f1)
+	p_type=$(echo "${dstresult}" | cut -d':' -f1)
 	case "${p_type}" in
 		"immediate")
-			echo "ERROR: destination can not be an immediate value!"
-			exit 4
+			if [ ! "${the_opcode}" = "OUT" ]; then
+				echo "ERROR: destination can not be an immediate value!"
+				exit 4
+			fi
+			DSTIMM=$(echo "${dstresult}" | cut -d':' -f3)
 			;;
 
 		"register")
-			echo "DSTREG: $(echo "${result}" | cut -d':' -f2)"
+			DSTREG=$(echo "${dstresult}" | cut -d':' -f2)
+			;;
+	esac
+	dstresult=$(parse_param "${destination}")
+	p_type=$(echo "${dstresult}" | cut -d':' -f1)
+	case "${p_type}" in
+		"index")
+			DSTREG=$(echo "${dstresult}" | cut -d':' -f2)
+			DSTIMM=$(echo "${dstresult}" | cut -d':' -f3)
+			imm_flag=1
+			;;
+
+		"deref")
+			echo "DEREF:  $(echo "${dstresult}" | cut -d':' -f4)"
+			DSTREG=$(echo "${dstresult}" | cut  -d':' -f2)
+			[ -z "${DSTREG}" ] && DSTIMM=$(echo "${dstresult}" | cut -d':' -f3) && imm_flag=1
+			;;
+
+		"immediate")
+			DSTIMM=$(echo "${dstresult}" | cut -d':' -f3)
+			imm_flag=1
+			;;
+
+		"register")
+			DSTREG=$(echo "${dstresult}" | cut -d':' -f2)
 			;;
 	esac
 fi
@@ -275,25 +369,28 @@ if [ "${num_operands}" -eq 2 ]; then
 	src=$(echo  "${line_input}"         | egrep -o "${OPERAND}"  | head -2 | tail -1)
 	echo
 	echo "source: ${src}"
-	result=$(parse_param "${src}")
-	echo "result: ${result}"
-	p_type=$(echo "${result}" | cut -d':' -f1)
-	echo "p_type: ${p_type}"
+	srcresult=$(parse_param "${src}")
+	p_type=$(echo "${srcresult}" | cut -d':' -f1)
 	case "${p_type}" in
 		"index")
-			echo "INDEX:  $(echo "${result}" | cut -d':' -f5)"
+			SRCREG=$(echo "${srcresult}" | cut -d':' -f2)
+			SRCIMM=$(echo "${srcresult}" | cut -d':' -f3)
+			imm_flag=1
 			;;
 
 		"deref")
-			echo "DEREF:  $(echo "${result}" | cut -d':' -f4)"
+			echo "DEREF:  $(echo "${srcresult}" | cut -d':' -f4)"
+			SRCREG=$(echo "${srcresult}" | cut  -d':' -f2)
+			[ -z "${SRCREG}" ] && SRCIMM=$(echo "${srcresult}" | cut -d':' -f3) && imm_flag=1
 			;;
 
 		"immediate")
-			echo "IMMVAL: $(echo "${result}" | cut -d':' -f3)"
+			SRCIMM=$(echo "${srcresult}" | cut -d':' -f3)
+			imm_flag=1
 			;;
 
 		"register")
-			echo "SRCREG: $(echo "${result}" | cut -d':' -f2)"
+			SRCREG=$(echo "${srcresult}" | cut -d':' -f2)
 			;;
 	esac
 fi
@@ -303,6 +400,13 @@ if [ "${IMM_TALLY}" -gt 1 ]; then
 	echo "ERROR: Exceeded maximum threshold for immediate values!"
 	exit 3
 fi
+
+echo "----"
+echo "opcode:   ${the_opcode} (0x${opcode[${the_opcode}]})"
+echo "imm_flag: ${imm_flag}"
+[ ! -z "${DSTREG}" ] && echo "dstreg:   ${DSTREG}" || IMMEDIATE="${DSTIMM}"
+[ ! -z "${SRCREG}" ] && echo "srcreg:   ${SRCREG}" || IMMEDIATE="${SRCIMM}"
+echo "----"
 
 echo "done"
 exit
