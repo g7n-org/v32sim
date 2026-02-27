@@ -636,66 +636,165 @@ uint8_t  tokenize_input (uint8_t *string)
     //
     // declare and initialize variables
     //
-    int32_t     index      = 0;
-    int32_t     result     = 0;
+    int32_t     check           = 0;
+    int32_t     count           = 0;
+    int32_t     index           = 0;
+    int32_t     result          = 0;
     regex_t     regex;
     regmatch_t  match[4];
 //uint8_t    *pattern    = "^ *([a-zA-Z][a-zA-Z2]{1,4}) +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *, +([rR][0-9]|[rR]1[0-5]|[sSbBcCdDsS][pPrR]|0x[0-9a-fA-F]{1,8}|[0-9]|[1-9][0-9]+) *$";
-    uint8_t    *pattern    = "^ *(continue|c|step|s|register|r|display|d|memory|m|help|h) *$";
+    //uint8_t    *pattern    = "^ *(continue|c|step|s|register|r|display|d|memory|m|help|h) *$";
+    uint8_t     byte            = 0;
+    uint8_t   **pattern         = NULL;
+    uint8_t    *form0           = "^ *(continue|c) *$";
+    uint8_t    *form1           = "^ *(step|s) *$";
+    uint8_t    *form2           = "^ *(next|n) *$";
+    uint8_t    *form3           = "^ *(print|p) (r[0-9]|r1[0-9]|[bs]p|[csd]r|i[prv]|reg|regs|registers) *$";
+    uint8_t    *form4           = "^ *(print|p) (0x[0-9A-F]{8}) *$";
+    uint8_t    *form5           = "^ *(print|p) (0x[0-9A-F]{8})-(0x[0-9A-F]{8}) *$";
+    uint8_t    *form6           = "^ *(print|p) (0x[0-7][01][A-F]) *$";
+    uint8_t    *form7           = "^ *(display|d) (r[0-9]|r1[0-9]|[bs]p|[csd]r|i[prv]|reg|regs|registers) *$";
+    uint8_t    *form8           = "^ *(display|d) (0x[0-9A-F]{8}) *$";
+    uint8_t    *form9           = "^ *(display|d) (0x[0-9A-F]{8})-(0x[0-9A-F]{8}) *$";
+    uint8_t    *form10          = "^ *(display|d) (0x[0-7][01][A-F]) *$";
+    uint8_t    *form11          = "^ *(break|b) (0x[0-7][01][A-F]|[A-Z0-9_]+) *$";
+    uint8_t    *form12          = "^ *(label|l) *([0-9]+) *([A-Z0-9_]+) *$";
+    uint8_t    *form13          = "^ *(help|h|\?) *$";
+    uint8_t    *form14          = "^ *(quit|exit|q) *$";
 
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // RegEx compilation: compile pattern into our regex for processing
-    //
-    result                 = regcomp (&regex, pattern, REG_EXTENDED | REG_ICASE);
-    if (result            != 0)
-    {
-        fprintf (stderr, "[ERROR] RegEx compilation failed\n");
-        exit    (REGEX_COMPILE_ERROR);
-    }
+    fprintf (verbose, "[tokenize_input] passed string: '%s'\n", string);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
     //
-    // RegEx execution: make sure input conforms to provided pattern
+    // allocate and populate pattern array
     //
-    result                 = regexec (&regex, string, 4, match, 0);
-    if (result            == REG_NOMATCH)
-    {
-        fprintf (stderr, "ERROR: malformed input\n");
-    }
+    pattern                  = (uint8_t **) malloc (sizeof (uint8_t *) * 15);
+    *(pattern+0)             = form0;
+    *(pattern+1)             = form1;
+    *(pattern+2)             = form2;
+    *(pattern+3)             = form3;
+    *(pattern+4)             = form4;
+    *(pattern+5)             = form5;
+    *(pattern+6)             = form6;
+    *(pattern+7)             = form7;
+    *(pattern+8)             = form8;
+    *(pattern+9)             = form9;
+    *(pattern+10)            = form10;
+    *(pattern+11)            = form11;
+    *(pattern+12)            = form12;
+    *(pattern+13)            = form13;
+    *(pattern+14)            = form14;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // RegEx execution success! Display the results
-    //
-    else if (result       == 0)
+    for (index                  = 0;
+         index                 <  15;
+         index                  = index + 1)
     {
-        for (index         = 0;
-             index        <  4;
-             index         = index + 1)
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx compilation: compile pattern into our regex for processing
+        //
+        check                   = regcomp (&regex,
+                                           *(pattern+index),
+                                           REG_EXTENDED | REG_ICASE);
+        if (check              != 0)
         {
-            fprintf (stdout, "match[%d]: %.*s (%lld - %lld)\n",
-                             index,
-                             (int) (match[index].rm_eo - match[index].rm_so),
-                             (string + match[index].rm_so),
-                             (long long int) match[index].rm_so,
-                             (long long int) match[index].rm_eo);
+            fprintf (stderr, "[ERROR] RegEx compilation failed\n");
+            exit    (REGEX_COMPILE_ERROR);
         }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution: make sure input conforms to provided pattern
+        //
+        check                  = regexec (&regex, string, 4, match, 0);
+        if (check             == REG_NOMATCH)
+        {
+            continue;
+            fprintf (stderr, "ERROR: malformed input\n");
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution success! Display the results
+        //
+        else if (check        == 0)
+        {
+            byte               = *(string + match[count].rm_so);
+            fprintf (stdout, "byte: '%c'\n", byte);
+            switch (byte)
+            {
+                case 'b': // break
+                    action     = INPUT_BREAK;
+                    break;
+
+                case 'c': // continue
+                    action     = INPUT_CONTINUE;
+                    break;
+
+                case 'd': // display
+                    action     = INPUT_DISPLAY;
+                    break;
+
+                case 'l': // label
+                    action     = INPUT_LABEL;
+                    break;
+
+                case 'n': // next
+                    action     = INPUT_NEXT;
+                    break;
+
+                case 'p': // print
+                    action     = INPUT_PRINT;
+                    break;
+
+                case 's': // step
+                    action     = INPUT_STEP;
+                    fprintf (stdout, "action: step\n");
+                    break;
+
+                case 'h': // help
+                case '?': // help
+                    action     = INPUT_HELP;
+                    break;
+
+                case 'e': // exit
+                case 'q': // quit
+                    action     = INPUT_QUIT;
+                    break;
+            }
+            for (count         = 0;
+                 count        <  4;
+                 count         = count + 1)
+            {
+                fprintf (stdout, "match[%d]: %.*s (%lld - %lld)\n",
+                                 count,
+                                 (int) (match[count].rm_eo - match[count].rm_so),
+                                 (string + match[count].rm_so),
+                                 (long long int) match[count].rm_so,
+                                 (long long int) match[count].rm_eo);
+            }
+            regfree (&regex);
+            break;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution error: bail out
+        //
+        else
+        {
+            fprintf (stderr, "[ERROR] RegEx execution failed\n");
+            exit    (REGEX_EXECUTE_ERROR);
+        }
+
+        regfree (&regex);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // RegEx execution error: bail out
-    //
-    else
-    {
-        fprintf (stderr, "[ERROR] RegEx execution failed\n");
-        exit    (REGEX_EXECUTE_ERROR);
-    }
+    free    (pattern);
 
-    regfree (&regex);
+    fprintf (verbose, "[tokenize_input] result: %llu (%.16llX)\n", result, result);
 
-    return (result);
+    return  (result);
 }
 
 uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
@@ -729,6 +828,11 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
     //
     fprintf (verbose, "[get_input] input_string: \"%s\" (input_length: %lu)\n",
                       input_string, input_length);
+
+    if (input_length      == 0)
+    {
+        action             = INPUT_NONE;
+    }
 
     return (input_string);
 }

@@ -64,6 +64,7 @@ extern data_t  **ioports;
 extern uint8_t   sys_force;
 extern uint8_t   sys_reg_show;
 
+extern uint8_t   action;
 extern uint8_t  *data;
 extern uint8_t   runflag;
 extern uint8_t   branchflag;

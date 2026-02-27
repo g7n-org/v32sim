@@ -29,6 +29,7 @@ uint8_t   sys_reg_show;
 //
 // flags
 //
+uint8_t   action;
 uint8_t   runflag;
 uint8_t   branchflag;
 uint8_t   haltflag;
@@ -52,8 +53,8 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     size_t     len                     = 0;
     uint8_t   *input                   = NULL;
     uint8_t   *arg                     = NULL;
-    uint8_t    newcommand              = '\0';
-    uint8_t    lastcommand             = '\0';
+    //uint8_t    newcommand              = '\0';
+    uint8_t    lastaction              = INPUT_INIT;
     uint8_t    decodeflags             = FLAG_NONE;
     uint8_t    processflag             = FALSE;
     uint32_t   immediate               = 0x00000000;
@@ -77,6 +78,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     waitflag                           = FALSE;
     sys_error                          = ERROR_NONE;
     sys_reg_show                       = FALSE;
+	action                             = INPUT_INIT;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -184,7 +186,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // Our registers will be in a word_t array
     //
-	init_registers ();
+    init_registers ();
 
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
@@ -281,7 +283,8 @@ int32_t    main (int32_t  argc, uint8_t **argv)
 
         if (runflag                   == FALSE)
         {
-            newcommand                 = '\0';
+            //newcommand                 = '\0';
+			//action                     = INPUT_NONE;
             processflag                = FALSE;
             do
             {
@@ -295,9 +298,18 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                 {
                     free (input);
                 }
+				action                 = INPUT_INIT;
                 input                  = get_input (stdin, "v32sim> ");
+				if (input             == '\0')
+				{
+					action             = INPUT_NONE;
+				}
                 //tokenize_asm   (input);
-                tokenize_input (input);
+				fprintf (stdout, "action: %u\n", action);
+				if (action            != INPUT_NONE)
+				{
+					tokenize_input (input);
+				}
                 /*
                 fprintf (stdout, "v32sim> ");
 
@@ -316,22 +328,34 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                 // newcommand will be the character recently input; if newline,
                 // repeat lastcommand
                 //
-                newcommand                 = *(input+0);
+                //newcommand                 = *(input+0);
+				if (action                == INPUT_NONE)
+				{
+					action                 = lastaction;
+				}
+					/*
                 if (*(input+0)            == '\0')
                 {
                     *(input+1)             = '\0';
                     newcommand             = lastcommand;
                 }
                 *(input+index-1)           = '\0';
+				*/
                 
-                switch (newcommand)
+                switch (action)
                 {
-                    case 'c':
+                    case INPUT_BREAK:
+                        fprintf (stdout, "BREAK\n");
+                        break;
+
+                    case INPUT_CONTINUE:
+                        fprintf (stdout, "CONTINUE\n");
                         processflag        = TRUE;
                         runflag            = TRUE;
                         break;
 
-                    case 'd':
+                    case INPUT_DISPLAY:
+                        fprintf (stdout, "DISPLAY\n");
                         arg                = strtok ((input+2), " ");
                         value              = strlen (arg);
                         fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
@@ -358,9 +382,11 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                             dtmp           = newdispnode (LIST_IOP, new_word_i32 (&value, 1), 1);
                         }
                         display            = display_add (display, dtmp);
-                        newcommand         = '\0';
+                        //newcommand         = '\0';
+						action             = INPUT_NONE;
                         break;
 
+                        /*
                     case 'm':
                         if (*(input+1)    == ' ')
                         {
@@ -402,11 +428,12 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                             fprintf (stdout, "[%s]: 0x%.8X\n", arg, value);
                         }
                         break;
-
-                    case 'q':
+*/
+                    case INPUT_QUIT:
                         processflag        = 2;
                         break;
 
+                        /*
                     case 'r':
                         if (*(input+1)    == ' ')
                         {
@@ -425,15 +452,16 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                                 fprintf (stdout, "%-4s 0x%.8X\n", source, REG(index));
                             }
                         }
-                        break;
+                        break;*/
 
-                    case 's':
+                    case INPUT_STEP:
+                        fprintf (stdout, "STEP\n");
                         processflag        = TRUE;
-                        lastcommand        = 's';
+                        //lastcommand        = 's';
+						lastaction         = INPUT_STEP;
                         break;
 
-                    case '?':
-                    case 'h':
+                    case INPUT_HELP:
                         fprintf (stdout, "  c          - resume execution\n");
                         fprintf (stdout, "  d XYZ      - add displaylist item\n");
                         fprintf (stdout, "    R#       - general register\n");
@@ -446,7 +474,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         fprintf (stdout, "  s          - step to next instruction\n");
                         break;
                 }
-                lastcommand                = newcommand;
+                lastaction                 = action;
             }
             while (processflag            == FALSE);
         }
@@ -475,7 +503,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
             // To check: does  the cycle counter of  the instruction that
             // the error occurred on get incremented?
             //
-			REG(R0)                        = sys_error;
+            REG(R0)                        = sys_error;
             REG(R1)                        = IP_REG;
             REG(R2)                        = IR_REG;
             REG(R3)                        = IV_REG;
