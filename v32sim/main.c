@@ -461,6 +461,29 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 						lastaction         = INPUT_STEP;
                         break;
 
+					case INPUT_NEXT:
+						fprintf (stdout, "NEXT\n");
+						processflag        = TRUE;
+						lastaction         = INPUT_NEXT;
+
+						////////////////////////////////////////////////////////////////
+						//
+						// if the instruction is a CALL, set seek_word and then
+						// set runflag to TRUE; otherwise, should behave like step
+						//
+						if (((word & 0xFC000000) >> 26) == 0x03)
+						{
+							runflag        = TRUE;
+							//seek_word      = rom_offset + 1; // next instruction
+							seek_word      = rom_offset;
+							if ((word & 0x02000000)     >  0)
+							{
+								seek_word  = seek_word  + 1; // if immediate value
+							}
+							fprintf (stdout, "seek_word: 0x%.8X\n", seek_word);
+						}
+						break;
+
                     case INPUT_HELP:
                         fprintf (stdout, "  c          - resume execution\n");
                         fprintf (stdout, "  d XYZ      - add displaylist item\n");
@@ -471,6 +494,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         fprintf (stdout, "  m [addr]   - display memory address\n");
                         fprintf (stdout, "  P ioaddr   - display IOPort content\n");
                         fprintf (stdout, "  r [r#]     - display register(s)\n");
+                        fprintf (stdout, "  n          - next (skip over subroutines)\n");
                         fprintf (stdout, "  s          - step to next instruction\n");
                         break;
                 }
