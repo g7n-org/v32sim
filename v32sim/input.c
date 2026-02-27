@@ -654,9 +654,9 @@ uint8_t  tokenize_input (uint8_t *string)
     uint8_t    *form5           = "^ *(print|p) (0x[0-9A-F]{8})-(0x[0-9A-F]{8}) *$";
     uint8_t    *form6           = "^ *(print|p) (0x[0-7][01][A-F]) *$";
     uint8_t    *form7           = "^ *(display|d) (r[0-9]|r1[0-9]|[bs]p|[csd]r|i[prv]|reg|regs|registers) *$";
-    uint8_t    *form8           = "^ *(display|d) (0x[0-9A-F]{8}) *$";
-    uint8_t    *form9           = "^ *(display|d) (0x[0-9A-F]{8})-(0x[0-9A-F]{8}) *$";
-    uint8_t    *form10          = "^ *(display|d) (0x[0-7][01][A-F]) *$";
+    uint8_t    *form8           = "^ *(display|d) *(0x[0-9A-F]{8}) *([A-Z_][A-Z0-9_-]+)?$";
+    uint8_t    *form9           = "^ *(display|d) *(0x[0-9A-F]{8})-(0x[0-9A-F]{8}) *$";
+    uint8_t    *form10          = "^ *(display|d) *(0x[0-7][01][A-F]) *$";
     uint8_t    *form11          = "^ *(break|b) (0x[0-7][01][A-F]|[A-Z0-9_]+) *$";
     uint8_t    *form12          = "^ *(label|l) *([0-9]+) *([A-Z0-9_]+) *$";
     uint8_t    *form13          = "^ *(help|h|\?) *$";
@@ -698,8 +698,9 @@ uint8_t  tokenize_input (uint8_t *string)
                                            REG_EXTENDED | REG_ICASE);
         if (check              != 0)
         {
-            fprintf (stderr, "[ERROR] RegEx compilation failed\n");
-            exit    (REGEX_COMPILE_ERROR);
+            fprintf (stderr, "[ERROR] Invalid pattern: RegEx compilation failed\n");
+			break;
+            //exit    (REGEX_COMPILE_ERROR);
         }
 
         ////////////////////////////////////////////////////////////////////////////////

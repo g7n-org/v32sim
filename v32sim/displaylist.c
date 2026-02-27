@@ -9,6 +9,8 @@ display_l *newdispnode  (uint8_t  type, word_t *list, uint8_t  num)
         exit (LIST_ALLOC_FAIL);
     }
 
+	newnode -> label            = NULL;
+	newnode -> addr             = 0;
     newnode -> type             = type;
     newnode -> num              = num;
     newnode -> list             = list;
@@ -97,7 +99,14 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 {
                     sys_force  == TRUE;
                     value       = word2int (memory_get ((wtmp+index) -> i32));
-                    fprintf (stdout, "0x%.8X: 0x%.8X\n", (wtmp+index) -> i32, value);
+					if (dtmp -> label != NULL)
+					{
+						fprintf (stdout, "0x%.8X: 0x%.8X \"%s\"\n", (wtmp+index) -> i32, value, dtmp -> label);
+					}
+					else
+					{
+						fprintf (stdout, "0x%.8X: 0x%.8X\n", (wtmp+index) -> i32, value);
+					}
                 }
                 break;
 

@@ -194,7 +194,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     fprintf (stdout, "vsndoffset: %.8X\n", vsndoffset);
 
     while ((*(input+0)                != EOF) &&
-           (*(input+0)                != 'q') &&
+           (action                    != INPUT_QUIT) &&
            (haltflag                  == FALSE))
     {
         ////////////////////////////////////////////////////////////////////////////////
@@ -354,6 +354,13 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         runflag            = TRUE;
                         break;
 
+					case INPUT_LABEL:
+						fprintf (stdout, "LABEL\n");
+						arg                = strtok ((input+2), " ");
+						value              = strlen (arg);
+						fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
+						break;
+
                     case INPUT_DISPLAY:
                         fprintf (stdout, "DISPLAY\n");
                         arg                = strtok ((input+2), " ");
@@ -375,6 +382,14 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         {
                             value          = strtol (arg, NULL, 16);
                             dtmp           = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
+							arg            = strtok (NULL, " ");
+							if (arg       != NULL)
+							{
+								value      = strlen (arg);
+								fprintf (stdout, "arg2: %s\n", arg);
+								dtmp -> label  = (int8_t *) malloc (sizeof (int8_t) * strlen (arg) + 1);
+								strcpy (dtmp -> label, arg);
+							}
                         }
                         else
                         {
@@ -485,17 +500,14 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 						break;
 
                     case INPUT_HELP:
-                        fprintf (stdout, "  c          - resume execution\n");
-                        fprintf (stdout, "  d XYZ      - add displaylist item\n");
-                        fprintf (stdout, "    R#       - general register\n");
-                        fprintf (stdout, "    I(P|R|V) - system register\n");
-                        fprintf (stdout, "    0xaddr   - memory address\n");
-                        fprintf (stdout, "    0xioaddr - IOPort\n");
-                        fprintf (stdout, "  m [addr]   - display memory address\n");
-                        fprintf (stdout, "  P ioaddr   - display IOPort content\n");
-                        fprintf (stdout, "  r [r#]     - display register(s)\n");
-                        fprintf (stdout, "  n          - next (skip over subroutines)\n");
-                        fprintf (stdout, "  s          - step to next instruction\n");
+                        fprintf (stdout, "  c             - resume execution\n");
+                        fprintf (stdout, "  d XYZ [LABEL] - add displaylist item\n");
+                        fprintf (stdout, "    R#          - general register\n");
+                        fprintf (stdout, "    I(P|R|V)    - system register\n");
+                        fprintf (stdout, "    0xaddr      - memory address\n");
+                        fprintf (stdout, "    0xioaddr    - IOPort\n");
+                        fprintf (stdout, "  n             - next (skip subroutines)\n");
+                        fprintf (stdout, "  s             - step to next instruction\n");
                         break;
                 }
                 lastaction                 = action;

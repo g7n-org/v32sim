@@ -19,8 +19,10 @@ typedef union word_type word_t;
 typedef struct display_list display_l;
 struct display_list
 {
+	int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    num;
+	uint32_t   addr;  // for breakpoints
     word_t    *list;
     display_l *next;
 };
