@@ -3,6 +3,130 @@
 #include <readline/history.h>
 #include <regex.h>
 
+uint8_t  parse_token (uint8_t *token, uint8_t *pattern, uint8_t  parse_success)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // declare and initialize variables
+    //
+    uint8_t     result       = PARSE_NONE;
+    int32_t     check        = 0;
+    regex_t     regex;
+    regmatch_t  match[2];
+
+    fprintf (verbose, "[parse_token] passed token: '%s'\n", token);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RegEx compilation: compile current pattern into our regex for processing
+    //
+    check                    = regcomp (&regex, pattern, REG_EXTENDED | REG_ICASE);
+    if (check               != 0)
+    {
+        fprintf (stderr, "[parse_token] ERROR: RegEx compilation failed\n");
+        exit    (REGEX_COMPILE_ERROR);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RegEx execution: make sure input conforms to provided pattern
+    //
+    check                    = regexec (&regex, token, 2, match, 0);
+    if (check               == REG_NOMATCH)
+    {
+        fprintf (verbose, "[parse_token] invalid token value\n");
+        result               = PARSE_NONE;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RegEx execution success: obtain the value.
+    //
+    else if (check          == 0)
+    {
+        result               = parse_success;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RegEx execution error: bail out (shouldn't happen)
+    //
+    else
+    {
+        fprintf (stderr, "[parse_token] ERROR: RegEx execution failed\n");
+        exit    (REGEX_EXECUTE_ERROR);
+    }
+
+    regfree (&regex);
+    free    (pattern);
+
+    return  (result);
+}
+
+uint8_t  parse_memrange (uint8_t *token)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // declare and initialize variables
+    //
+    uint8_t     result       = PARSE_NONE;
+    int32_t     check        = 0;
+    int32_t     value        = 0;
+    regex_t     regex;
+    regmatch_t  match[2];
+    uint8_t    *pattern      = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$";
+
+    fprintf (verbose, "[parse_memrange] passed token: '%s'\n", token);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RegEx compilation: compile current pattern into our regex for processing
+    //
+    check                    = regcomp (&regex,
+                                        *(pattern+index),
+                                        REG_EXTENDED | REG_ICASE);
+    if (check               != 0)
+    {
+        fprintf (stderr, "[parse_memrange] ERROR: RegEx compilation failed\n");
+        exit    (REGEX_COMPILE_ERROR);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RegEx execution: make sure input conforms to provided pattern
+    //
+    check                    = regexec (&regex, token, 2, match, 0);
+    if (check               == REG_NOMATCH)
+    {
+        fprintf (verbose, "[parse_imm] invalid memrange value\n");
+        result               = PARSE_NONE;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RegEx execution success: obtain the value.
+    //
+    else if (check          == 0)
+    {
+        result               = PARSE_MEMRANGE;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // RegEx execution error: bail out (shouldn't happen)
+    //
+    else
+    {
+        fprintf (stderr, "[parse_memrange] ERROR: RegEx execution failed\n");
+        exit    (REGEX_EXECUTE_ERROR);
+    }
+
+    regfree (&regex);
+    free    (pattern);
+
+    return  (result);
+}
+
 uint8_t  parse_imm (uint8_t *token)
 {
     ////////////////////////////////////////////////////////////////////////////////////
@@ -318,7 +442,7 @@ uint8_t   parse_reg (uint8_t *token)
             // for odd values of index, we have a dereference case; set the MSB
             // of result high.
             //
-			/*
+            /*
             if ((index         <  8) &&
                 ((index % 1)   == 1))
             {
@@ -644,7 +768,7 @@ uint32_t  tokenize_asm (uint8_t *string)
 
 uint8_t  tokenize_input (uint8_t *string)
 {
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
     //
     // declare and initialize variables
     //
@@ -656,6 +780,13 @@ uint8_t  tokenize_input (uint8_t *string)
     uint8_t     byte             = 0;
     int8_t     *token            = NULL;
     uint8_t   **pattern          = NULL;
+    uint8_t    *form0            = "^ *([a-z]+) *$";
+    uint8_t    *form1            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_-]+)? *$";
+    uint8_t    *form2            = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
+    uint8_t    *form3            = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
+    uint8_t    *form4            = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
+    uint8_t    *form5            = "^ *(0x[0-9A-F]{8}) *$";                     // memory
+    /*
     uint8_t    *form0            = "^ *(continue|c) *$";
     uint8_t    *form1            = "^ *(step|s) *$";
     uint8_t    *form2            = "^ *(next|n) *$";
@@ -671,6 +802,7 @@ uint8_t  tokenize_input (uint8_t *string)
     uint8_t    *form12           = "^ *(label|l) *([0-9]+) *([A-Z0-9_]+) *$";
     uint8_t    *form13           = "^ *(help|h|\?) *$";
     uint8_t    *form14           = "^ *(quit|exit|q) *$";
+    */
     uint8_t     result           = 0;
 
     fprintf (verbose, "[tokenize_input] passed string: '%s'\n", string);
@@ -679,13 +811,14 @@ uint8_t  tokenize_input (uint8_t *string)
     //
     // allocate and populate pattern array
     //
-    pattern                      = (uint8_t **) malloc (sizeof (uint8_t *) * 15);
+    pattern                      = (uint8_t **) malloc (sizeof (uint8_t *) * 6);
     *(pattern+0)                 = form0;
     *(pattern+1)                 = form1;
     *(pattern+2)                 = form2;
     *(pattern+3)                 = form3;
     *(pattern+4)                 = form4;
     *(pattern+5)                 = form5;
+    /*
     *(pattern+6)                 = form6;
     *(pattern+7)                 = form7;
     *(pattern+8)                 = form8;
@@ -695,9 +828,10 @@ uint8_t  tokenize_input (uint8_t *string)
     *(pattern+12)                = form12;
     *(pattern+13)                = form13;
     *(pattern+14)                = form14;
+    */
 
     for (index                   = 0;
-         index                  <  15;
+         index                  <  2;
          index                   = index + 1)
     {
         ////////////////////////////////////////////////////////////////////////////////
@@ -740,22 +874,26 @@ uint8_t  tokenize_input (uint8_t *string)
                     break;
 
                 case 'c': // continue
-                    action      = INPUT_CONTINUE;
+                    action          = INPUT_CONTINUE;
                     break;
 
                 case 'd': // display
-                    action      = INPUT_DISPLAY;
-					token       = strtok ((string + match[2].rm_so), " ");
-                    //token       = strtok ((string + match[2].rm_so), " ");
-					fprintf (stdout, "[tok_inp] token: '%s'\n", token);
-                    result      = parse_reg (token);
-                    if (result == PARSE_NONE)
+                    action          = INPUT_DISPLAY;
+                    token           = strtok ((string + match[2].rm_so), " ");
+                    fprintf (stdout, "[tok_inp] token: '%s'\n", token);
+                    result          = parse_reg (token);
+                    for (count      = PARSE_IOPORT;
+                         count     <= PARSE_REGISTERS;
+                         count      = count + 1)
                     {
-                        result  = parse_imm (token);
+                        result      = parse_token (token, *(pattern+(count-120)), count);
+                        if (result != PARSE_NONE)
+                        {
+                            break;
+                        }
                     }
-                    token_label = strtok (NULL, " ");
-					fprintf (stdout, "[tok_inp] token_label: '%s'\n", token_label);
-                    //token_label = (string + match[3].rm_so);
+                    token_label     = strtok (NULL, " ");
+                    fprintf (stdout, "[tok_inp] token_label: '%s'\n", token_label);
                     break;
 
                 case 'l': // label
@@ -792,6 +930,7 @@ uint8_t  tokenize_input (uint8_t *string)
                     action      = INPUT_QUIT;
                     break;
             }
+
             for (count          = 0;
                  count         <  4;
                  count          = count + 1)

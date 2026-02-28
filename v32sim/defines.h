@@ -85,8 +85,11 @@
 #define  INPUT_IOPORT            15
 
 #define  PARSE_NONE              0x7F
-#define  PARSE_REGISTERS         0x7E
-#define  PARSE_IMMEDIATE         0x7D
+#define  PARSE_IMMEDIATE         0x7E
+#define  PARSE_REGISTERS         0x7D
+#define  PARSE_MEMORY            0x7C
+#define  PARSE_MEMRANGE          0x7B
+#define  PARSE_IOPORT            0x7A
 
 #define  NUM_PORT_CATEGORIES     7
 #define  NUM_TIM_PORTS           4
