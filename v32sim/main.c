@@ -228,34 +228,34 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         }
         IV_REG                         = immediate;   // immediate value
 
-        if (sys_reg_show              == TRUE)
-        {
-            show_sysregs ();
-            switch ((IP_REG & 0x30000000) >> 28)
-            {
-                case V32_PAGE_RAM:
-                    fprintf (stdout, " [RAM]");
-                    break;
-                case V32_PAGE_BIOS:
-                    fprintf (stdout, "[BIOS]");
-                    break;
-                case V32_PAGE_CART:
-                    fprintf (stdout, "[CART]");
-                    break;
-                case V32_PAGE_MEMC:
-                    fprintf (stdout, "[MEMC]");
-                    break;
-            }
-
-            fprintf (stdout, "[%.8X]: ", IP_REG);
-        }
-        else
-        {
-            put_word (word, FLAG_DISPLAY);
-        }
-
         if (runflag                   == FALSE)
         {
+            if (sys_reg_show          == TRUE)
+            {
+                show_sysregs ();
+                switch ((IP_REG & 0x30000000) >> 28)
+                {
+                    case V32_PAGE_RAM:
+                        fprintf (stdout, " [RAM]");
+                        break;
+                    case V32_PAGE_BIOS:
+                        fprintf (stdout, "[BIOS]");
+                        break;
+                    case V32_PAGE_CART:
+                        fprintf (stdout, "[CART]");
+                        break;
+                    case V32_PAGE_MEMC:
+                        fprintf (stdout, "[MEMC]");
+                        break;
+                }
+
+                fprintf (stdout, "[%.8X]: ", IP_REG);
+            }
+            else
+            {
+                put_word (word, FLAG_DISPLAY);
+            }
+
             decode   (word, immediate, fimmediate, decodeflags | FLAG_DISPLAY);
 
             if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))

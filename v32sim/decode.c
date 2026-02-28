@@ -176,13 +176,24 @@ void  decode_display (uint32_t  instruction,
             {
                 sign  = (immediate >= 0) ? '+' : '-';
                 sprintf (source,          "[R%u%c%d]",     src, sign, abs (immediate));
+                if (sign              == '+')
+                {
+                    value              = REG(src) + abs (immediate);
+                }
+                else
+                {
+                    value              = REG(src) - abs (immediate);
+                }
+                fprintf (display,      "%-5s %-16s %-16s (index: 0x%.8X)\n",
+                                       lookup[opcode].name,
+                                       destination, source, value);
             }
             else
             {
                 sprintf (source,          "[R%u]",         src);
+                fprintf (display,      "%-5s %-16s %-16s\n",
+                                       lookup[opcode].name, destination, source);
             }
-            fprintf (display,      "%-5s %-16s %-16s\n",
-                                   lookup[opcode].name, destination, source);
             break;
 
         case MOV:
@@ -216,11 +227,11 @@ void  decode_display (uint32_t  instruction,
                     sprintf (source,      "[R%u%c%d]",  src, sign, abs (immediate));
                     if (sign          == '+')
                     {
-                        value          = src + abs (immediate);
+                        value          = REG(src) + abs (immediate);
                     }
                     else
                     {
-                        value          = src - abs (immediate);
+                        value          = REG(src) - abs (immediate);
                     }
                     break;
 
@@ -240,11 +251,11 @@ void  decode_display (uint32_t  instruction,
                     sprintf (source,      "R%u",           src);
                     if (sign          == '+')
                     {
-                        value          = dst + abs (immediate);
+                        value          = REG(dst) + abs (immediate);
                     }
                     else
                     {
-                        value          = dst - abs (immediate);
+                        value          = REG(dst) - abs (immediate);
                     }
                     break;
             }
@@ -253,7 +264,8 @@ void  decode_display (uint32_t  instruction,
                 (value                != 0))
             {
                 fprintf (display,     "%-5s %-16s %-16s (index: 0x%.8X)\n",
-                                      lookup[opcode].name, destination, source, value);
+                                      lookup[opcode].name, destination, source,
+                                      value);
             }
             else
             {
