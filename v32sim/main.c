@@ -257,40 +257,35 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         if (runflag                   == FALSE)
         {
             decode   (word, immediate, fimmediate, decodeflags | FLAG_DISPLAY);
-        }
 
-        if (FLAG_IMMEDIATE            == (decodeflags & FLAG_IMMEDIATE))
-        {
-            if (sys_reg_show          == TRUE)
+            if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
             {
-                switch ((IP_REG & 0x30000000) >> 28)
+                if (sys_reg_show      == TRUE)
                 {
-                    case V32_PAGE_RAM:
-                        fprintf (stdout, " [RAM]");
-                        break;
-                    case V32_PAGE_BIOS:
-                        fprintf (stdout, "[BIOS]");
-                        break;
-                    case V32_PAGE_CART:
-                        fprintf (stdout, "[CART]");
-                        break;
-                    case V32_PAGE_MEMC:
-                        fprintf (stdout, "[MEMC]");
-                        break;
+                    switch ((IP_REG & 0x30000000) >> 28)
+                    {
+                        case V32_PAGE_RAM:
+                            fprintf (stdout, " [RAM]");
+                            break;
+                        case V32_PAGE_BIOS:
+                            fprintf (stdout, "[BIOS]");
+                            break;
+                        case V32_PAGE_CART:
+                            fprintf (stdout, "[CART]");
+                            break;
+                        case V32_PAGE_MEMC:
+                            fprintf (stdout, "[MEMC]");
+                            break;
+                    }
+                    fprintf  (stdout, "[%.8X]: 0x%.8X", (IP_REG + 1), IV_REG);
                 }
-                fprintf  (stdout, "[%.8X]: 0x%.8X", (IP_REG + 1), IV_REG);
+                else
+                {
+                    put_word (immediate, FLAG_DISPLAY);
+                }
+                fprintf  (stdout, "\n");
             }
-            else
-            {
-                put_word (immediate, FLAG_DISPLAY);
-            }
-            fprintf  (stdout, "\n");
-        }
 
-        if (runflag                   == FALSE)
-        {
-            //newcommand                 = '\0';
-            //action                     = INPUT_NONE;
             processflag                = FALSE;
             do
             {

@@ -45,7 +45,6 @@ void  decode_display (uint32_t  instruction,
     int8_t    sign                 = '+';
     uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
     uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
-    uint8_t   indexflag            = (flags & FLAG_INDEX)     ? TRUE : FALSE;
     uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
     uint32_t  dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
     uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
@@ -187,6 +186,7 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case MOV:
+            value                      = 0;
             switch (addr)
             {
                 case 00: // MOV DSTREG, Immediate
@@ -214,6 +214,14 @@ void  decode_display (uint32_t  instruction,
                    // sprintf (source,      "[R%u+0x%.8X]",  src, immediate);
                     sign  = (immediate >= 0) ? '+' : '-';
                     sprintf (source,      "[R%u%c%d]",  src, sign, abs (immediate));
+                    if (sign          == '+')
+                    {
+                        value          = src + abs (immediate);
+                    }
+                    else
+                    {
+                        value          = src - abs (immediate);
+                    }
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
@@ -230,19 +238,20 @@ void  decode_display (uint32_t  instruction,
                     //sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
                     sprintf (destination, "[R%u%c%d],", dst, sign, abs (immediate));
                     sprintf (source,      "R%u",           src);
+                    if (sign          == '+')
+                    {
+                        value          = dst + abs (immediate);
+                    }
+                    else
+                    {
+                        value          = dst - abs (immediate);
+                    }
                     break;
             }
             
-            if (indexflag             == TRUE)
+            if ((indexflag            == TRUE) && 
+                (value                != 0))
             {
-                if (sign              == '+')
-                {
-                    value              = src + immediate;
-                }
-                else
-                {
-                    value              = src - abs (immediate);
-                }
                 fprintf (display,     "%-5s %-16s %-16s (index: 0x%.8X)\n",
                                       lookup[opcode].name, destination, source, value);
             }
