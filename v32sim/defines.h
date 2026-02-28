@@ -185,6 +185,7 @@
 #define  FLT                     0x11
 #define  FLE                     0x12
 #define  MOV                     0x13
+#define  LEA                     0x14
 #define  PUSH                    0x15
 #define  POP                     0x16
 #define  IN                      0x17

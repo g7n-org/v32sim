@@ -75,12 +75,12 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     runflag                            = FALSE;
     seek_word                          = 0xFFFFFFFF;
     wordsize                           = 4;
-	indexflag                          = FALSE;
+    indexflag                          = FALSE;
     haltflag                           = FALSE;
     waitflag                           = FALSE;
     sys_error                          = ERROR_NONE;
     sys_reg_show                       = FALSE;
-	action                             = INPUT_INIT;
+    action                             = INPUT_INIT;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -253,7 +253,11 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         {
             put_word (word, FLAG_DISPLAY);
         }
-        decode   (word, immediate, fimmediate, decodeflags | FLAG_DISPLAY);
+
+        if (runflag                   == FALSE)
+        {
+            decode   (word, immediate, fimmediate, decodeflags | FLAG_DISPLAY);
+        }
 
         if (FLAG_IMMEDIATE            == (decodeflags & FLAG_IMMEDIATE))
         {
@@ -286,7 +290,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         if (runflag                   == FALSE)
         {
             //newcommand                 = '\0';
-			//action                     = INPUT_NONE;
+            //action                     = INPUT_NONE;
             processflag                = FALSE;
             do
             {
@@ -300,18 +304,18 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                 {
                     free (input);
                 }
-				action                 = INPUT_INIT;
+                action                 = INPUT_INIT;
                 input                  = get_input (stdin, "v32sim> ");
-				if (input             == '\0')
-				{
-					action             = INPUT_NONE;
-				}
+                if (input             == '\0')
+                {
+                    action             = INPUT_NONE;
+                }
                 //tokenize_asm   (input);
-				//fprintf (stdout, "action: %u\n", action);
-				if (action            != INPUT_NONE)
-				{
-					tokenize_input (input);
-				}
+                //fprintf (stdout, "action: %u\n", action);
+                if (action            != INPUT_NONE)
+                {
+                    tokenize_input (input);
+                }
                 /*
                 fprintf (stdout, "v32sim> ");
 
@@ -324,26 +328,26 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                 }
                 while (*(input+(index-1)) != '\n');
                 */
-                
+
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // newcommand will be the character recently input; if newline,
                 // repeat lastcommand
                 //
                 //newcommand                 = *(input+0);
-				if (action                == INPUT_NONE)
-				{
-					action                 = lastaction;
-				}
-					/*
+                if (action                == INPUT_NONE)
+                {
+                    action                 = lastaction;
+                }
+                    /*
                 if (*(input+0)            == '\0')
                 {
                     *(input+1)             = '\0';
                     newcommand             = lastcommand;
                 }
                 *(input+index-1)           = '\0';
-				*/
-                
+                */
+
                 switch (action)
                 {
                     case INPUT_BREAK:
@@ -356,12 +360,12 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         runflag            = TRUE;
                         break;
 
-					case INPUT_LABEL:
-						//fprintf (stdout, "LABEL\n");
-						arg                = strtok ((input+2), " ");
-						value              = strlen (arg);
-						//fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
-						break;
+                    case INPUT_LABEL:
+                        //fprintf (stdout, "LABEL\n");
+                        arg                = strtok ((input+2), " ");
+                        value              = strlen (arg);
+                        //fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
+                        break;
 
                     case INPUT_DISPLAY:
                         //fprintf (stdout, "DISPLAY\n");
@@ -384,14 +388,14 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         {
                             value          = strtol (arg, NULL, 16);
                             dtmp           = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
-							arg            = strtok (NULL, " ");
-							if (arg       != NULL)
-							{
-								value      = strlen (arg);
-								//fprintf (stdout, "arg2: %s\n", arg);
-								dtmp -> label  = (int8_t *) malloc (sizeof (int8_t) * strlen (arg) + 1);
-								strcpy (dtmp -> label, arg);
-							}
+                            arg            = strtok (NULL, " ");
+                            if (arg       != NULL)
+                            {
+                                value      = strlen (arg);
+                                //fprintf (stdout, "arg2: %s\n", arg);
+                                dtmp -> label  = (int8_t *) malloc (sizeof (int8_t) * strlen (arg) + 1);
+                                strcpy (dtmp -> label, arg);
+                            }
                         }
                         else
                         {
@@ -400,7 +404,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         }
                         display            = display_add (display, dtmp);
                         //newcommand         = '\0';
-						action             = INPUT_NONE;
+                        action             = INPUT_NONE;
                         break;
 
                         /*
@@ -475,31 +479,31 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                        // fprintf (stdout, "STEP\n");
                         processflag        = TRUE;
                         //lastcommand        = 's';
-						lastaction         = INPUT_STEP;
+                        lastaction         = INPUT_STEP;
                         break;
 
-					case INPUT_NEXT:
-						//fprintf (stdout, "NEXT\n");
-						processflag        = TRUE;
-						lastaction         = INPUT_NEXT;
+                    case INPUT_NEXT:
+                        //fprintf (stdout, "NEXT\n");
+                        processflag        = TRUE;
+                        lastaction         = INPUT_NEXT;
 
-						////////////////////////////////////////////////////////////////
-						//
-						// if the instruction is a CALL, set seek_word and then
-						// set runflag to TRUE; otherwise, should behave like step
-						//
-						if (((word & 0xFC000000) >> 26) == 0x03)
-						{
-							runflag        = TRUE;
-							//seek_word      = rom_offset + 1; // next instruction
-							seek_word      = rom_offset;
-							if ((word & 0x02000000)     >  0)
-							{
-								seek_word  = seek_word  + 1; // if immediate value
-							}
-							//fprintf (stdout, "seek_word: 0x%.8X\n", seek_word);
-						}
-						break;
+                        ////////////////////////////////////////////////////////////////
+                        //
+                        // if the instruction is a CALL, set seek_word and then
+                        // set runflag to TRUE; otherwise, should behave like step
+                        //
+                        if (((word & 0xFC000000) >> 26) == 0x03)
+                        {
+                            runflag        = TRUE;
+                            //seek_word      = rom_offset + 1; // next instruction
+                            seek_word      = rom_offset;
+                            if ((word & 0x02000000)     >  0)
+                            {
+                                seek_word  = seek_word  + 1; // if immediate value
+                            }
+                            //fprintf (stdout, "seek_word: 0x%.8X\n", seek_word);
+                        }
+                        break;
 
                     case INPUT_HELP:
                         fprintf (stdout, "  c             - resume execution\n");
@@ -572,7 +576,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
             rom_offset                 = rom_offset   + 1;
         }
     }
-    
+
     fprintf (stdout, "SYSTEM HALTED\n");
 
     return (0);
