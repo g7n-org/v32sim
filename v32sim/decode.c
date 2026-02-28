@@ -45,11 +45,13 @@ void  decode_display (uint32_t  instruction,
     int8_t    sign                 = '+';
     uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
     uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
+    uint8_t   indexflag            = (flags & FLAG_INDEX)     ? TRUE : FALSE;
     uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
     uint32_t  dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
     uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port                 = (instruction & IOPORT_MASK);
+    uint32_t  value                = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -151,14 +153,34 @@ void  decode_display (uint32_t  instruction,
         case FGE:
         case FLT:
         case FLE:
+        case FADD:
+        case FSUB:
+        case FMUL:
+        case FDIV:
+        case FMOD:
             sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
             {
-                sprintf (source, "%.2f", fimmediate);
+                sprintf (source, "%.3f", fimmediate);
             }
             else
             {
                 sprintf (source, "R%u",    src);
+            }
+            fprintf (display,      "%-5s %-16s %-16s\n",
+                                   lookup[opcode].name, destination, source);
+            break;
+
+        case LEA:
+            sprintf (destination,         "R%u,",          dst);
+            if (immflag               == TRUE)
+            {
+                sign  = (immediate >= 0) ? '+' : '-';
+                sprintf (source,          "[R%u%c%d]",     src, sign, abs (immediate));
+            }
+            else
+            {
+                sprintf (source,          "[R%u]",         src);
             }
             fprintf (display,      "%-5s %-16s %-16s\n",
                                    lookup[opcode].name, destination, source);
@@ -210,8 +232,25 @@ void  decode_display (uint32_t  instruction,
                     sprintf (source,      "R%u",           src);
                     break;
             }
-            fprintf (display,     "%-5s %-16s %-16s\n",
-                                  lookup[opcode].name, destination, source);
+            
+            if (indexflag             == TRUE)
+            {
+                if (sign              == '+')
+                {
+                    value              = src + immediate;
+                }
+                else
+                {
+                    value              = src - abs (immediate);
+                }
+                fprintf (display,     "%-5s %-16s %-16s (index: 0x%.8X)\n",
+                                      lookup[opcode].name, destination, source, value);
+            }
+            else
+            {
+                fprintf (display,     "%-5s %-16s %-16s\n",
+                                      lookup[opcode].name, destination, source);
+            }
             break;
 
         case PUSH:
@@ -243,24 +282,6 @@ void  decode_display (uint32_t  instruction,
             else
             {
                 sprintf (source,  "R%u",     dst);
-            }
-            fprintf (display,     "%-5s %-16s %-16s\n",
-                                  lookup[opcode].name, destination, source);
-            break;
-
-        case FADD:
-        case FSUB:
-        case FMUL:
-        case FDIV:
-        case FMOD:
-            sprintf (destination, "R%u,",    dst);
-            if (immflag           == TRUE)
-            {
-                sprintf (source,  "%.3f",  fimmediate);
-            }
-            else
-            {
-                sprintf (source,  "R%u",     src);
             }
             fprintf (display,     "%-5s %-16s %-16s\n",
                                   lookup[opcode].name, destination, source);
@@ -397,6 +418,19 @@ void  decode_process (uint32_t  instruction,
         case FLE:
             fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
             FDSTREG         = (FDSTREG <= fvalue) ? TRUE       : FALSE;
+            break;
+
+        case LEA:
+            if (immflag    == TRUE)
+            {
+                //DSTREG      = word2int (memory_get (SRCREG));
+                DSTREG      = SRCREG;
+            }
+            else
+            {
+                //DSTREG      = word2int (memory_get (SRCREG + immediate));
+                DSTREG      = SRCREG + immediate;
+            }
             break;
 
         case MOV:

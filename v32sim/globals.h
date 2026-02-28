@@ -70,6 +70,7 @@ extern uint8_t   action;
 extern uint8_t  *data;
 extern uint8_t   runflag;
 extern uint8_t   branchflag;
+extern uint8_t   indexflag;
 extern uint8_t   haltflag;
 extern uint8_t   waitflag;
 extern uint8_t   wordsize;

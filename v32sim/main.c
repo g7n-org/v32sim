@@ -32,6 +32,7 @@ uint8_t   sys_reg_show;
 uint8_t   action;
 uint8_t   runflag;
 uint8_t   branchflag;
+uint8_t   indexflag;
 uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
@@ -74,6 +75,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     runflag                            = FALSE;
     seek_word                          = 0xFFFFFFFF;
     wordsize                           = 4;
+	indexflag                          = FALSE;
     haltflag                           = FALSE;
     waitflag                           = FALSE;
     sys_error                          = ERROR_NONE;
@@ -305,7 +307,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
 					action             = INPUT_NONE;
 				}
                 //tokenize_asm   (input);
-				fprintf (stdout, "action: %u\n", action);
+				//fprintf (stdout, "action: %u\n", action);
 				if (action            != INPUT_NONE)
 				{
 					tokenize_input (input);
@@ -345,27 +347,27 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                 switch (action)
                 {
                     case INPUT_BREAK:
-                        fprintf (stdout, "BREAK\n");
+                        //fprintf (stdout, "BREAK\n");
                         break;
 
                     case INPUT_CONTINUE:
-                        fprintf (stdout, "CONTINUE\n");
+                        //fprintf (stdout, "CONTINUE\n");
                         processflag        = TRUE;
                         runflag            = TRUE;
                         break;
 
 					case INPUT_LABEL:
-						fprintf (stdout, "LABEL\n");
+						//fprintf (stdout, "LABEL\n");
 						arg                = strtok ((input+2), " ");
 						value              = strlen (arg);
-						fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
+						//fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
 						break;
 
                     case INPUT_DISPLAY:
-                        fprintf (stdout, "DISPLAY\n");
+                        //fprintf (stdout, "DISPLAY\n");
                         arg                = strtok ((input+2), " ");
                         value              = strlen (arg);
-                        fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
+                        //fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
                         if ((*(arg+0)     == 'R') ||
                             (*(arg+0)     == 'r'))
                         {
@@ -386,7 +388,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 							if (arg       != NULL)
 							{
 								value      = strlen (arg);
-								fprintf (stdout, "arg2: %s\n", arg);
+								//fprintf (stdout, "arg2: %s\n", arg);
 								dtmp -> label  = (int8_t *) malloc (sizeof (int8_t) * strlen (arg) + 1);
 								strcpy (dtmp -> label, arg);
 							}
@@ -470,14 +472,14 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         break;*/
 
                     case INPUT_STEP:
-                        fprintf (stdout, "STEP\n");
+                       // fprintf (stdout, "STEP\n");
                         processflag        = TRUE;
                         //lastcommand        = 's';
 						lastaction         = INPUT_STEP;
                         break;
 
 					case INPUT_NEXT:
-						fprintf (stdout, "NEXT\n");
+						//fprintf (stdout, "NEXT\n");
 						processflag        = TRUE;
 						lastaction         = INPUT_NEXT;
 
@@ -495,7 +497,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 							{
 								seek_word  = seek_word  + 1; // if immediate value
 							}
-							fprintf (stdout, "seek_word: 0x%.8X\n", seek_word);
+							//fprintf (stdout, "seek_word: 0x%.8X\n", seek_word);
 						}
 						break;
 

@@ -721,7 +721,7 @@ uint8_t  tokenize_input (uint8_t *string)
         else if (check        == 0)
         {
             byte               = *(string + match[count].rm_so);
-            fprintf (stdout, "byte: '%c'\n", byte);
+            //fprintf (stdout, "byte: '%c'\n", byte);
             switch (byte)
             {
                 case 'b': // break
@@ -750,7 +750,7 @@ uint8_t  tokenize_input (uint8_t *string)
 
                 case 's': // step
                     action     = INPUT_STEP;
-                    fprintf (stdout, "action: step\n");
+                    //fprintf (stdout, "action: step\n");
                     break;
 
                 case 'h': // help
@@ -763,6 +763,7 @@ uint8_t  tokenize_input (uint8_t *string)
                     action     = INPUT_QUIT;
                     break;
             }
+			/*
             for (count         = 0;
                  count        <  4;
                  count         = count + 1)
@@ -774,6 +775,7 @@ uint8_t  tokenize_input (uint8_t *string)
                                  (long long int) match[count].rm_so,
                                  (long long int) match[count].rm_eo);
             }
+			*/
             regfree (&regex);
             break;
         }
