@@ -57,6 +57,7 @@ extern int8_t   *cartfile;
 extern int8_t    sys_error;
 extern mem_t    *memory;
 extern data_t   *reg;
+extern int8_t   *token_label;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //

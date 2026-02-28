@@ -14,6 +14,7 @@ uint8_t  *source;
 int8_t   *biosfile;
 int8_t   *cartfile;
 data_t   *reg;
+int8_t   *token_label;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -58,6 +59,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     uint8_t    lastaction              = INPUT_INIT;
     uint8_t    decodeflags             = FLAG_NONE;
     uint8_t    processflag             = FALSE;
+	uint8_t    token_type              = PARSE_NONE;
     uint32_t   immediate               = 0x00000000;
     uint32_t   vbinoffset              = 0x00000000;
     uint32_t   vtexoffset              = 0x00000000;
@@ -81,6 +83,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     sys_error                          = ERROR_NONE;
     sys_reg_show                       = FALSE;
     action                             = INPUT_INIT;
+	token_label                        = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -309,7 +312,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                 //fprintf (stdout, "action: %u\n", action);
                 if (action            != INPUT_NONE)
                 {
-                    tokenize_input (input);
+                    token_type         = tokenize_input (input);
                 }
                 /*
                 fprintf (stdout, "v32sim> ");
@@ -363,7 +366,57 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         break;
 
                     case INPUT_DISPLAY:
+						switch (token_type)
+						{
+							case PARSE_NONE:
+								fprintf (stderr, "[ERROR] malformed display value\n");
+								break;
+
+							case PARSE_IMMEDIATE:
+								arg                = strtok ((input+2), " ");
+								value              = strtol (arg, NULL, 16);
+								dtmp               = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
+								if (token_label   != NULL)
+								{
+									value          = sizeof (int8_t) * strlen (token_label) + 1;
+									dtmp -> label  = (int8_t *) malloc (value);
+									strcpy (dtmp -> label, token_label);
+								}
+								display            = display_add (display, dtmp);
+								break;
+
+							case PARSE_REGISTERS:
+								for (index   = 0;
+									 index  <= 15;
+									 index   = index + 1)
+								{
+									dtmp     = newdispnode (LIST_REG, new_word_i32 (&index, 1), 1);
+									display  = display_add (display, dtmp);
+								}
+								break;
+							
+							case IP: // system register
+							case IR:
+							case IV:
+								sys_reg_show  = TRUE;
+								break;
+
+							default: // specific, general register
+
+								dtmp               = newdispnode (LIST_REG, new_word_i32 (&token_type, 1), 1);
+								if (token_label   != NULL)
+								{
+									value          = sizeof (int8_t) * strlen (token_label) + 1;
+									dtmp -> label  = (int8_t *) malloc (value);
+									strcpy (dtmp -> label, token_label);
+								}
+								display       = display_add (display, dtmp);
+								break;
+						}
+                        action                = INPUT_NONE;
+						break;
                         //fprintf (stdout, "DISPLAY\n");
+						/*
                         arg                = strtok ((input+2), " ");
                         value              = strlen (arg);
                         //fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
@@ -402,6 +455,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
                         action             = INPUT_NONE;
                         break;
 
+						*/
                         /*
                     case 'm':
                         if (*(input+1)    == ' ')

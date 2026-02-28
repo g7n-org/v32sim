@@ -78,6 +78,15 @@
 #define  INPUT_STEP              8
 #define  INPUT_HELP              9
 #define  INPUT_QUIT              10
+#define  INPUT_REGISTER          11
+#define  INPUT_REGISTERS         12
+#define  INPUT_MEMADDR           13
+#define  INPUT_MEMRANGE          14
+#define  INPUT_IOPORT            15
+
+#define  PARSE_NONE              0x7F
+#define  PARSE_REGISTERS         0x7E
+#define  PARSE_IMMEDIATE         0x7D
 
 #define  NUM_PORT_CATEGORIES     7
 #define  NUM_TIM_PORTS           4
