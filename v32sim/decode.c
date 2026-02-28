@@ -174,7 +174,7 @@ void  decode_display (uint32_t  instruction,
             sprintf (destination,         "R%u,",          dst);
             if (immflag               == TRUE)
             {
-                sign  = (immediate >= 0) ? '+' : '-';
+                sign  = ((signed) immediate >= 0) ? '+' : '-';
                 sprintf (source,          "[R%u%c%d]",     src, sign, abs (immediate));
                 if (sign              == '+')
                 {
@@ -223,15 +223,15 @@ void  decode_display (uint32_t  instruction,
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
                     sprintf (destination, "R%u,",          dst);
                    // sprintf (source,      "[R%u+0x%.8X]",  src, immediate);
-                    sign  = (immediate >= 0) ? '+' : '-';
-                    sprintf (source,      "[R%u%c%d]",  src, sign, abs (immediate));
+                    sign  = ((signed) immediate >= 0) ? '+' : '-';
+                    sprintf (source,      "[R%u%c%d]",  src, sign, abs ((signed) immediate));
                     if (sign          == '+')
                     {
-                        value          = REG(src) + abs (immediate);
+                        value          = REG(src) + abs ((signed) immediate);
                     }
                     else
                     {
-                        value          = REG(src) - abs (immediate);
+                        value          = REG(src) - abs ((signed) immediate);
                     }
                     break;
 
@@ -247,15 +247,16 @@ void  decode_display (uint32_t  instruction,
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
                     //sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
-                    sprintf (destination, "[R%u%c%d],", dst, sign, abs (immediate));
+                    sprintf (destination, "[R%u%c%d],", dst, sign, abs ((signed) immediate));
                     sprintf (source,      "R%u",           src);
+                    sign  = ((signed) immediate >= 0) ? '+' : '-';
                     if (sign          == '+')
                     {
-                        value          = REG(dst) + abs (immediate);
+                        value          = REG(dst) + abs ((signed) immediate);
                     }
                     else
                     {
-                        value          = REG(dst) - abs (immediate);
+                        value          = REG(dst) - abs ((signed) immediate);
                     }
                     break;
             }
