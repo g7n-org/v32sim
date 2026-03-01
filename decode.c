@@ -359,7 +359,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case RET:
-            IP_REG          = word2int (memory_get (SP_REG));
+            IP_REG          = IMEMGET (SP_REG);
             rom_offset      = IP_REG;  // POP IP_REG off stack
             SP_REG          = SP_REG + 1;
             break;
@@ -445,12 +445,10 @@ void  decode_process (uint32_t  instruction,
         case LEA:
             if (immflag    == TRUE)
             {
-                //DSTREG      = word2int (memory_get (SRCREG));
                 DSTREG      = SRCREG;
             }
             else
             {
-                //DSTREG      = word2int (memory_get (SRCREG + immediate));
                 DSTREG      = SRCREG + immediate;
             }
             break;
@@ -467,38 +465,38 @@ void  decode_process (uint32_t  instruction,
                     break;
 
                 case 02: // MOV DSTREG, [Immediate]
-                    DSTREG  = word2int (memory_get (immediate));
+                    DSTREG  = IMEMGET (immediate);
                     break;
 
                 case 03: // MOV DSTREG, [SRCREG]
-                    DSTREG  = word2int (memory_get (SRCREG));
+                    DSTREG  = IMEMGET (SRCREG);
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
-                    DSTREG  = word2int (memory_get (SRCREG + immediate));
+                    DSTREG  = IMEMGET (SRCREG + immediate);
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
-                    memory_set (immediate,            SRCREG);
+                    MEMSET (immediate, SRCREG);
                     break;
 
                 case 06: // MOV [DSTREG], SRCREG
-                    memory_set (DSTREG,               SRCREG);
+                    MEMSET (DSTREG,    SRCREG);
                     break;
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
-                    memory_set ((DSTREG + immediate), SRCREG);
+                    MEMSET ((DSTREG + immediate), SRCREG);
                     break;
             }
             break;
 
         case PUSH:
             SP_REG          = SP_REG - 1; // adjust top of stack
-            memory_set (SP_REG, DSTREG);  // place on top of stack
+            MEMSET (SP_REG, DSTREG);      // place on top of stack
             break;
 
         case POP:
-            DSTREG          = word2int (memory_get (SP_REG));
+            DSTREG          = IMEMGET (SP_REG);
             SP_REG          = SP_REG + 1;
             break;
 

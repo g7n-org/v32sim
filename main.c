@@ -188,15 +188,15 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         }
 
         IP_REG                         = rom_offset;
-        word                           = word2int (memory_get (IP_REG));
+        word                           = IMEMGET (IP_REG);
         IR_REG                         = word;        // current instruction
 
         immediate                      = word & 0x02000000;
         if (immediate                 == 0x02000000)
         {
             rom_offset                 = rom_offset + 1;
-            immediate                  = word2int   (memory_get (IP_REG + 1));
-            fimmediate                 = word2float (memory_get (IP_REG + 1));
+            immediate                  = IMEMGET (IP_REG + 1);
+            fimmediate                 = FMEMGET (IP_REG + 1);
             decodeflags                = FLAG_IMMEDIATE;
         }
         else

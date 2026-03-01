@@ -1016,11 +1016,15 @@ uint8_t  prompt (uint32_t  word)
     size_t     len                     = 0;
     static uint8_t   *arg              = NULL;
     static uint8_t   *input            = NULL;
-    uint8_t    lastaction              = INPUT_INIT;
+    static uint8_t    lastaction       = INPUT_INIT;
     uint8_t    processflag             = FALSE;
     uint8_t    token_type              = PARSE_NONE;
 
-    displayshow  (dpoint, 0);
+    if ((action                       != INPUT_NONE) &&
+        (action                       != INPUT_INIT))
+    {
+        displayshow  (dpoint, 0);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1049,11 +1053,11 @@ uint8_t  prompt (uint32_t  word)
         free (input);
     }
 
-    action                             = INPUT_INIT;
     input                              = get_input (stdin, "v32sim> ");
+    
     if (*input                        == '\0')
     {
-        action                         = INPUT_NONE;
+        action                         = lastaction;
     }
 
     //tokenize_asm   (input);
@@ -1099,7 +1103,7 @@ uint8_t  prompt (uint32_t  word)
                 case PARSE_MEMORY:
                     arg                = strtok ((input+2), " ");
                     value              = strtol (arg, NULL, 16);
-                    fprintf (stdout, "[0x%.8X]: 0x%.8X\n", value, word2int (memory_get (value)));
+                    fprintf (stdout, "[0x%.8X]: 0x%.8X\n", value, IMEMGET (value));
                     break;
 
                 case PARSE_REGISTERS:
@@ -1134,7 +1138,7 @@ uint8_t  prompt (uint32_t  word)
                     }
                     break;
             }
-            action                     = INPUT_NONE;
+            lastaction                 = INPUT_NONE;
             break;
 
         case INPUT_DISPLAY:
@@ -1198,7 +1202,7 @@ uint8_t  prompt (uint32_t  word)
                     dpoint             = display_add (dpoint, dtmp);
                     break;
             }
-            action                     = INPUT_NONE;
+            lastaction                 = INPUT_NONE;
             break;
 
         case INPUT_QUIT:
@@ -1207,13 +1211,9 @@ uint8_t  prompt (uint32_t  word)
 
         case INPUT_STEP:
             processflag                = TRUE;
-            lastaction                 = INPUT_STEP;
             break;
 
         case INPUT_NEXT:
-            processflag                = TRUE;
-            lastaction                 = INPUT_NEXT;
-
             ////////////////////////////////////////////////////////////////////////////
             //
             // if the instruction is a CALL, set seek_word and then
@@ -1230,6 +1230,7 @@ uint8_t  prompt (uint32_t  word)
                     seek_word          = seek_word  + 1; // if immediate value
                 }
             }
+            processflag                = TRUE;
             break;
 
         case INPUT_HELP:

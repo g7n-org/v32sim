@@ -166,6 +166,10 @@
 #define  FSRCREG                 (reg+src) -> value.f32
 #define  FIV_REG                 (reg+IV)  -> value.f32
 
+#define  IMEMGET(addr)           word2int (memory_get (addr))
+#define  FMEMGET(addr)           word2float (memory_get (addr))
+#define  MEMSET(addr, word)      memory_set (addr, word)
+
 #define  REG_RAW                 0
 #define  REG_INT                 1
 #define  REG_FLOAT               2

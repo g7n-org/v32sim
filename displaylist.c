@@ -21,23 +21,37 @@ display_l *newdispnode  (uint8_t  type, word_t *list, uint8_t  num)
 
 display_l *display_add  (display_l *list, display_l *node)
 {
-    display_l *tmp              = NULL;
+    display_l *tmp                       = NULL;
+    int32_t    check                     = 0;
 
-    if (node                   != NULL)
+    if (node                            != NULL)
     {
-        if (list               != NULL)
+        if (list                        != NULL)
         {
-            tmp                 = list;
-            while (tmp -> next != NULL)
+            tmp                          = list;
+            while (tmp -> next          != NULL)
             {
-                tmp             = tmp -> next;
+                /*
+                if (list -> type        == node -> type)
+                {
+                    check                = memcmp (list -> list, node -> list, sizeof (word_t));
+                    if (check           == 0)
+                    {
+                        if (list -> num == node -> num)
+                        {
+                            break; // identical node found, do not add
+                        }
+                    }
+                }
+                */
+                tmp                      = tmp -> next;
             }
 
-            tmp -> next         = node;
+            tmp -> next                  = node;
         }
         else
         {
-            list                = node;
+            list                         = node;
         }
     }
     return (list);
@@ -106,7 +120,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                      index      = index + 1)
                 {
                     sys_force  == TRUE;
-                    value       = word2int (memory_get ((wtmp+index) -> i32));
+                    value       = IMEMGET ((wtmp+index) -> i32);
                     if (dtmp -> label != NULL)
                     {
                         fprintf (stdout, "0x%.8X: 0x%.8X \"%s\"\n", (wtmp+index) -> i32, value, dtmp -> label);
