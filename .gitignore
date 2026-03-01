@@ -108,3 +108,6 @@ errors
 
 # TIC-80
 *.tic
+
+# v32sim repo
+v32sim
