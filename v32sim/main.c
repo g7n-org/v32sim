@@ -4,41 +4,42 @@
 //
 // global variables - important file and memory/register resources
 //
-FILE     *display;
-FILE     *devnull;
-FILE     *program;
-FILE     *verbose;
-uint8_t  *data;
-uint8_t  *destination;
-uint8_t  *source;
-int8_t   *biosfile;
-int8_t   *cartfile;
-data_t   *reg;
-int8_t   *token_label;
+FILE      *display;
+FILE      *devnull;
+FILE      *program;
+FILE      *verbose;
+uint8_t   *data;
+uint8_t   *destination;
+uint8_t   *source;
+int8_t    *biosfile;
+int8_t    *cartfile;
+data_t    *reg;
+int8_t    *token_label;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // Variables related to IOPorts and memory
 //
-data_t  **ioports;
-mem_t    *memory;
-int8_t    sys_error;
-uint8_t   sys_force;
-uint8_t   sys_reg_show;
+data_t   **ioports;
+mem_t     *memory;
+int8_t     sys_error;
+uint8_t    sys_force;
+uint8_t    sys_reg_show;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // flags
 //
-uint8_t   action;
-uint8_t   runflag;
-uint8_t   branchflag;
-uint8_t   indexflag;
-uint8_t   haltflag;
-uint8_t   waitflag;
-uint8_t   wordsize;
-uint32_t  rom_offset;
-uint32_t  seek_word;
+uint8_t    action;
+uint8_t    runflag;
+uint8_t    branchflag;
+uint8_t    indexflag;
+uint8_t    haltflag;
+uint8_t    waitflag;
+uint8_t    wordsize;
+uint32_t   rom_offset;
+uint32_t   seek_word;
+display_l *dpoint;
 
 int32_t    main (int32_t  argc, uint8_t **argv)
 {
@@ -46,20 +47,11 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // declare and initialize variables
     //
-    display_l *display                 = NULL;
-    display_l *dtmp                    = NULL;
     float      fimmediate              = 0.0;
-    int32_t    index                   = 0;
-    int32_t    value                   = 0;
-    int32_t    lastaddr                = 0;
     size_t     len                     = 0;
-    uint8_t   *input                   = NULL;
-    uint8_t   *arg                     = NULL;
     //uint8_t    newcommand              = '\0';
-    uint8_t    lastaction              = INPUT_INIT;
     uint8_t    decodeflags             = FLAG_NONE;
     uint8_t    processflag             = FALSE;
-	uint8_t    token_type              = PARSE_NONE;
     uint32_t   immediate               = 0x00000000;
     uint32_t   vbinoffset              = 0x00000000;
     uint32_t   vtexoffset              = 0x00000000;
@@ -146,21 +138,6 @@ int32_t    main (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Unless I use some better input mechanism, input can be up to 256 bytes in 
-    // length (should be more than enough)
-    //
-    len                                = sizeof (uint8_t) * 256;
-    input                              = (uint8_t *) malloc (len);
-    arg                                = (uint8_t *) malloc (len);
-    if ((input                        == NULL) ||
-        (arg                          == NULL))
-    {
-        fprintf (stderr, "[ERROR] Allocation of string failed\n");
-        exit (STRING_ALLOC_FAIL);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
     // This is merely the word of data being read in, so wordsize bytes
     //
     len                                = sizeof (uint8_t) * wordsize;
@@ -198,8 +175,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     fprintf (stdout, "vtexoffset: %.8X\n", vtexoffset);
     fprintf (stdout, "vsndoffset: %.8X\n", vsndoffset);
 
-    while ((*(input+0)                != EOF) &&
-           (action                    != INPUT_QUIT) &&
+    while ((action                    != INPUT_QUIT) &&
            (haltflag                  == FALSE))
     {
         ////////////////////////////////////////////////////////////////////////////////
@@ -292,282 +268,14 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             processflag                = FALSE;
             do
             {
-                displayshow  (display, 0);
+				////////////////////////////////////////////////////////////////////////
+				//
+				// Display the prompt and obtain input
+				//
+				processflag            = prompt (word);
 
-                ////////////////////////////////////////////////////////////////////////
-                //
-                // Display the prompt and obtain input
-                //
-                if (input             != NULL)
-                {
-                    free (input);
-                }
-                action                 = INPUT_INIT;
-                input                  = get_input (stdin, "v32sim> ");
-                if (input             == '\0')
-                {
-                    action             = INPUT_NONE;
-                }
-                //tokenize_asm   (input);
-                //fprintf (stdout, "action: %u\n", action);
-                if (action            != INPUT_NONE)
-                {
-                    token_type         = tokenize_input (input);
-                }
-                /*
-                fprintf (stdout, "v32sim> ");
-
-                index                  = 0;
-                do
-                {
-uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
-                    *(input+index)     = fgetc (stdin);
-                    index              = index + 1;
-                }
-                while (*(input+(index-1)) != '\n');
-                */
-
-                ////////////////////////////////////////////////////////////////////////
-                //
-                // newcommand will be the character recently input; if newline,
-                // repeat lastcommand
-                //
-                //newcommand                 = *(input+0);
-                if (action                == INPUT_NONE)
-                {
-                    action                 = lastaction;
-                }
-                    /*
-                if (*(input+0)            == '\0')
-                {
-                    *(input+1)             = '\0';
-                    newcommand             = lastcommand;
-                }
-                *(input+index-1)           = '\0';
-                */
-
-                switch (action)
-                {
-                    case INPUT_BREAK:
-                        //fprintf (stdout, "BREAK\n");
-                        break;
-
-                    case INPUT_CONTINUE:
-                        //fprintf (stdout, "CONTINUE\n");
-                        processflag        = TRUE;
-                        runflag            = TRUE;
-                        break;
-
-                    case INPUT_LABEL:
-                        //fprintf (stdout, "LABEL\n");
-                        arg                = strtok ((input+2), " ");
-                        value              = strlen (arg);
-                        //fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
-                        break;
-
-                    case INPUT_DISPLAY:
-						switch (token_type)
-						{
-							case PARSE_NONE:
-								fprintf (stderr, "[ERROR] malformed display value\n");
-								break;
-
-							case PARSE_IMMEDIATE:
-								arg                = strtok ((input+2), " ");
-								value              = strtol (arg, NULL, 16);
-								dtmp               = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
-								if (token_label   != NULL)
-								{
-									value          = sizeof (int8_t) * strlen (token_label) + 1;
-									dtmp -> label  = (int8_t *) malloc (value);
-									strcpy (dtmp -> label, token_label);
-								}
-								display            = display_add (display, dtmp);
-								break;
-
-							case PARSE_REGISTERS:
-								for (index   = 0;
-									 index  <= 15;
-									 index   = index + 1)
-								{
-									dtmp     = newdispnode (LIST_REG, new_word_i32 (&index, 1), 1);
-									display  = display_add (display, dtmp);
-								}
-								break;
-							
-							case IP: // system register
-							case IR:
-							case IV:
-								sys_reg_show  = TRUE;
-								break;
-
-							default: // specific, general register
-
-								dtmp               = newdispnode (LIST_REG, new_word_i32 (&token_type, 1), 1);
-								if (token_label   != NULL)
-								{
-									value          = sizeof (int8_t) * strlen (token_label) + 1;
-									dtmp -> label  = (int8_t *) malloc (value);
-									strcpy (dtmp -> label, token_label);
-								}
-								display       = display_add (display, dtmp);
-								break;
-						}
-                        action                = INPUT_NONE;
-						break;
-                        //fprintf (stdout, "DISPLAY\n");
-						/*
-                        arg                = strtok ((input+2), " ");
-                        value              = strlen (arg);
-                        //fprintf (stdout, "arg: %s, '%c'\n", arg, *(arg+1));
-                        if ((*(arg+0)     == 'R') ||
-                            (*(arg+0)     == 'r'))
-                        {
-                            value          = atoi ((arg+1));
-                            dtmp           = newdispnode (LIST_REG, new_word_i32 (&value, 1), 1);
-                        }
-                        else if ((*(arg)  == 'I') ||
-                                 (*(arg)  == 'i'))
-                        {
-                            sys_reg_show   = TRUE;
-                            break;
-                        }
-                        else if (value    == 10) // memory address
-                        {
-                            value          = strtol (arg, NULL, 16);
-                            dtmp           = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
-                            arg            = strtok (NULL, " ");
-                            if (arg       != NULL)
-                            {
-                                value      = strlen (arg);
-                                //fprintf (stdout, "arg2: %s\n", arg);
-                                dtmp -> label  = (int8_t *) malloc (sizeof (int8_t) * strlen (arg) + 1);
-                                strcpy (dtmp -> label, arg);
-                            }
-                        }
-                        else
-                        {
-                            value          = strtol (arg, NULL, 16);
-                            dtmp           = newdispnode (LIST_IOP, new_word_i32 (&value, 1), 1);
-                        }
-                        display            = display_add (display, dtmp);
-                        //newcommand         = '\0';
-                        action             = INPUT_NONE;
-                        break;
-
-						*/
-                        /*
-                    case 'm':
-                        if (*(input+1)    == ' ')
-                        {
-                            arg            = strtok ((input+2), " ");
-                            value          = strtol (arg, NULL, 16);
-                            sprintf (source, "[%.8X]:", value);
-                            fprintf (stdout, "%-4s 0x%.8X\n",
-                                             source, word2int (memory_get (value)));
-                            lastaddr       = value;
-                        }
-                        else
-                        {
-                            value          = lastaddr & 0x0FFFFFFF;
-                            if (value     <  0x0000004)
-                            {
-                                lastaddr   = lastaddr & 0xF0000000;
-                                lastaddr   = lastaddr | 0x00000004;
-                            }
-
-                            for (index     = lastaddr - 4;
-                                 index    <  lastaddr + 4;
-                                 index     = index    + 1)
-                            {
-                                sprintf (source, "[%.8X]:", index);
-                                fprintf (stdout, "%-11s 0x%.8X\n",
-                                                 source, word2int (memory_get (index)));
-                            }
-                            lastaddr       = index;
-                        }
-                        break;
-
-                    case 'P':
-                        if (*(input+1)    == ' ')
-                        {
-                            arg            = strtok ((input+2), " ");
-                            sys_force      = TRUE;
-                            index          = strtol (arg, NULL, 16);
-                            value          = ioports_get (index);
-                            fprintf (stdout, "[%s]: 0x%.8X\n", arg, value);
-                        }
-                        break;
-*/
-                    case INPUT_QUIT:
-                        processflag        = 2;
-                        break;
-
-                        /*
-                    case 'r':
-                        if (*(input+1)    == ' ')
-                        {
-                            arg            = strtok ((input+2), " ");
-                            value          = atoi (arg+1);
-                            sprintf (source, "R%u:", value);
-                            fprintf (stdout, "%-4s 0x%.8X\n", source, REG(value));
-                        }
-                        else
-                        {
-                            for (index     = 0;
-                                 index    <  16;
-                                 index     = index + 1)
-                            {
-                                sprintf (source, "R%u:", index);
-                                fprintf (stdout, "%-4s 0x%.8X\n", source, REG(index));
-                            }
-                        }
-                        break;*/
-
-                    case INPUT_STEP:
-                       // fprintf (stdout, "STEP\n");
-                        processflag        = TRUE;
-                        //lastcommand        = 's';
-                        lastaction         = INPUT_STEP;
-                        break;
-
-                    case INPUT_NEXT:
-                        //fprintf (stdout, "NEXT\n");
-                        processflag        = TRUE;
-                        lastaction         = INPUT_NEXT;
-
-                        ////////////////////////////////////////////////////////////////
-                        //
-                        // if the instruction is a CALL, set seek_word and then
-                        // set runflag to TRUE; otherwise, should behave like step
-                        //
-                        if (((word & 0xFC000000) >> 26) == 0x03)
-                        {
-                            runflag        = TRUE;
-                            //seek_word      = rom_offset + 1; // next instruction
-                            seek_word      = rom_offset;
-                            if ((word & 0x02000000)     >  0)
-                            {
-                                seek_word  = seek_word  + 1; // if immediate value
-                            }
-                            //fprintf (stdout, "seek_word: 0x%.8X\n", seek_word);
-                        }
-                        break;
-
-                    case INPUT_HELP:
-                        fprintf (stdout, "  c             - resume execution\n");
-                        fprintf (stdout, "  d XYZ [LABEL] - add displaylist item\n");
-                        fprintf (stdout, "    R#          - general register\n");
-                        fprintf (stdout, "    I(P|R|V)    - system register\n");
-                        fprintf (stdout, "    0xaddr      - memory address\n");
-                        fprintf (stdout, "    0xioaddr    - IOPort\n");
-                        fprintf (stdout, "  n             - next (skip subroutines)\n");
-                        fprintf (stdout, "  s             - step to next instruction\n");
-                        break;
-                }
-                lastaction                 = action;
             }
-            while (processflag            == FALSE);
+            while (processflag        == FALSE);
         }
 
         ////////////////////////////////////////////////////////////////////////////////

@@ -46,37 +46,38 @@ struct memory_type
 };
 typedef struct memory_type mem_t;
 
-extern FILE     *display;
-extern FILE     *devnull;
-extern FILE     *program;
-extern FILE     *verbose;
-extern uint8_t  *destination;
-extern uint8_t  *source;
-extern int8_t   *biosfile;
-extern int8_t   *cartfile;
-extern int8_t    sys_error;
-extern mem_t    *memory;
-extern data_t   *reg;
-extern int8_t   *token_label;
+extern FILE      *display;
+extern FILE      *devnull;
+extern FILE      *program;
+extern FILE      *verbose;
+extern uint8_t   *destination;
+extern uint8_t   *source;
+extern int8_t    *biosfile;
+extern int8_t    *cartfile;
+extern int8_t     sys_error;
+extern mem_t     *memory;
+extern data_t    *reg;
+extern int8_t    *token_label;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // Variables related to IOPorts
 //
-extern data_t  **ioports;
-extern uint8_t   sys_force;
-extern uint8_t   sys_reg_show;
+extern data_t   **ioports;
+extern uint8_t    sys_force;
+extern uint8_t    sys_reg_show;
 
-extern uint8_t   action;
-extern uint8_t  *data;
-extern uint8_t   runflag;
-extern uint8_t   branchflag;
-extern uint8_t   indexflag;
-extern uint8_t   haltflag;
-extern uint8_t   waitflag;
-extern uint8_t   wordsize;
-extern uint32_t  rom_offset;
-extern uint32_t  seek_word;
+extern uint8_t    action;
+extern uint8_t   *data;
+extern uint8_t    runflag;
+extern uint8_t    branchflag;
+extern uint8_t    indexflag;
+extern uint8_t    haltflag;
+extern uint8_t    waitflag;
+extern uint8_t    wordsize;
+extern uint32_t   rom_offset;
+extern uint32_t   seek_word;
+extern display_l *dpoint;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -112,5 +113,6 @@ void       usage          (int8_t *);
 uint32_t   tokenize_asm   (uint8_t *);
 uint8_t    tokenize_input (uint8_t *);
 uint8_t   *get_input      (FILE *,      const uint8_t *);
+uint8_t    prompt         (uint32_t);
 
 #endif
