@@ -110,7 +110,6 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 }
                 else
                 {
-					fprintf (stdout, "value is: %u\n", value);
                     fprintf (stdout, "0x%.8X\n",        REG(value));
                 }
                 break;

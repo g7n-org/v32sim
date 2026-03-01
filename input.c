@@ -775,7 +775,7 @@ uint8_t  tokenize_input (uint8_t *string)
     int8_t     *token            = NULL;
     uint8_t   **pattern          = NULL;
     uint8_t    *form0            = "^ *([a-z?]+) *$";
-    uint8_t    *form1            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_-]*)? *$";
+    uint8_t    *form1            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
     uint8_t    *form2            = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
     uint8_t    *form3            = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
     uint8_t    *form4            = "^ *(reg|regs|register|registers|r[*]) *$";  // registers

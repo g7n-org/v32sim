@@ -284,6 +284,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             }
         }
     }
+    action                                     = INPUT_INIT;
 
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
