@@ -6,13 +6,13 @@
 //
 FILE      *display;
 FILE      *devnull;
-FILE      *program;
 FILE      *verbose;
 uint8_t   *data;
 uint8_t   *destination;
 uint8_t   *source;
 int8_t    *biosfile;
 int8_t    *cartfile;
+int8_t    *commandfile;
 data_t    *reg;
 int8_t    *token_label;
 
@@ -47,11 +47,17 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // declare and initialize variables
     //
+    display_l *dtmp                    = NULL;
+    FILE      *fptr                    = NULL;
     float      fimmediate              = 0.0;
+    int32_t    index                   = 0;
+    int32_t    value                   = 0;
     size_t     len                     = 0;
-    //uint8_t    newcommand              = '\0';
+    uint8_t   *arg                     = NULL;
     uint8_t    decodeflags             = FLAG_NONE;
+    uint8_t    input[64];
     uint8_t    processflag             = FALSE;
+    uint8_t    token_type              = 0;
     uint32_t   immediate               = 0x00000000;
     uint32_t   vbinoffset              = 0x00000000;
     uint32_t   vtexoffset              = 0x00000000;
@@ -64,6 +70,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     biosfile                           = NULL;
     cartfile                           = NULL;
+    commandfile                        = NULL;
     rom_offset                         = BIOS_START_OFFSET;
     branchflag                         = FALSE;
     runflag                            = FALSE;
@@ -75,7 +82,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     sys_error                          = ERROR_NONE;
     sys_reg_show                       = FALSE;
     action                             = INPUT_INIT;
-	token_label                        = NULL;
+    token_label                        = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -169,6 +176,114 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     // Our registers will be in a word_t array
     //
     init_registers ();
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Load commands from command-file
+    //
+    if (commandfile                   != NULL)
+    {
+        fptr                           = fopen (commandfile, "r");
+        if (fptr                      == NULL)
+        {
+            fprintf (stderr, "[ERROR] Could not open '%s' for reading!\n", commandfile);
+            exit (1);
+        }
+
+        while (!feof (fptr))
+        {
+            //if (input                 != NULL)
+            //{
+             //   free (input);
+            //}
+            index                      = 0;
+            token_label                = NULL;
+            while (!feof (fptr))
+            {
+                input[index]           = fgetc (fptr);
+                if (input[index]      == '\n')
+                {
+                    input[index]       = '\0';
+                    break;
+                }
+                index                  = index + 1;
+            }
+
+            if (feof (fptr))
+            {
+                break;
+            }
+            token_type                 = tokenize_input (input);
+
+            switch (action)
+            {
+                case INPUT_DISPLAY:
+                    switch (token_type)
+                    {
+                        case PARSE_NONE:
+                            fprintf (stderr, "[ERROR] malformed display value\n");
+                            break;
+
+                        case PARSE_MEMORY:
+                            arg                = strtok ((input+2), " ");
+                            value              = strtol (arg, NULL, 16);
+                            dtmp               = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                dtmp -> label  = (int8_t *) malloc (value);
+                                strcpy (dtmp -> label, token_label);
+                            }
+                            dpoint             = display_add (dpoint, dtmp);
+                            break;
+
+                        case PARSE_REGISTERS:
+                            for (index         = 0;
+                                 index        <= 15;
+                                 index         = index + 1)
+                            {
+                                dtmp           = newdispnode (LIST_REG, new_word_i32 (&index, 1), 1);
+                                dpoint         = display_add (dpoint, dtmp);
+                            }
+                            break;
+
+                        case PARSE_REGISTER: // specific, general register
+                            arg                = strtok ((input+2), " ");
+                            token_type         = parse_reg (arg);
+                            if (token_type    >  15)
+                            {
+                                sys_reg_show   = TRUE;
+                                break;
+                            }
+                            token_type         = token_type & 0x0000001F;
+                            dtmp               = newdispnode (LIST_REG, new_word_i32 ((uint32_t *) &token_type, 1), 1);
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                dtmp -> label  = (int8_t *) malloc (value);
+                                strcpy (dtmp -> label, token_label);
+                            }
+                            dpoint             = display_add (dpoint, dtmp);
+                            fprintf (stdout, "[cmd] adding R%u to the list\n", token_type);
+                            break;
+
+                        case PARSE_IOPORT:
+                            arg                = strtok ((input+2), " ");
+                            value              = strtol (arg, NULL, 16);
+                            dtmp               = newdispnode (LIST_IOP, new_word_i32 (&value, 1), 1);
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                dtmp -> label  = (int8_t *) malloc (value);
+                                strcpy (dtmp -> label, token_label);
+                            }
+                            dpoint             = display_add (dpoint, dtmp);
+                            break;
+                    }
+                    break;
+            }
+        }
+    }
 
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
@@ -268,11 +383,11 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             processflag                = FALSE;
             do
             {
-				////////////////////////////////////////////////////////////////////////
-				//
-				// Display the prompt and obtain input
-				//
-				processflag            = prompt (word);
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Display the prompt and obtain input
+                //
+                processflag            = prompt (word);
 
             }
             while (processflag        == FALSE);

@@ -22,7 +22,7 @@ display_l *newdispnode  (uint8_t  type, word_t *list, uint8_t  num)
 display_l *display_add  (display_l *list, display_l *node)
 {
     display_l *tmp                       = NULL;
-    int32_t    check                     = 0;
+    //int32_t    check                     = 0;
 
     if (node                            != NULL)
     {
@@ -110,7 +110,8 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 }
                 else
                 {
-                    fprintf (stdout, "0x%.8X\n", REG(value));
+					fprintf (stdout, "value is: %u\n", value);
+                    fprintf (stdout, "0x%.8X\n",        REG(value));
                 }
                 break;
 

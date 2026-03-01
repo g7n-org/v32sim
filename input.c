@@ -70,7 +70,7 @@ uint8_t  parse_memrange (uint8_t *token)
     //
     uint8_t     result       = PARSE_NONE;
     int32_t     check        = 0;
-    int32_t     value        = 0;
+    //int32_t     value        = 0;
     regex_t     regex;
     regmatch_t  match[2];
     uint8_t    *pattern      = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$";

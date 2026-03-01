@@ -13,6 +13,7 @@ void       process_args (int32_t  argc, int8_t **argv)
        { "biosfile",       required_argument, 0, 'B' },
        { "binary",         no_argument,       0, 'b' },
        { "colors",         no_argument,       0, 'c' },
+	   { "command-file",   required_argument, 0, 'C' },
        { "index-math",     no_argument,       0, 'i' },
        { "run",            no_argument,       0, 'r' },
        { "seek-to",        required_argument, 0, 's' },
@@ -26,7 +27,7 @@ void       process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:bcirs:vh", long_options,
+                                                  "B:bC:cirs:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -38,6 +39,10 @@ void       process_args (int32_t  argc, int8_t **argv)
 
             case 'b':
                 //binaryflag         = 1;
+                break;
+
+            case 'C':
+                commandfile        = optarg;
                 break;
 
             case 'c':
@@ -69,7 +74,7 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:bcirs:vh", long_options,
+                                                  "B:bC:cirs:vh", long_options,
                                                   &option_index);
     }
 
