@@ -40,6 +40,7 @@ uint8_t    waitflag;
 uint8_t    wordsize;
 uint32_t   rom_offset;
 uint32_t   seek_word;
+uint32_t   watch_word;
 display_l *dpoint;
 
 int32_t    main (int32_t  argc, uint8_t **argv)
@@ -70,6 +71,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     runflag                            = FALSE;
     colorflag                          = FALSE;
     seek_word                          = 0xFFFFFFFF;
+    watch_word                         = 0x00000000;
     wordsize                           = 4;
     indexflag                          = FALSE;
     haltflag                           = FALSE;
@@ -197,6 +199,11 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         IP_REG                         = rom_offset;
         word                           = IMEMGET (IP_REG);
         IR_REG                         = word;        // current instruction
+
+        if (watch_word                == word)
+        {
+            runflag                    = FALSE;
+        }
 
         immediate                      = word & 0x02000000;
         if (immediate                 == 0x02000000)

@@ -12,6 +12,10 @@ void  usage (int8_t *program)
     fprintf (stdout, " -i, --index-math         output index math after decode\n");
     fprintf (stdout, " -r, --run                do not enable single-step mode\n");
     fprintf (stdout, " -s, --seek-to=OFFSET     run until OFFSET is encountered\n");
+    fprintf (stdout, " -w, --watch-for=OPCODE   run until OPCODE is encountered\n");
     fprintf (stdout, " -v, --verbose            enable more verbose output\n");
     fprintf (stdout, " -h, --help               display this information\n\n");
+    fprintf (stdout, "FILE   is any path plus the filename desired\n");
+    fprintf (stdout, "OFFSET is the full 32-bit/4-byte memory addres (hex)\n");
+    fprintf (stdout, "OPCODE is the full 32-bit/4-byte instruction hex\n\n");
 }

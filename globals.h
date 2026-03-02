@@ -78,6 +78,7 @@ extern uint8_t    waitflag;
 extern uint8_t    wordsize;
 extern uint32_t   rom_offset;
 extern uint32_t   seek_word;
+extern uint32_t   watch_word;
 extern display_l *dpoint;
 
 ////////////////////////////////////////////////////////////////////////////////////////

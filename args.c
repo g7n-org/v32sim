@@ -13,10 +13,11 @@ void       process_args (int32_t  argc, int8_t **argv)
        { "biosfile",       required_argument, 0, 'B' },
        { "binary",         no_argument,       0, 'b' },
        { "colors",         no_argument,       0, 'c' },
-	   { "command-file",   required_argument, 0, 'C' },
+       { "command-file",   required_argument, 0, 'C' },
        { "index-math",     no_argument,       0, 'i' },
        { "run",            no_argument,       0, 'r' },
        { "seek-to",        required_argument, 0, 's' },
+       { "watch-for",      required_argument, 0, 'w' },
        { "verbose",        no_argument,       0, 'v' },
        { "help",           no_argument,       0, 'h' },
        { 0,                0,                 0,  0  }
@@ -27,7 +28,7 @@ void       process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:bC:cirs:vh", long_options,
+                                                  "B:bC:cirs:w:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -62,6 +63,11 @@ void       process_args (int32_t  argc, int8_t **argv)
                 seek_word          = strtol (optarg, NULL, 16);
                 break;
 
+            case 'w':
+                runflag            = TRUE;
+                watch_word         = strtol (optarg, NULL, 16);
+                break;
+
             case 'v':
                 if (verbose       == NULL)
                 {
@@ -74,7 +80,7 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:bC:cirs:vh", long_options,
+                                                  "B:bC:cirs:w:vh", long_options,
                                                   &option_index);
     }
 
