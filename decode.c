@@ -98,6 +98,7 @@ void  decode_display (uint32_t  instruction,
 
         case WAIT:
         case RET:
+        case MOVS:
             fprintf (display,         "%-5s\n",
                                       lookup[opcode].name);
             break;
@@ -281,6 +282,7 @@ void  decode_display (uint32_t  instruction,
         case CFI:
         case CIB:
         case CFB:
+        case ISGN:
         case NOT:
         case BNOT:
             sprintf (destination, "R%u",    dst);
@@ -509,6 +511,19 @@ void  decode_process (uint32_t  instruction,
             ioports_set (port, value);
             break;
 
+        case MOVS:
+            do
+            {
+                value       = IMEMGET(REG(SR));
+                MEMSET(REG(DR), value);
+                REG(DR)     = REG(DR) + 1;
+                REG(SR)     = REG(SR) + 1;
+                REG(CR)     = REG(CR) - 1;
+                //REG(IP)     = REG(IP) - 1;
+            }
+            while (REG(CR) >  0);
+            break;
+
         case CIF:
             FDSTREG         = (float) DSTREG;
             break;
@@ -583,6 +598,10 @@ void  decode_process (uint32_t  instruction,
 
         case IMOD:
             DSTREG         %= (immflag == TRUE)  ? immediate  : SRCREG;
+            break;
+
+        case ISGN:
+            DSTREG          = -DSTREG;
             break;
 
         case FADD:

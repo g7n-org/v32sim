@@ -13,7 +13,8 @@ display_l *newdispnode  (uint8_t  type, word_t *list, uint8_t  num)
     newnode -> addr             = 0;
     newnode -> type             = type;
     newnode -> num              = num;
-    newnode -> list             = list;
+    newnode -> list             = (word_t *) malloc (sizeof (word_t) * num);
+	memcpy (newnode -> list, list, sizeof (word_t) * num);
     newnode -> next             = NULL;
 
     return (newnode);

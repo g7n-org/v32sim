@@ -207,6 +207,7 @@
 #define  POP                     0x16
 #define  IN                      0x17
 #define  OUT                     0x18
+#define  MOVS                    0x19
 #define  CIF                     0x1C
 #define  CFI                     0x1D
 #define  CIB                     0x1E
@@ -222,6 +223,7 @@
 #define  IMUL                    0x28
 #define  IDIV                    0x29
 #define  IMOD                    0x2A
+#define  ISGN                    0x2B
 #define  FADD                    0x2F
 #define  FSUB                    0x30
 #define  FMUL                    0x31

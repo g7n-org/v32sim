@@ -93,6 +93,7 @@ void       init_ioports   (void);                              // initialize IOP
 int32_t    ioports_get    (uint16_t);                          // get value from port
 void       ioports_set    (uint16_t,    int32_t);              // set value to port
 void       init_memory    (void);                              // initialize memory
+void       load_command   (void);
 void       load_memory    (uint32_t,    int8_t *);             // load file into memory
 word_t    *memory_get     (uint32_t);                          // get value from memory
 void       memory_set     (uint32_t,    uint32_t);             // set value to memory

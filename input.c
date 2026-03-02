@@ -1025,6 +1025,11 @@ uint8_t  prompt (uint32_t  word)
     {
         displayshow  (dpoint, 0);
     }
+    else if (commandfile              != NULL)
+    {
+        fprintf (stdout, "LOADING COMMANDS\n");
+        load_command ();
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1034,10 +1039,8 @@ uint8_t  prompt (uint32_t  word)
     len                                = sizeof (uint8_t) * 256;
     if (input                         == NULL)
     {
-        input                          = (uint8_t *) malloc (len);
         arg                            = (uint8_t *) malloc (len);
-        if ((input                    == NULL) ||
-            (arg                      == NULL))
+        if (arg                       == NULL)
         {
             fprintf (stderr, "[ERROR] Allocation of string failed\n");
             exit (STRING_ALLOC_FAIL);
@@ -1251,4 +1254,123 @@ uint8_t  prompt (uint32_t  word)
     lastaction                         = action;
 
     return (processflag);
+}
+
+void load_command (void)
+{
+    display_l *dtmp                    = NULL;
+    FILE      *fptr                    = NULL;
+    int32_t    index                   = 0;
+    int32_t    value                   = 0;
+    uint8_t   *arg                     = NULL;
+    uint8_t    input[64];
+    uint8_t    token_type              = 0;
+	word_t     wtmp;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Load commands from command-file
+    //
+    if (commandfile                   != NULL)
+    {
+        fptr                           = fopen (commandfile, "r");
+        if (fptr                      == NULL)
+        {
+            fprintf (stderr, "[ERROR] Could not open '%s' for reading!\n", commandfile);
+            exit (1);
+        }
+
+        while (!feof (fptr))
+        {
+            index                      = 0;
+            token_label                = NULL;
+            while (!feof (fptr))
+            {
+                input[index]           = fgetc (fptr);
+                if (input[index]      == '\n')
+                {
+                    input[index]       = '\0';
+                    break;
+                }
+                index                  = index + 1;
+            }
+
+            if (feof (fptr))
+            {
+                break;
+            }
+            token_type                 = tokenize_input (input);
+
+            switch (action)
+            {
+                case INPUT_DISPLAY:
+                    switch (token_type)
+                    {
+                        case PARSE_NONE:
+                            fprintf (stderr, "[ERROR] malformed display value\n");
+                            break;
+
+                        case PARSE_MEMORY:
+                            arg                = strtok ((input+2), " ");
+                            value              = strtol (arg, NULL, 16);
+                            dtmp               = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                dtmp -> label  = (int8_t *) malloc (value);
+                                strcpy (dtmp -> label, token_label);
+                            }
+                            dpoint             = display_add (dpoint, dtmp);
+                            break;
+
+                        case PARSE_REGISTERS:
+                            for (index         = 0;
+                                 index        <= 15;
+                                 index         = index + 1)
+                            {
+                                dtmp           = newdispnode (LIST_REG, new_word_i32 (&index, 1), 1);
+                                dpoint         = display_add (dpoint, dtmp);
+                            }
+                            break;
+
+                        case PARSE_REGISTER: // specific, general register
+                            arg                = strtok ((input+2), " ");
+                            token_type         = parse_reg (arg);
+                            if (token_type    >  15)
+                            {
+                                sys_reg_show   = TRUE;
+                                break;
+                            }
+                            token_type         = token_type & 0x0000001F;
+							wtmp.i32           = token_type;
+                            dtmp               = newdispnode (LIST_REG, &wtmp, 1);
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                dtmp -> label  = (int8_t *) malloc (value);
+                                strcpy (dtmp -> label, token_label);
+                            }
+                            dpoint             = display_add (dpoint, dtmp);
+                            break;
+
+                        case PARSE_IOPORT:
+                            arg                = strtok ((input+2), " ");
+                            value              = strtol (arg, NULL, 16);
+                            dtmp               = newdispnode (LIST_IOP, new_word_i32 (&value, 1), 1);
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                dtmp -> label  = (int8_t *) malloc (value);
+                                strcpy (dtmp -> label, token_label);
+                            }
+                            dpoint             = display_add (dpoint, dtmp);
+                            break;
+                    }
+                    break;
+            }
+        }
+        commandfile                            = NULL;
+        fclose (fptr);
+    }
+    action                                     = INPUT_INIT;
 }

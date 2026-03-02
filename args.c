@@ -80,8 +80,8 @@ void       process_args (int32_t  argc, int8_t **argv)
 
     if (optind                    <  argc)
     {
-        fprintf (stdout, "[optind] %u\n", optind);
-        fprintf (stdout, "[argc]   %u\n", argc);
+        //fprintf (verbose, "[optind] %u\n", optind);
+        //fprintf (verbose, "[argc]   %u\n", argc);
         cartfile                   = *(argv+optind);
     }
 }
