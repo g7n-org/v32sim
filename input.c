@@ -979,9 +979,27 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 
     ////////////////////////////////////////////////////////////////////////////////
     //
+    // If colors are enabled, highlight the decoded instruction
+    //
+    if (colorflag                 == TRUE)
+    {
+        fprintf (stdout, "\e[1;32m");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
     // obtain input (via readline)
     //
     input_string           = readline (prompt);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
+    // If colors are enabled, complete the highlight the decoded instruction
+    //
+    if (colorflag                 == TRUE)
+    {
+        fprintf (stdout, "\e[m");
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     //

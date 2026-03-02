@@ -46,7 +46,7 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
 
             case 'c':
-                //fancyflag          = FANCY_COLORS;
+                colorflag          = TRUE;
                 break;
 
             case 'i':

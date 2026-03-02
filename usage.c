@@ -8,7 +8,7 @@ void  usage (int8_t *program)
     fprintf (stdout, "for short options too.\n\n");
     fprintf (stdout, " -B, --biosfile=FILE      load this BIOS V32 file as BIOS\n");
     fprintf (stdout, " -C, --command-file=FILE  load this file with sim commands\n");
-//    fprintf (stdout, " -c, --colors           enable colorized output\n");
+    fprintf (stdout, " -c, --colors             enable colorized output\n");
     fprintf (stdout, " -i, --index-math         output index math after decode\n");
     fprintf (stdout, " -r, --run                do not enable single-step mode\n");
     fprintf (stdout, " -s, --seek-to=OFFSET     run until OFFSET is encountered\n");

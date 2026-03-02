@@ -32,6 +32,7 @@ uint8_t    sys_reg_show;
 //
 uint8_t    action;
 uint8_t    runflag;
+uint8_t    colorflag;
 uint8_t    branchflag;
 uint8_t    indexflag;
 uint8_t    haltflag;
@@ -67,6 +68,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     rom_offset                         = BIOS_START_OFFSET;
     branchflag                         = FALSE;
     runflag                            = FALSE;
+    colorflag                          = FALSE;
     seek_word                          = 0xFFFFFFFF;
     wordsize                           = 4;
     indexflag                          = FALSE;
