@@ -193,6 +193,15 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         //
         if (rom_offset                == seek_word)
         {
+            if (colorflag             == TRUE)
+            {
+                fprintf (stdout, "\e[1;31m");
+            }
+            fprintf (stdout, "[seekword] trigger encountered (0x%.8X)\n", seek_word);
+            if (colorflag             == TRUE)
+            {
+                fprintf (stdout, "\e[m");
+            }
             runflag                    = FALSE;
         }
 
@@ -202,6 +211,15 @@ int32_t    main (int32_t  argc, uint8_t **argv)
 
         if (watch_word                == word)
         {
+            if (colorflag             == TRUE)
+            {
+                fprintf (stdout, "\e[1;31m");
+            }
+            fprintf (stdout, "[watchfor] trigger encountered (0x%.8X)\n", watch_word);
+            if (colorflag             == TRUE)
+            {
+                fprintf (stdout, "\e[m");
+            }
             runflag                    = FALSE;
         }
 
