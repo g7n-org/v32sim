@@ -100,7 +100,7 @@ void  decode_display (uint32_t  instruction,
         case HLT: // special case for HLT to try and distinguish from data
             if (instruction         == 0x00000000)
             {
-                fprintf (display,     "%-5s ",
+                fprintf (display,     "%-5s\n",
                                       lookup[opcode].name);
             }
             break;
