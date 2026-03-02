@@ -310,6 +310,9 @@ void  decode_display (uint32_t  instruction,
             fprintf (display,     "%-5s %-16s %-16s\n",
                                   lookup[opcode].name, destination, source);
             break;
+        default:
+            fprintf (stderr, "[decode_display] unimplemented instruction! (0x%hhX)\n", opcode);
+            break;
     }
 }
 
@@ -625,6 +628,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         default:
+            fprintf (stderr, "[decode_process] unimplemented instruction (0x%hhX)\n", opcode);
             sys_error       = ERROR_UNKNOWN;
             break;
     }
