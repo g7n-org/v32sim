@@ -208,6 +208,8 @@
 #define  IN                      0x17
 #define  OUT                     0x18
 #define  MOVS                    0x19
+#define  SETS                    0x1A
+#define  CMPS                    0x1B
 #define  CIF                     0x1C
 #define  CFI                     0x1D
 #define  CIB                     0x1E
@@ -224,6 +226,9 @@
 #define  IDIV                    0x29
 #define  IMOD                    0x2A
 #define  ISGN                    0x2B
+#define  IMIN                    0x2C
+#define  IMAX                    0x2D
+#define  IABS                    0x2E
 #define  FADD                    0x2F
 #define  FSUB                    0x30
 #define  FMUL                    0x31

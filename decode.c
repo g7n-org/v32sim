@@ -84,6 +84,15 @@ void  decode_display (uint32_t  instruction,
 
     ////////////////////////////////////////////////////////////////////////////////
     //
+    // If colors are enabled, highlight the decoded instruction
+    //
+    if (colorflag                 == TRUE)
+    {
+        fprintf (stdout, "\e[1;33m");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
     // Determine opcode and perform needed processing, based on flags
     //
     switch (opcode)
@@ -99,6 +108,7 @@ void  decode_display (uint32_t  instruction,
         case WAIT:
         case RET:
         case MOVS:
+        case SETS:
             fprintf (display,         "%-5s\n",
                                       lookup[opcode].name);
             break;
@@ -134,6 +144,8 @@ void  decode_display (uint32_t  instruction,
         case IMUL:
         case IDIV:
         case IMOD:
+        case IMIN:
+        case IMAX:
             sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
             {
@@ -285,6 +297,8 @@ void  decode_display (uint32_t  instruction,
         case ISGN:
         case NOT:
         case BNOT:
+        case CMPS:
+        case IABS:
             sprintf (destination, "R%u",    dst);
             fprintf (display,     "%-5s %-16s\n",
                                   lookup[opcode].name, destination);
@@ -313,6 +327,15 @@ void  decode_display (uint32_t  instruction,
         default:
             fprintf (stderr, "[decode_display] unimplemented instruction! (0x%hhX)\n", opcode);
             break;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
+    // If colors are enabled, complete the highlight the decoded instruction
+    //
+    if (colorflag                 == TRUE)
+    {
+        fprintf (stdout, "\e[m");
     }
 }
 
@@ -527,6 +550,33 @@ void  decode_process (uint32_t  instruction,
             while (REG(CR) >  0);
             break;
 
+        case SETS:
+            do
+            {
+                MEMSET(REG(DR), SR);
+                REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
+                REG(CR)     = REG(CR) - 1; // CR: Count Register (R11)
+                //IP          = IP - 1; // IP: InstructionPointer internal register
+            }
+            while (REG(CR) >  0);
+            break;
+
+        case CMPS:
+            do
+            {
+                DSTREG      = IMEMGET(REG(DR) - REG(SR));
+                if (DSTREG != 0)
+                {
+                    break;
+                }
+                REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
+                REG(SR)     = REG(SR) + 1; // SR: Source Register (R12)
+                REG(CR)     = REG(CR) - 1; // CR: Count Register (R11)
+                //IP          = IP - 1; // IP: InstructionPointer internal register
+            }
+            while (REG(CR) >  0);
+            break;
+
         case CIF:
             FDSTREG         = (float) DSTREG;
             break;
@@ -605,6 +655,44 @@ void  decode_process (uint32_t  instruction,
 
         case ISGN:
             DSTREG          = -DSTREG;
+            break;
+
+        case IMIN:
+            if (immflag    == TRUE)
+            {
+                if (DSTREG >  immediate)
+                {
+                    DSTREG  = immediate;
+                }
+            }
+            else
+            {
+                if (DSTREG >  SRCREG)
+                {
+                    DSTREG  = SRCREG;
+                }
+            }
+            break;
+
+        case IMAX:
+            if (immflag    == TRUE)
+            {
+                if (DSTREG <  immediate)
+                {
+                    DSTREG  = immediate;
+                }
+            }
+            else
+            {
+                if (DSTREG <  SRCREG)
+                {
+                    DSTREG  = SRCREG;
+                }
+            }
+            break;
+
+        case IABS:
+            DSTREG          = abs (DSTREG);
             break;
 
         case FADD:
