@@ -20,4 +20,6 @@ void  usage (int8_t *program)
     fprintf (stdout, "FILE   is any path plus the filename desired\n");
     fprintf (stdout, "OFFSET is the full 32-bit/4-byte memory addres (hex)\n");
     fprintf (stdout, "OPCODE is the full 32-bit/4-byte instruction hex\n\n");
+
+    exit (0);
 }
