@@ -259,16 +259,11 @@ void  decode_display (uint32_t  instruction,
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
                     sign               = ((signed) immediate >= 0) ? '+' : '-';
-                    if (sign          == '+')
-                    {
-                        value          = REG(dst) + abs ((signed) immediate);
-                    }
-                    else
-                    {
-                        value          = REG(dst) - abs ((signed) immediate);
-                    }
+                    value              = ((signed) immediate >= 0) ? immediate : -immediate;
                     sprintf (destination, "[R%u%c%d],", dst, sign, value);
                     sprintf (source,      "R%u",           src);
+                    fprintf (debug,       "sign: '%c', value: %d\n", sign, value);
+                    value              = REG(dst) + immediate;
                     break;
             }
             

@@ -259,7 +259,9 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         }
         IV_REG                         = immediate;   // immediate value
 
-        if (runflag                   == FALSE)
+        if ((runflag                  == FALSE) ||
+            (debug                    == stderr))
+
         {
             if (sys_reg_show          == TRUE)
             {
@@ -340,7 +342,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         //
         // check for and react to system error
         //
-        if (sys_error                     != ERROR_NONE)
+        if (sys_error                 != ERROR_NONE)
         {
             ////////////////////////////////////////////////////////////////////////////
             //
@@ -354,15 +356,15 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             // To check: does  the cycle counter of  the instruction that
             // the error occurred on get incremented?
             //
-            REG(R0)                        = sys_error;
-            REG(R1)                        = IP_REG;
-            REG(R2)                        = IR_REG;
-            REG(R3)                        = IV_REG;
+            REG(R0)                    = sys_error;
+            REG(R1)                    = IP_REG;
+            REG(R2)                    = IR_REG;
+            REG(R3)                    = IV_REG;
 
-            SP_REG                         = 0x00000000;
-            BP_REG                         = 0x00000000;
+            SP_REG                     = 0x00000000;
+            BP_REG                     = 0x00000000;
 
-            IP_REG                         = BIOS_ERROR_OFFSET;
+            IP_REG                     = BIOS_ERROR_OFFSET;
             continue; // kick to next iteration
         }
 

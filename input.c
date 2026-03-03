@@ -1279,7 +1279,7 @@ void load_command (void)
     uint8_t   *arg                     = NULL;
     uint8_t    input[64];
     uint8_t    token_type              = 0;
-	word_t     wtmp;
+    word_t     wtmp;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1356,7 +1356,7 @@ void load_command (void)
                                 break;
                             }
                             token_type         = token_type & 0x0000001F;
-							wtmp.i32           = token_type;
+                            wtmp.i32           = token_type;
                             dtmp               = newdispnode (LIST_REG, &wtmp, 1);
                             if (token_label   != NULL)
                             {
