@@ -259,9 +259,19 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         }
         IV_REG                         = immediate;   // immediate value
 
-        if ((runflag                  == FALSE) ||
-            (debug                    == stderr))
+        if ((debug                    != NULL) &&
+            (runflag                  == TRUE))
+        {
+            put_word (word, FLAG_DISPLAY);
+            decode   (word, immediate, fimmediate, decodeflags | FLAG_DISPLAY);
+            if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
+            {
+                put_word (immediate, FLAG_DISPLAY);
+            }
+            fprintf  (stdout, "\n");
+        }
 
+        if (runflag                   == FALSE)
         {
             if (sys_reg_show          == TRUE)
             {
