@@ -14,7 +14,9 @@ void       process_args (int32_t  argc, int8_t **argv)
        { "binary",         no_argument,       0, 'b' },
        { "colors",         no_argument,       0, 'c' },
        { "command-file",   required_argument, 0, 'C' },
-       { "index-math",     no_argument,       0, 'i' },
+       { "deref-addr",     no_argument,       0, 'd' },
+       { "debug",          no_argument,       0, 'D' },
+       { "entry-point",    required_argument, 0, 'E' },
        { "run",            no_argument,       0, 'r' },
        { "seek-to",        required_argument, 0, 's' },
        { "watch-for",      required_argument, 0, 'w' },
@@ -28,7 +30,7 @@ void       process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:bC:cirs:w:vh", long_options,
+                                                  "B:bC:cdDE:rs:w:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -50,8 +52,19 @@ void       process_args (int32_t  argc, int8_t **argv)
                 colorflag          = TRUE;
                 break;
 
-            case 'i':
-                indexflag          = TRUE;
+            case 'D':
+                if (debug         == NULL)
+                {
+                    debug          = stderr;
+                }
+                break;
+
+            case 'E':
+                rom_offset         = strtol (optarg, NULL, 16);
+                break;
+
+            case 'd':
+                derefaddr          = TRUE;
                 break;
 
             case 'r':
@@ -80,7 +93,7 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:bC:cirs:w:vh", long_options,
+                                                  "B:bC:cdDE:rs:w:vh", long_options,
                                                   &option_index);
     }
 

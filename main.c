@@ -6,6 +6,7 @@
 //
 FILE      *display;
 FILE      *devnull;
+FILE      *debug;
 FILE      *verbose;
 uint8_t   *data;
 uint8_t   *destination;
@@ -34,7 +35,7 @@ uint8_t    action;
 uint8_t    runflag;
 uint8_t    colorflag;
 uint8_t    branchflag;
-uint8_t    indexflag;
+uint8_t    derefaddr;
 uint8_t    haltflag;
 uint8_t    waitflag;
 uint8_t    wordsize;
@@ -73,7 +74,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     seek_word                          = 0xFFFFFFFF;
     watch_word                         = 0x00000000;
     wordsize                           = 4;
-    indexflag                          = FALSE;
+    derefaddr                          = FALSE;
     haltflag                           = FALSE;
     waitflag                           = FALSE;
     sys_error                          = ERROR_NONE;
@@ -92,9 +93,28 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     // Open /dev/null
     //
     devnull                            = fopen ("/dev/null", "w");
+    if (devnull                       == NULL)
+    {
+        fprintf (stderr, "[error] could not open '/dev/null' for writing!\n");
+        exit (2);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // if verbose has not been redirected, point it at devnull
+    //
     if (verbose                       == NULL)
     {
         verbose                        = devnull;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // if debug has not been redirected, point it at devnull
+    //
+    if (debug                         == NULL)
+    {
+        debug                          = devnull;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

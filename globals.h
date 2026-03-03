@@ -48,6 +48,7 @@ typedef struct memory_type mem_t;
 
 extern FILE      *display;
 extern FILE      *devnull;
+extern FILE      *debug;
 extern FILE      *verbose;
 extern uint8_t   *destination;
 extern uint8_t   *source;
@@ -72,7 +73,7 @@ extern uint8_t   *data;
 extern uint8_t    runflag;
 extern uint8_t    colorflag;
 extern uint8_t    branchflag;
-extern uint8_t    indexflag;
+extern uint8_t    derefaddr;
 extern uint8_t    haltflag;
 extern uint8_t    waitflag;
 extern uint8_t    wordsize;

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <math.h>
 #include <getopt.h>
 #include <time.h>
 #include "globals.h"
