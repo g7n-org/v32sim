@@ -184,11 +184,11 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case LEA:
-            sprintf (destination,         "R%u,",          dst);
+            sprintf (destination,      "R%u,",          dst);
             if (immflag               == TRUE)
             {
                 sign  = ((signed) immediate >= 0) ? '+' : '-';
-                sprintf (source,          "[R%u%c%d]",     src, sign, abs (immediate));
+                sprintf (source,       "[R%u%c%d]",     src, sign, abs (immediate));
                 if (sign              == '+')
                 {
                     value              = REG(src) + abs (immediate);
@@ -203,7 +203,7 @@ void  decode_display (uint32_t  instruction,
             }
             else
             {
-                sprintf (source,          "[R%u]",         src);
+                sprintf (source,       "[R%u]",         src);
                 fprintf (display,      "%-5s %-16s %-16s\n",
                                        lookup[opcode].name, destination, source);
             }
@@ -235,7 +235,6 @@ void  decode_display (uint32_t  instruction,
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
                     sprintf (destination, "R%u,",          dst);
-                   // sprintf (source,      "[R%u+0x%.8X]",  src, immediate);
                     sign  = ((signed) immediate >= 0) ? '+' : '-';
                     sprintf (source,      "[R%u%c%d]",  src, sign, abs ((signed) immediate));
                     if (sign          == '+')
@@ -259,10 +258,7 @@ void  decode_display (uint32_t  instruction,
                     break;
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
-                    //sprintf (destination, "[R%u+0x%.8X],", dst, immediate);
-                    sprintf (destination, "[R%u%c%d],", dst, sign, abs ((signed) immediate));
-                    sprintf (source,      "R%u",           src);
-                    sign  = ((signed) immediate >= 0) ? '+' : '-';
+                    sign               = ((signed) immediate >= 0) ? '+' : '-';
                     if (sign          == '+')
                     {
                         value          = REG(dst) + abs ((signed) immediate);
@@ -271,6 +267,8 @@ void  decode_display (uint32_t  instruction,
                     {
                         value          = REG(dst) - abs ((signed) immediate);
                     }
+                    sprintf (destination, "[R%u%c%d],", dst, sign, value);
+                    sprintf (source,      "R%u",           src);
                     break;
             }
             
@@ -486,8 +484,8 @@ void  decode_process (uint32_t  instruction,
             }
             else
             {
-				fprintf (debug, "SRCREG: 0x%.8X, immediate: 0x%.8X, S+i: 0x%.8X\n",
-						SRCREG, immediate, (SRCREG + immediate));
+                fprintf (debug, "SRCREG: 0x%.8X, immediate: 0x%.8X, S+i: 0x%.8X\n",
+                        SRCREG, immediate, (SRCREG + immediate));
                 DSTREG      = SRCREG + immediate;
             }
             break;
