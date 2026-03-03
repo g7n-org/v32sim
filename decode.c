@@ -502,49 +502,63 @@ void  decode_process (uint32_t  instruction,
                     break;
 
                 case 02: // MOV DSTREG, [Immediate]
+                    fprintf (debug, "[decode_process] MOV(2): memory_get (0x%.8X)\n",
+                            immediate);
                     DSTREG  = IMEMGET (immediate);
                     break;
 
                 case 03: // MOV DSTREG, [SRCREG]
+                    fprintf (debug, "[decode_process] MOV(3): memory_get (0x%.8X)\n",
+                            SRCREG);
                     DSTREG  = IMEMGET (SRCREG);
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
+                    fprintf (debug, "[decode_process] MOV(4): memory_get (0x%.8X)\n",
+                            (SRCREG + immediate));
                     DSTREG  = IMEMGET (SRCREG + immediate);
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
+                    fprintf (debug, "[decode_process] MOV(5): memory_set (0x%.8X, 0x%.8X)\n",
+                            immediate, SRCREG);
                     MEMSET (immediate, SRCREG);
                     break;
 
                 case 06: // MOV [DSTREG], SRCREG
+                    fprintf (debug, "[decode_process] MOV(6): memory_set (0x%.8X, 0x%.8X)\n",
+                            DSTREG,    SRCREG);
                     MEMSET (DSTREG,    SRCREG);
                     break;
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
+                    fprintf (debug, "[decode_process] MOV(7): memory_set (0x%.8X, 0x%.8X)\n",
+                            (DSTREG + immediate), SRCREG);
                     MEMSET ((DSTREG + immediate), SRCREG);
                     break;
             }
             break;
 
         case PUSH:
+            fprintf (debug, "[decode_process] PUSH: memory_set (0x%.8X, 0x%.8X)\n", SP_REG, DSTREG);
             SP_REG          = SP_REG - 1; // adjust top of stack
             MEMSET (SP_REG, DSTREG);      // place on top of stack
             break;
 
         case POP:
+            fprintf (debug, "[decode_process] POP: memory_get (0x%.8X)\n", SP_REG);
             DSTREG          = IMEMGET (SP_REG);
             SP_REG          = SP_REG + 1;
             break;
 
         case IN:
+            fprintf (debug, "[decode_process] IN: ioports_get (0x%.3X)\n", port);
             DSTREG          = ioports_get (port);
-            fprintf (verbose, "[decode_process] ioports_get (0x%.3X)\n", port);
             break;
 
         case OUT:
             value           = (immflag == TRUE)  ? immediate  : DSTREG;
-            fprintf (verbose, "[decode_process] ioports_set (0x%.3X, 0x%.8X)\n", port, value);
+            fprintf (debug, "[decode_process] OUT: ioports_set (0x%.3X, 0x%.8X)\n", port, value);
             ioports_set (port, value);
             break;
 
