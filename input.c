@@ -260,8 +260,6 @@ uint8_t  parse_imm (uint8_t *token)
 
     free    (pattern);
 
-    //fprintf (verbose, "[parse_imm] result: %llu (%.16llX)\n", result, result);
-
     return  (result);
 }
 
@@ -550,7 +548,7 @@ uint32_t  tokenize_asm (uint8_t *string)
              index              <  4;
              index               = index + 1)
         {
-            fprintf (verbose, "[tokenize_asm] match[%d]: %.*s (%lld - %lld)\n",
+            fprintf (debug, "[tokenize_asm] match[%d]: %.*s (%lld - %lld)\n",
                              index,
                              (int) (match[index].rm_eo - match[index].rm_so),
                              (string + match[index].rm_so),
@@ -570,8 +568,8 @@ uint32_t  tokenize_asm (uint8_t *string)
              index               = index + 1)
         {
             check                = strcasecmp (source, lookup[index].name);
-            fprintf (verbose, "[tokenize_asm] check: %d, token: '%s', opcode: '%s'\n",
-                              check, source, lookup[index].name);
+            fprintf (debug, "[tokenize_asm] check: %d, token: '%s', opcode: '%s'\n",
+                            check, source, lookup[index].name);
             if (check           == 0)
             {
                 opcode           = index;
@@ -937,12 +935,12 @@ uint8_t  tokenize_input (uint8_t *string)
                  count         <  4;
                  count          = count + 1)
             {
-                fprintf (verbose, "match[%d]: %.*s (%lld - %lld)\n",
-                                 count,
-                                 (int) (match[count].rm_eo - match[count].rm_so),
-                                 (string + match[count].rm_so),
-                                 (long long int) match[count].rm_so,
-                                 (long long int) match[count].rm_eo);
+                fprintf (debug, "match[%d]: %.*s (%lld - %lld)\n",
+                                count,
+                                (int) (match[count].rm_eo - match[count].rm_so),
+                                (string + match[count].rm_so),
+                                (long long int) match[count].rm_so,
+                                (long long int) match[count].rm_eo);
             }
             regfree (&regex);
             break;
@@ -962,8 +960,6 @@ uint8_t  tokenize_input (uint8_t *string)
     }
 
     free    (pattern);
-
-    //fprintf (verbose, "[tokenize_input] result: %llu (%.16llX)\n", result, result);
 
     return  (result);
 }
@@ -1015,8 +1011,8 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
     //
     // display what was input
     //
-    fprintf (verbose, "[get_input] input_string: \"%s\" (input_length: %lu)\n",
-                      input_string, input_length);
+    fprintf (debug, "[get_input] input_string: \"%s\" (input_length: %lu)\n",
+                    input_string, input_length);
 
     if (input_length      == 0)
     {

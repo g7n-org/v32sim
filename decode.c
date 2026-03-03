@@ -274,12 +274,20 @@ void  decode_display (uint32_t  instruction,
                     break;
             }
             
-            if ((indexflag            == TRUE) && 
+            if ((derefaddr            == TRUE) && 
                 (value                != 0))
             {
-                fprintf (display,     "%-5s %-16s %-16s (index: 0x%.8X)\n",
-                                      lookup[opcode].name, destination, source,
-                                      value);
+                fprintf (display,     "%-5s %-16s %-16s ",
+                                      lookup[opcode].name, destination, source);
+                if (colorflag                 == TRUE)
+                {
+                    fprintf (stdout, "\e[1;35m");
+                }
+                fprintf (display,     "(deref addr: 0x%.8X)\n", value);
+                if (colorflag                 == TRUE)
+                {
+                    fprintf (stdout, "\e[m");
+                }
             }
             else
             {
@@ -324,6 +332,7 @@ void  decode_display (uint32_t  instruction,
             fprintf (display,     "%-5s %-16s %-16s\n",
                                   lookup[opcode].name, destination, source);
             break;
+
         default:
             fprintf (stderr, "[decode_display] unimplemented instruction! (0x%hhX)\n", opcode);
             break;
@@ -530,10 +539,12 @@ void  decode_process (uint32_t  instruction,
 
         case IN:
             DSTREG          = ioports_get (port);
+            fprintf (verbose, "[decode_process] ioports_get (0x%.3X)\n", port);
             break;
 
         case OUT:
             value           = (immflag == TRUE)  ? immediate  : DSTREG;
+            fprintf (verbose, "[decode_process] ioports_set (0x%.3X, 0x%.8X)\n", port, value);
             ioports_set (port, value);
             break;
 
@@ -712,7 +723,8 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case FMOD:
-            //FDSTREG        %= (immflag == TRUE)  ? fimmediate : FSRCREG;
+            fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
+            FDSTREG         = fmodf (DSTREG, fvalue);
             break;
 
         default:
