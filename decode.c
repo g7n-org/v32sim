@@ -480,12 +480,14 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case LEA:
-            if (immflag    == TRUE)
+            if (immflag    == FALSE)
             {
                 DSTREG      = SRCREG;
             }
             else
             {
+				fprintf (debug, "SRCREG: 0x%.8X, immediate: 0x%.8X, S+i: 0x%.8X\n",
+						SRCREG, immediate, (SRCREG + immediate));
                 DSTREG      = SRCREG + immediate;
             }
             break;
