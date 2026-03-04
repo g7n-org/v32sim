@@ -83,9 +83,24 @@ void      put_word (uint32_t  word, uint8_t  flag)
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// word2int() - extract i32 element of provided `word_t` and return it
+//
+// in the event that the passed-in word_t is NULL, return 0.
+//
 uint32_t  word2int     (word_t *info)
 {
-    return (info -> i32);
+    uint32_t  result  = 0;
+    if (info         != NULL)
+    {
+        result        = info -> i32;
+    }
+    else
+    {
+        result        = 0;
+    }
+    return (result);
 }
 
 float     word2float   (word_t *info)

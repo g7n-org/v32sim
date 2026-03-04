@@ -366,12 +366,12 @@ word_t *memory_get (uint32_t  address)
                 }
                 break;
         }
-    }
 
-    if (sys_error             == ERROR_NONE)
-    {
-        dptr                   = (memory+page)  -> data;
-        wptr                   = &(dptr+offset) -> value;
+        if (sys_error             == ERROR_NONE)
+        {
+            dptr                   = (memory+page)  -> data;
+            wptr                   = &(dptr+offset) -> value;
+        }
     }
 
     return (wptr);
