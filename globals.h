@@ -21,7 +21,7 @@ struct display_list
 {
     int8_t    *label; // to label display points
     uint8_t    type;
-    uint8_t    num;
+    uint8_t    space;
     word_t    *list;
     display_l *next;
 };

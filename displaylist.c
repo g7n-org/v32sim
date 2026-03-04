@@ -12,6 +12,7 @@ display_l *newdispnode  (uint8_t  type, uint32_t  value)
     newnode -> label            = NULL;
     newnode -> type             = type;
     newnode -> list             = (word_t *) malloc (sizeof (word_t) * 1);
+    newnode -> space            = 7;
     newnode -> list -> raw      = value;
     newnode -> next             = NULL;
 
@@ -23,7 +24,6 @@ display_l *newdispnode  (uint8_t  type, uint32_t  value)
 display_l *display_add  (display_l *list, display_l *node)
 {
     display_l *tmp                       = NULL;
-    //int32_t    check                     = 0;
 
     if (node                            != NULL)
     {
@@ -32,19 +32,6 @@ display_l *display_add  (display_l *list, display_l *node)
             tmp                          = list;
             while (tmp -> next          != NULL)
             {
-                /*
-                if (list -> type        == node -> type)
-                {
-                    check                = memcmp (list -> list, node -> list, sizeof (word_t));
-                    if (check           == 0)
-                    {
-                        if (list -> num == node -> num)
-                        {
-                            break; // identical node found, do not add
-                        }
-                    }
-                }
-                */
                 tmp                      = tmp -> next;
             }
 
@@ -77,7 +64,11 @@ void       displayshow  (display_l *list, uint8_t    flag)
             case LIST_REG_DEREF:
                 value              = wtmp -> i32;
                 sprintf (entry,  "[R%u>%.8X)]",  value, REG(value));
-                fprintf (stdout, "%19s: ", entry);
+                if (list -> space <  strlen (entry) + 2)
+                {
+                    list -> space  = strlen (entry) + 2;
+                }
+                fprintf (stdout, "%*s: ", list -> space, entry);
 
                 check              = memory_chk (REG(value));
                 if (dtmp -> label != NULL)
@@ -112,28 +103,28 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 switch (value)
                 {
                     case CR:
-                        fprintf (stdout, "%19s: ", "R11(CR)");
+                        fprintf (stdout, "%*s: ", list -> space, "R11(CR)");
                         break;
 
                     case SR:
-                        fprintf (stdout, "%19s: ", "R12(SR)");
+                        fprintf (stdout, "%*s: ", list -> space, "R12(SR)");
                         break;
 
                     case DR:
-                        fprintf (stdout, "%19s: ", "R13(DR)");
+                        fprintf (stdout, "%*s: ", list -> space, "R13(DR)");
                         break;
 
                     case BP:
-                        fprintf (stdout, "%19s: ", "R14(BP)");
+                        fprintf (stdout, "%*s: ", list -> space, "R14(BP)");
                         break;
 
                     case SP:
-                        fprintf (stdout, "%19s: ", "R15(SP)");
+                        fprintf (stdout, "%*s: ", list -> space, "R15(SP)");
                         break;
 
                     default:
                         sprintf (entry,  "R%u",    value);
-                        fprintf (stdout, "%19s: ", entry);
+                        fprintf (stdout, "%*s: ", list -> space, entry);
                         break;
                 }
 
@@ -152,7 +143,11 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 value              = IMEMGET (wtmp -> i32);
                 check              = memory_chk (value);
                 sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, IMEMGET(value));
-                fprintf (stdout, "%19s: ", entry);
+                if (list -> space <  strlen (entry) + 2)
+                {
+                    list -> space  = strlen (entry) + 2;
+                }
+                fprintf (stdout, "%*s: ", list -> space, entry);
                 if (dtmp -> label != NULL)
                 {
                     if (check     == TRUE)
@@ -184,7 +179,12 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 sys_force          = TRUE;
                 value              = IMEMGET (wtmp -> i32);
                 sprintf (entry, "[0x%.8X]", wtmp -> i32);
-                fprintf (stdout, "%19s: ", entry);
+                if (list -> space <  strlen (entry) + 2)
+                {
+                    list -> space  = strlen (entry) + 2;
+                }
+                fprintf (stdout, "%*s: ", list -> space, entry);
+
                 if (dtmp -> label != NULL)
                 {
                     fprintf (stdout, "0x%.8X \"%s\"\n", value, dtmp -> label);
@@ -199,7 +199,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 sys_force          = TRUE;
                 value              = ioports_get (wtmp -> i32);
                 sprintf (entry, "[0x%.3X]", wtmp -> i32);
-                fprintf (stdout, "%19s: ", entry);
+                fprintf (stdout, "%*s: ", list -> space, entry);
                 fprintf (stdout, "0x%.8X\n", value);
                 break;
         }
