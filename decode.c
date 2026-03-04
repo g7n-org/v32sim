@@ -197,7 +197,7 @@ void  decode_display (uint32_t  instruction,
                 {
                     value              = REG(src) - abs (immediate);
                 }
-                fprintf (display,      "%-5s %-16s %-16s (index: 0x%.8X)\n",
+                fprintf (display,      "%-5s %-16s %-16s (deref address: 0x%.8X)\n",
                                        lookup[opcode].name,
                                        destination, source, value);
             }
@@ -226,11 +226,18 @@ void  decode_display (uint32_t  instruction,
                 case 02: // MOV DSTREG, [Immediate]
                     sprintf (destination, "R%u,",          dst);
                     sprintf (source,      "[0x%.8X]",      immediate);
+                    value              = immediate;
                     break;
 
                 case 03: // MOV DSTREG, [SRCREG]
                     sprintf (destination, "R%u,",          dst);
                     sprintf (source,      "[R%u]",         src);
+                    value              = REG(src);
+					if (derefaddr     == TRUE)
+					{
+						fprintf (stdout, "REG(src): 0x%.8X\n", REG(src));
+						fprintf (stdout, "[SRCREG]: 0x%.8X\n", IMEMGET(REG(src)));
+					}
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
@@ -245,16 +252,23 @@ void  decode_display (uint32_t  instruction,
                     {
                         value          = REG(src) - abs ((signed) immediate);
                     }
+					if (derefaddr     == TRUE)
+					{
+						fprintf (stdout, "value: 0x%.8X\n", value);
+						fprintf (stdout, "[SRCREG+Imm]: 0x%.8X\n", IMEMGET(value));
+					}
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
                     sprintf (destination, "[0x%.8X],",     immediate);
                     sprintf (source,      "R%u",           src);
+                    value              = immediate;
                     break;
 
                 case 06: // MOV [DSTREG], SRCREG
                     sprintf (destination, "[R%u],",        dst);
                     sprintf (source,      "R%u",           src);
+                    value              = REG(dst);
                     break;
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG

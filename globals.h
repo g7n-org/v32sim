@@ -12,17 +12,16 @@ union  word_type
 {
     int32_t   i32;
     float     f32;
-	uint32_t  raw;
+    uint32_t  raw;
 };
 typedef union word_type word_t;
 
 typedef struct display_list display_l;
 struct display_list
 {
-	int8_t    *label; // to label display points
+    int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    num;
-	uint32_t   addr;  // for breakpoints
     word_t    *list;
     display_l *next;
 };
@@ -31,7 +30,7 @@ struct data_type
 {
     word_t   value;
     uint8_t  flag;
-	uint8_t  mode;
+    uint8_t  mode;
     int8_t  *name;
 };
 typedef struct data_type data_t;
@@ -108,18 +107,19 @@ void       update_cycle   (void);                              // updating Cycle
 void       update_frame   (void);                              // updating FrameCounter
 uint32_t   word2int       (word_t *);
 float      word2float     (word_t *);
-display_l *newdispnode    (uint8_t,     word_t *,    uint8_t);
+display_l *newdispnode    (uint8_t,     uint32_t);
 display_l *display_add    (display_l *, display_l *);
 void       displayshow    (display_l *, uint8_t);
 void       show_sysregs   (void);
 void       process_args   (int32_t,     int8_t **);
 void       usage          (int8_t  *);
+uint8_t   *parse_deref    (uint8_t *,   uint8_t *);
 uint8_t    parse_token    (uint8_t *,   uint8_t *,   uint8_t);
 uint8_t    parse_memrange (uint8_t *);
 uint8_t    parse_imm      (uint8_t *);
 uint8_t    parse_reg      (uint8_t *);
 uint32_t   tokenize_asm   (uint8_t *);
-uint8_t    tokenize_input (uint8_t *);
+uint8_t    tokenize_input (uint8_t *,   uint8_t *);
 uint8_t   *get_input      (FILE *,      const uint8_t *);
 uint8_t    prompt         (uint32_t);
 

@@ -65,8 +65,10 @@
 #define  ERROR_UNKNOWN           11
 
 #define  LIST_REG                0
-#define  LIST_MEM                1
-#define  LIST_IOP                2
+#define  LIST_REG_DEREF          1
+#define  LIST_MEM                2
+#define  LIST_MEM_DEREF          3
+#define  LIST_IOP                4
 
 #define  INPUT_NONE              0
 #define  INPUT_INIT              1

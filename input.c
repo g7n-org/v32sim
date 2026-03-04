@@ -95,7 +95,7 @@ uint8_t  parse_memrange (uint8_t *token)
     check                    = regexec (&regex, token, 2, match, 0);
     if (check               == REG_NOMATCH)
     {
-        fprintf (verbose, "[parse_imm] invalid memrange value\n");
+        fprintf (verbose, "[parse_imm] invalid memory range\n");
         result               = PARSE_NONE;
     }
 
@@ -121,6 +121,99 @@ uint8_t  parse_memrange (uint8_t *token)
     regfree (&regex);
 
     return  (result);
+}
+
+uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // declare and initialize variables
+    //
+    int32_t     check        = 0;
+    int32_t     index        = 0;
+    regex_t     regex;
+    regmatch_t  match[4];
+    int8_t     *pos          = NULL;
+    uint8_t   **pattern      = NULL;
+    uint8_t    *form0        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *$";
+    uint8_t    *form1        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *([^ ]+) *$";
+
+    fprintf (verbose, "[parse_deref] passed token: '%s'\n", input);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // allocate and populate pattern array
+    //
+    pattern                  = (uint8_t **) malloc (sizeof (uint8_t *) * 2);
+    *(pattern+0)             = form0;
+    *(pattern+1)             = form1;
+
+    for (index               = 0;
+         index              <  2;
+         index               = index + 1)
+    {
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx compilation: compile current pattern into our regex for processing
+        //
+        check                = regcomp (&regex,
+                                        *(pattern+index),
+                                        REG_EXTENDED | REG_ICASE);
+        if (check           != 0)
+        {
+            fprintf (stderr, "[ERROR] RegEx compilation failed\n");
+            exit    (REGEX_COMPILE_ERROR);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution: make sure input conforms to provided pattern
+        //
+        check                = regexec (&regex, input, 4, match, 0);
+        if (check           == REG_NOMATCH)
+        {
+            fprintf (verbose, "[parse_deref] invalid deref value\n");
+            *flag            = FALSE;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution success: obtain the value.
+        //
+        else if (check      == 0)
+        {
+            fprintf (stdout, "[before] input: '%s'\n", input);
+            pos              = strchr (input, '[');
+            *pos             = ' ';
+            pos              = strchr (input, ']');
+            *pos             = ' ';
+            *flag            = TRUE;
+            fprintf (stdout, "[after]  input: '%s'\n", input);
+            sprintf (input,  "%.*s %.*s %.*s", (int) (match[1].rm_eo - match[1].rm_so),
+                                               (input + match[1].rm_so),
+                                               (int) (match[2].rm_eo - match[2].rm_so),
+                                               (input + match[2].rm_so),
+                                               (int) (match[3].rm_eo - match[3].rm_so),
+                                               (input + match[3].rm_so));
+            fprintf (stdout, "[final]  input: '%s'\n", input);
+            break;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // RegEx execution error: bail out (shouldn't happen)
+        //
+        else
+        {
+            fprintf (stderr, "[parse_token] ERROR: RegEx execution failed\n");
+            exit    (REGEX_EXECUTE_ERROR);
+        }
+    }
+
+    regfree (&regex);
+    free    (pattern);
+
+    return  (input);
 }
 
 uint8_t  parse_imm (uint8_t *token)
@@ -758,7 +851,7 @@ uint32_t  tokenize_asm (uint8_t *string)
     return  (instruction);
 }
 
-uint8_t  tokenize_input (uint8_t *string)
+uint8_t  tokenize_input (uint8_t *string, uint8_t *flag)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -782,6 +875,10 @@ uint8_t  tokenize_input (uint8_t *string)
     uint8_t     result           = 0;
 
     fprintf (verbose, "[tokenize_input] passed string: '%s'\n", string);
+
+    string                       = parse_deref (string, flag);
+
+    fprintf (verbose, "[tokenize_input] processed string: '%s'\n", string);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1024,22 +1121,23 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 
 uint8_t  prompt (uint32_t  word)
 {
-    display_l *dtmp                    = NULL;
-    int32_t    index                   = 0;
-    int32_t    value                   = 0;
-    size_t     len                     = 0;
-    static uint8_t   *arg              = NULL;
-    static uint8_t   *input            = NULL;
-    static uint8_t    lastaction       = INPUT_INIT;
-    uint8_t    processflag             = FALSE;
-    uint8_t    token_type              = PARSE_NONE;
+    display_l *dtmp                     = NULL;
+    int32_t    index                    = 0;
+    int32_t    value                    = 0;
+    size_t     len                      = 0;
+    static uint8_t   *arg               = NULL;
+    static uint8_t   *input             = NULL;
+    static uint8_t    lastaction        = INPUT_INIT;
+    uint8_t    deref_flag               = FALSE;
+    uint8_t    processflag              = FALSE;
+    uint8_t    token_type               = PARSE_NONE;
 
-    if ((action                       != INPUT_NONE) &&
-        (action                       != INPUT_INIT))
+    if ((action                        != INPUT_NONE) &&
+        (action                        != INPUT_INIT))
     {
         displayshow  (dpoint, 0);
     }
-    else if (commandfile              != NULL)
+    else if (commandfile               != NULL)
     {
         fprintf (stdout, "LOADING COMMANDS\n");
         load_command ();
@@ -1050,11 +1148,11 @@ uint8_t  prompt (uint32_t  word)
     // Unless I use some better input mechanism, input can be up to 256 bytes in 
     // length (should be more than enough)
     //
-    len                                = sizeof (uint8_t) * 256;
-    if (input                         == NULL)
+    len                                 = sizeof (uint8_t) * 256;
+    if (input                          == NULL)
     {
-        arg                            = (uint8_t *) malloc (len);
-        if (arg                       == NULL)
+        arg                             = (uint8_t *) malloc (len);
+        if (arg                        == NULL)
         {
             fprintf (stderr, "[ERROR] Allocation of string failed\n");
             exit (STRING_ALLOC_FAIL);
@@ -1065,24 +1163,24 @@ uint8_t  prompt (uint32_t  word)
     //
     // Display the prompt and obtain input
     //
-    if (input                         != NULL)
+    if (input                          != NULL)
     {
         free (input);
     }
 
-    input                              = get_input (stdin, "v32sim> ");
+    input                               = get_input (stdin, "v32sim> ");
     
-    if (*input                        == '\0')
+    if (*input                         == '\0')
     {
-        action                         = lastaction;
+        action                          = lastaction;
     }
 
     //tokenize_asm   (input);
     //fprintf (stdout, "action: %u\n", action);
 
-    if (action                        != INPUT_NONE)
+    if (action                         != INPUT_NONE)
     {
-        token_type                     = tokenize_input (input);
+        token_type                      = tokenize_input (input, &deref_flag);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -1092,7 +1190,7 @@ uint8_t  prompt (uint32_t  word)
     //
     else
     {
-        action                         = lastaction;
+        action                          = lastaction;
     }
 
     switch (action)
@@ -1101,13 +1199,13 @@ uint8_t  prompt (uint32_t  word)
             break;
 
         case INPUT_CONTINUE:
-            processflag                = TRUE;
-            runflag                    = TRUE;
+            processflag                 = TRUE;
+            runflag                     = TRUE;
             break;
 
         case INPUT_LABEL:
-            arg                        = strtok ((input+2), " ");
-            value                      = strlen (arg);
+            arg                         = strtok ((input+2), " ");
+            value                       = strlen (arg);
             break;
 
         case INPUT_PRINT:
@@ -1118,23 +1216,24 @@ uint8_t  prompt (uint32_t  word)
                     break;
 
                 case PARSE_MEMORY:
-                    arg                = strtok ((input+2), " ");
-                    value              = strtol (arg, NULL, 16);
+                    arg                 = strtok ((input+2), " ");
+                    value               = strtol (arg, NULL, 16);
                     fprintf (stdout, "[0x%.8X]: 0x%.8X\n", value, IMEMGET (value));
                     break;
 
                 case PARSE_REGISTERS:
-                    for (index         = 0;
-                         index        <= 15;
-                         index         = index + 1)
+                    for (index          = 0;
+                         index         <= 15;
+                         index          = index + 1)
                     {
                         fprintf (stdout, "R%u: 0x%.8X\n", index, REG(index));
                     }
                     break;
 
                 case PARSE_REGISTER: // specific, general register
-                    arg                = strtok ((input+2), " ");
-                    token_type         = parse_reg (arg);
+                    arg                 = strtok ((input+2), " ");
+                    token_type          = parse_reg (arg);
+
                     switch (token_type)
                     {
                         case IP:
@@ -1150,12 +1249,19 @@ uint8_t  prompt (uint32_t  word)
                             break;
 
                         default:
-                            fprintf (stdout, "R%u: 0x%.8X\n", token_type, REG(token_type));
+                            if (deref_flag == TRUE)
+                            {
+                                fprintf (stdout, "[R%u]: 0x%.8X\n", token_type, IMEMGET(REG(token_type)));
+                            }
+                            else
+                            {
+                                fprintf (stdout, "R%u: 0x%.8X\n",   token_type, REG(token_type));
+                            }
                             break;
                     }
                     break;
             }
-            lastaction                 = INPUT_NONE;
+            lastaction                      = INPUT_NONE;
             break;
 
         case INPUT_DISPLAY:
@@ -1168,7 +1274,15 @@ uint8_t  prompt (uint32_t  word)
                 case PARSE_MEMORY:
                     arg                = strtok ((input+2), " ");
                     value              = strtol (arg, NULL, 16);
-                    dtmp               = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
+                    if (deref_flag    == TRUE)
+                    {
+                        dtmp           = newdispnode (LIST_MEM_DEREF, value);
+                    }
+                    else
+                    {
+                        dtmp           = newdispnode (LIST_MEM,       value);
+                    }
+
                     if (token_label   != NULL)
                     {
                         value          = sizeof (int8_t) * strlen (token_label) + 1;
@@ -1183,7 +1297,7 @@ uint8_t  prompt (uint32_t  word)
                          index        <= 15;
                          index         = index + 1)
                     {
-                        dtmp           = newdispnode (LIST_REG, new_word_i32 (&index, 1), 1);
+                        dtmp           = newdispnode (LIST_REG, index);
                         dpoint         = display_add (dpoint, dtmp);
                     }
                     break;
@@ -1191,12 +1305,22 @@ uint8_t  prompt (uint32_t  word)
                 case PARSE_REGISTER: // specific, general register
                     arg                = strtok ((input+2), " ");
                     token_type         = parse_reg (arg);
+					fprintf (verbose, "[input] INPUT_DISPLAY -> PARSE_REGISTER: token_type: %u\n", token_type);
                     if (token_type    >  15)
                     {
                         sys_reg_show   = TRUE;
                         break;
                     }
-                    dtmp               = newdispnode (LIST_REG, new_word_i32 ((uint32_t *) &token_type, 1), 1);
+                    if (deref_flag    == TRUE)
+                    {
+                        dtmp           = newdispnode (LIST_REG_DEREF, token_type);
+						fprintf (verbose, "[input] dtmp -> type: %u\n", dtmp -> list -> i32);
+                    }
+                    else
+                    {
+                        dtmp           = newdispnode (LIST_REG, token_type);
+                    }
+
                     if (token_label   != NULL)
                     {
                         value          = sizeof (int8_t) * strlen (token_label) + 1;
@@ -1209,7 +1333,7 @@ uint8_t  prompt (uint32_t  word)
                 case PARSE_IOPORT:
                     arg                = strtok ((input+2), " ");
                     value              = strtol (arg, NULL, 16);
-                    dtmp               = newdispnode (LIST_IOP, new_word_i32 (&value, 1), 1);
+                    dtmp               = newdispnode (LIST_IOP, value);
                     if (token_label   != NULL)
                     {
                         value          = sizeof (int8_t) * strlen (token_label) + 1;
@@ -1277,6 +1401,7 @@ void load_command (void)
     int32_t    index                   = 0;
     int32_t    value                   = 0;
     uint8_t   *arg                     = NULL;
+    uint8_t    deref_flag              = FALSE;
     uint8_t    input[64];
     uint8_t    token_type              = 0;
     word_t     wtmp;
@@ -1313,7 +1438,7 @@ void load_command (void)
             {
                 break;
             }
-            token_type                 = tokenize_input (input);
+            token_type                 = tokenize_input (input, &deref_flag);
 
             switch (action)
             {
@@ -1327,7 +1452,7 @@ void load_command (void)
                         case PARSE_MEMORY:
                             arg                = strtok ((input+2), " ");
                             value              = strtol (arg, NULL, 16);
-                            dtmp               = newdispnode (LIST_MEM, new_word_i32 (&value, 1), 1);
+                            dtmp               = newdispnode (LIST_MEM, value);
                             if (token_label   != NULL)
                             {
                                 value          = sizeof (int8_t) * strlen (token_label) + 1;
@@ -1342,7 +1467,7 @@ void load_command (void)
                                  index        <= 15;
                                  index         = index + 1)
                             {
-                                dtmp           = newdispnode (LIST_REG, new_word_i32 (&index, 1), 1);
+                                dtmp           = newdispnode (LIST_REG, index);
                                 dpoint         = display_add (dpoint, dtmp);
                             }
                             break;
@@ -1357,7 +1482,7 @@ void load_command (void)
                             }
                             token_type         = token_type & 0x0000001F;
                             wtmp.i32           = token_type;
-                            dtmp               = newdispnode (LIST_REG, &wtmp, 1);
+                            dtmp               = newdispnode (LIST_REG, token_type);
                             if (token_label   != NULL)
                             {
                                 value          = sizeof (int8_t) * strlen (token_label) + 1;
@@ -1370,7 +1495,7 @@ void load_command (void)
                         case PARSE_IOPORT:
                             arg                = strtok ((input+2), " ");
                             value              = strtol (arg, NULL, 16);
-                            dtmp               = newdispnode (LIST_IOP, new_word_i32 (&value, 1), 1);
+                            dtmp               = newdispnode (LIST_IOP, value);
                             if (token_label   != NULL)
                             {
                                 value          = sizeof (int8_t) * strlen (token_label) + 1;
