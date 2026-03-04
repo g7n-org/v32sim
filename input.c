@@ -1176,7 +1176,6 @@ uint8_t  prompt (uint32_t  word)
     }
 
     //tokenize_asm   (input);
-    //fprintf (stdout, "action: %u\n", action);
 
     if (action                         != INPUT_NONE)
     {
@@ -1218,7 +1217,16 @@ uint8_t  prompt (uint32_t  word)
                 case PARSE_MEMORY:
                     arg                 = strtok ((input+2), " ");
                     value               = strtol (arg, NULL, 16);
-                    fprintf (stdout, "[0x%.8X]: 0x%.8X\n", value, IMEMGET (value));
+                    if (deref_flag     == TRUE)
+                    {
+                        fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X\n",
+                                value, IMEMGET(value), IMEMGET(IMEMGET(value)));
+                    }
+                    else
+                    {
+                        fprintf (stdout, "[0x%.8X]: 0x%.8X\n",
+                                value, IMEMGET (value));
+                    }
                     break;
 
                 case PARSE_REGISTERS:
@@ -1251,11 +1259,14 @@ uint8_t  prompt (uint32_t  word)
                         default:
                             if (deref_flag == TRUE)
                             {
-                                fprintf (stdout, "[R%u]: 0x%.8X\n", token_type, IMEMGET(REG(token_type)));
+                                fprintf (stdout, "[R%u(0x%.8X)]: 0x%.8X\n",
+                                        token_type, REG(token_type),
+                                        IMEMGET(REG(token_type)));
                             }
                             else
                             {
-                                fprintf (stdout, "R%u: 0x%.8X\n",   token_type, REG(token_type));
+                                fprintf (stdout, "R%u: 0x%.8X\n",
+                                        token_type, REG(token_type));
                             }
                             break;
                     }
@@ -1305,16 +1316,15 @@ uint8_t  prompt (uint32_t  word)
                 case PARSE_REGISTER: // specific, general register
                     arg                = strtok ((input+2), " ");
                     token_type         = parse_reg (arg);
-					fprintf (verbose, "[input] INPUT_DISPLAY -> PARSE_REGISTER: token_type: %u\n", token_type);
                     if (token_type    >  15)
                     {
                         sys_reg_show   = TRUE;
                         break;
                     }
+
                     if (deref_flag    == TRUE)
                     {
                         dtmp           = newdispnode (LIST_REG_DEREF, token_type);
-						fprintf (verbose, "[input] dtmp -> type: %u\n", dtmp -> list -> i32);
                     }
                     else
                     {
@@ -1386,7 +1396,7 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "  p[rint] XYZ           - one-time display of XYZ\n");
             fprintf (stdout, "  s[tep]                - step to next instruction\n");
             fprintf (stdout, "  q[uit]                - exit the simulator\n");
-            action                     = INPUT_NONE;
+            action                     = INPUT_INIT;
             break;
     }
     lastaction                         = action;
@@ -1404,7 +1414,6 @@ void load_command (void)
     uint8_t    deref_flag              = FALSE;
     uint8_t    input[64];
     uint8_t    token_type              = 0;
-    word_t     wtmp;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1447,12 +1456,20 @@ void load_command (void)
                     {
                         case PARSE_NONE:
                             fprintf (stderr, "[ERROR] malformed display value\n");
+                            exit (1);
                             break;
 
                         case PARSE_MEMORY:
                             arg                = strtok ((input+2), " ");
                             value              = strtol (arg, NULL, 16);
-                            dtmp               = newdispnode (LIST_MEM, value);
+                            if (deref_flag    == TRUE)
+                            {
+                                dtmp           = newdispnode (LIST_MEM_DEREF, value);
+                            }
+                            else
+                            {
+                                dtmp           = newdispnode (LIST_MEM,       value);
+                            }
                             if (token_label   != NULL)
                             {
                                 value          = sizeof (int8_t) * strlen (token_label) + 1;
@@ -1480,9 +1497,17 @@ void load_command (void)
                                 sys_reg_show   = TRUE;
                                 break;
                             }
+
                             token_type         = token_type & 0x0000001F;
-                            wtmp.i32           = token_type;
-                            dtmp               = newdispnode (LIST_REG, token_type);
+                            if (deref_flag    == TRUE)
+                            {
+                                dtmp           = newdispnode (LIST_REG_DEREF, token_type);
+                            }
+                            else
+                            {
+                                dtmp           = newdispnode (LIST_REG, token_type);
+                            }
+
                             if (token_label   != NULL)
                             {
                                 value          = sizeof (int8_t) * strlen (token_label) + 1;
