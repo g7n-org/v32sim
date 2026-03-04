@@ -64,7 +64,8 @@ void       displayshow  (display_l *list, uint8_t    flag)
     uint32_t   count               = 0;
     uint32_t   value               = 0;
     word_t    *wtmp                = NULL;
-    int8_t     entry[16];
+    int8_t     entry[24];
+    uint8_t    check               = FALSE;
 
     dtmp                           = list;
     while (dtmp                   != NULL)
@@ -75,16 +76,33 @@ void       displayshow  (display_l *list, uint8_t    flag)
         {
             case LIST_REG_DEREF:
                 value              = wtmp -> i32;
-                sprintf (entry,  "[R%u(0x%.8X)]",  value, REG(value));
+                sprintf (entry,  "[R%u>%.8X)]",  value, REG(value));
                 fprintf (stdout, "%19s: ", entry);
 
+                check              = memory_chk (REG(value));
                 if (dtmp -> label != NULL)
                 {
-                    fprintf (stdout, "0x%.8X \"%s\"\n", IMEMGET(REG(value)), dtmp -> label);
+                    if (check     == TRUE)
+                    {
+                        fprintf (stdout, "0x%.8X \"%s\"\n",
+                                IMEMGET(REG(value)), dtmp -> label);
+                    }
+                    else
+                    {
+                        fprintf (stdout, "<invalid address> \"%s\"\n",
+                                dtmp -> label);
+                    }
                 }
                 else
                 {
-                    fprintf (stdout, "0x%.8X\n",        IMEMGET(REG(value)));
+                    if (check     == TRUE)
+                    {
+                        fprintf (stdout, "0x%.8X\n",        IMEMGET(REG(value)));
+                    }
+                    else
+                    {
+                        fprintf (stdout, "<invalid address>\n");
+                    }
                 }
                 break;
 
@@ -131,13 +149,33 @@ void       displayshow  (display_l *list, uint8_t    flag)
             case LIST_MEM_DEREF:
                 sys_force          = TRUE;
                 value              = IMEMGET (wtmp -> i32);
+                check              = memory_chk (value);
+                sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, IMEMGET(value));
+                fprintf (stdout, "%19s: ", entry);
                 if (dtmp -> label != NULL)
                 {
-                    fprintf (stdout, "[0x%.8X]: 0x%.8X \"%s\"\n", value, IMEMGET(value), dtmp -> label);
+                    if (check     == TRUE)
+                    {
+                        fprintf (stdout, "0x%.8X \"%s\"\n",
+                                IMEMGET(IMEMGET(value)), dtmp -> label);
+                    }
+                    else
+                    {
+                        fprintf (stdout, "<invalid address> \"%s\"\n",
+                                dtmp -> label);
+                    }
                 }
                 else
                 {
-                    fprintf (stdout, "[0x%.8X]: 0x%.8X\n",        value, IMEMGET(value));
+                    if (check     == TRUE)
+                    {
+                        fprintf (stdout, "0x%.8X\n",
+                                IMEMGET(IMEMGET(value)));
+                    }
+                    else
+                    {
+                        fprintf (stdout, "<invalid address>\n");
+                    }
                 }
                 break;
 
@@ -146,7 +184,8 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 value              = IMEMGET (wtmp -> i32);
                 if (dtmp -> label != NULL)
                 {
-                    fprintf (stdout, "0x%.8X: 0x%.8X \"%s\"\n", wtmp -> i32, value, dtmp -> label);
+                    fprintf (stdout, "0x%.8X: 0x%.8X \"%s\"\n",
+                            wtmp -> i32, value, dtmp -> label);
                 }
                 else
                 {

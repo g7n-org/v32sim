@@ -97,6 +97,7 @@ void       ioports_set    (uint16_t,    int32_t);              // set value to p
 void       init_memory    (void);                              // initialize memory
 void       load_command   (void);
 void       load_memory    (uint32_t,    int8_t *);             // load file into memory
+uint8_t    memory_chk     (uint32_t);
 word_t    *memory_get     (uint32_t);                          // get value from memory
 void       memory_set     (uint32_t,    uint32_t);             // set value to memory
 void       init_registers (void);

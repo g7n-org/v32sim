@@ -23,6 +23,9 @@ install:
 	@mkdir -p /home/$(USER)/bin
 	@if [ -d "/home/$(USER)/bin/bin.$(ARCH)/" ]; then cp -av $(TARGET) /home/$(USER)/bin/bin.$(ARCH)/; else cp -av $(TARGET) /home/$(USER)/bin/; fi
 
+sysinstall:
+	@cp -av $(TARGET) /usr/local/bin/$(TARGET)
+	@chmod 0755 /usr/local/bin/$(TARGET)
 
 # Phony target for cleaning up generated files
 .PHONY: clean

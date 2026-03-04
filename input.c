@@ -1385,17 +1385,19 @@ uint8_t  prompt (uint32_t  word)
             break;
 
         case INPUT_HELP:
-            fprintf (stdout, "  c[ontinue]            - resume execution\n");
-            fprintf (stdout, "  d[isplay] XYZ [LABEL] - add displaylist item\n");
+            fprintf (stdout, "  (c)ontinue            - resume execution\n");
+            fprintf (stdout, "  (p)rint XYZ           - one-time display of XYZ\n");
+            fprintf (stdout, "  (d)isplay XYZ [LABEL] - add displaylist item\n");
             fprintf (stdout, "    R#                  - general register\n");
+            fprintf (stdout, "    [R#]                - dereferenced register\n");
             fprintf (stdout, "    I(P|R|V)            - system register\n");
             fprintf (stdout, "    0xMEM_ADDR          - 4-byte memory address\n");
+            fprintf (stdout, "    [0xMEM_ADDR]        - dereferenced address\n");
             fprintf (stdout, "    0xIOP               - IOPort address\n");
-            fprintf (stdout, "  h[elp]                - display this help\n");
-            fprintf (stdout, "  n[ext]                - next (skip subroutines)\n");
-            fprintf (stdout, "  p[rint] XYZ           - one-time display of XYZ\n");
-            fprintf (stdout, "  s[tep]                - step to next instruction\n");
-            fprintf (stdout, "  q[uit]                - exit the simulator\n");
+            fprintf (stdout, "  (n)ext                - next (skip subroutines)\n");
+            fprintf (stdout, "  (s)tep                - step to next instruction\n");
+            fprintf (stdout, "  (h)elp/?              - display this help\n");
+            fprintf (stdout, "  (q)uit                - exit the simulator\n");
             action                     = INPUT_INIT;
             break;
     }
