@@ -233,11 +233,11 @@ void  decode_display (uint32_t  instruction,
                     sprintf (destination, "R%u,",          dst);
                     sprintf (source,      "[R%u]",         src);
                     value              = REG(src);
-					if (derefaddr     == TRUE)
-					{
-						fprintf (stdout, "REG(src): 0x%.8X\n", REG(src));
-						fprintf (stdout, "[SRCREG]: 0x%.8X\n", IMEMGET(REG(src)));
-					}
+                    if (derefaddr     == TRUE)
+                    {
+                        fprintf (debug, "REG(src): 0x%.8X\n", REG(src));
+                        fprintf (debug, "[SRCREG]: 0x%.8X\n", IMEMGET(REG(src)));
+                    }
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
@@ -252,11 +252,11 @@ void  decode_display (uint32_t  instruction,
                     {
                         value          = REG(src) - abs ((signed) immediate);
                     }
-					if (derefaddr     == TRUE)
-					{
-						fprintf (stdout, "value: 0x%.8X\n", value);
-						fprintf (stdout, "[SRCREG+Imm]: 0x%.8X\n", IMEMGET(value));
-					}
+                    if (derefaddr     == TRUE)
+                    {
+                        fprintf (debug, "value: 0x%.8X\n", value);
+                        fprintf (debug, "[SRCREG+Imm]: 0x%.8X\n", IMEMGET(value));
+                    }
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
@@ -655,7 +655,7 @@ void  decode_process (uint32_t  instruction,
             }
             else
             {
-                DSTREG      = DSTREG   >> value;
+                DSTREG      = DSTREG   >> abs (value);
             }
             break;
 

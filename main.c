@@ -269,6 +269,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                 put_word (immediate, FLAG_DISPLAY);
             }
             fprintf  (stdout, "\n");
+            displayshow  (dpoint, 0);
         }
 
         if (runflag                   == FALSE)
