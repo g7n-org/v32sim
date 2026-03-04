@@ -44,6 +44,7 @@ uint8_t  parse_token (uint8_t *token, uint8_t *pattern, uint8_t  parse_success)
     //
     else if (check          == 0)
     {
+        fprintf (verbose, "[parse_token] successful match for token\n");
         result               = parse_success;
     }
 
@@ -106,6 +107,13 @@ uint8_t  parse_memrange (uint8_t *token)
     else if (check          == 0)
     {
         result               = PARSE_MEMRANGE;
+        /*
+        snprintf (token, strlen (), "%.*s-%.*s",
+                  (int) (match[1].rm_eo - match[1].rm_so),
+                  (token + match[1].rm_so),
+                  (int) (match[2].rm_eo - match[2].rm_so),
+                  (token + match[2].rm_so));
+                  */
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +141,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
     int32_t     index        = 0;
     regex_t     regex;
     regmatch_t  match[4];
-    int8_t     *pos          = NULL;
+    uint8_t    *string       = NULL;
     uint8_t   **pattern      = NULL;
     uint8_t    *form0        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *$";
     uint8_t    *form1        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *([^ ]+) *$";
@@ -182,20 +190,22 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
         //
         else if (check      == 0)
         {
-            fprintf (stdout, "[before] input: '%s'\n", input);
-            pos              = strchr (input, '[');
-            *pos             = ' ';
-            pos              = strchr (input, ']');
-            *pos             = ' ';
+            fprintf (verbose, "[parse_deref] match on dereference\n");
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // allocate memory for reconstructed string
+            //
+            string           = (uint8_t *) malloc (sizeof (uint8_t) * strlen (input));
+            snprintf (string, strlen (input) - 1, "%.*s %.*s %.*s",
+                      (int) (match[1].rm_eo - match[1].rm_so),
+                      (input + match[1].rm_so),
+                      (int) (match[2].rm_eo - match[2].rm_so),
+                      (input + match[2].rm_so),
+                      (int) (match[3].rm_eo - match[3].rm_so),
+                      (input + match[3].rm_so));
+            //memmove (input, string, strlen (string));
             *flag            = TRUE;
-            fprintf (stdout, "[after]  input: '%s'\n", input);
-            sprintf (input,  "%.*s %.*s %.*s", (int) (match[1].rm_eo - match[1].rm_so),
-                                               (input + match[1].rm_so),
-                                               (int) (match[2].rm_eo - match[2].rm_so),
-                                               (input + match[2].rm_so),
-                                               (int) (match[3].rm_eo - match[3].rm_so),
-                                               (input + match[3].rm_so));
-            fprintf (stdout, "[final]  input: '%s'\n", input);
             break;
         }
 
@@ -213,7 +223,12 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
     regfree (&regex);
     free    (pattern);
 
-    return  (input);
+    if (string              == NULL)
+    {
+        string               = input;
+    }
+
+    return  (string);
 }
 
 uint8_t  parse_imm (uint8_t *token)
@@ -851,7 +866,7 @@ uint32_t  tokenize_asm (uint8_t *string)
     return  (instruction);
 }
 
-uint8_t  tokenize_input (uint8_t *string, uint8_t *flag)
+uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -863,6 +878,7 @@ uint8_t  tokenize_input (uint8_t *string, uint8_t *flag)
     regex_t     regex;
     regmatch_t  match[4];
     uint8_t     byte             = 0;
+    int8_t     *string           = NULL;
     int8_t     *token            = NULL;
     uint8_t   **pattern          = NULL;
     uint8_t    *form0            = "^ *([a-z?]+) *$";
@@ -874,9 +890,9 @@ uint8_t  tokenize_input (uint8_t *string, uint8_t *flag)
     uint8_t    *form6            = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
     uint8_t     result           = 0;
 
-    fprintf (verbose, "[tokenize_input] passed string: '%s'\n", string);
+    fprintf (verbose, "[tokenize_input] passed string: '%s'\n", input);
 
-    string                       = parse_deref (string, flag);
+    string                       = parse_deref (input, flag);
 
     fprintf (verbose, "[tokenize_input] processed string: '%s'\n", string);
 
@@ -972,6 +988,7 @@ uint8_t  tokenize_input (uint8_t *string, uint8_t *flag)
                                  count     <= PARSE_MEMRANGE;
                                  count      = count + 1)
                             {
+                                fprintf (verbose,  "[tokenize_input] value: 0x%.2X, pattern: 0x%.2X\n", count, (count-119));
                                 ////////////////////////////////////////////////////////
                                 //
                                 // PARSE_NONE              0x7F
@@ -1285,6 +1302,7 @@ uint8_t  prompt (uint32_t  word)
                 case PARSE_MEMORY:
                     arg                = strtok ((input+2), " ");
                     value              = strtol (arg, NULL, 16);
+                    fprintf (stdout, "arg: '%s', MEMDEREF: 0x%.8X\n", arg, value);
                     if (deref_flag    == TRUE)
                     {
                         dtmp           = newdispnode (LIST_MEM_DEREF, value);

@@ -64,9 +64,9 @@ void       displayshow  (display_l *list, uint8_t    flag)
             case LIST_REG_DEREF:
                 value              = wtmp -> i32;
                 sprintf (entry,  "[R%u>%.8X)]",  value, REG(value));
-                if (list -> space <  strlen (entry) + 2)
+                if (list -> space <  strlen (entry))
                 {
-                    list -> space  = strlen (entry) + 2;
+                    list -> space  = strlen (entry);
                 }
                 fprintf (stdout, "%*s: ", list -> space, entry);
 
@@ -143,9 +143,9 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 value              = IMEMGET (wtmp -> i32);
                 check              = memory_chk (value);
                 sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, IMEMGET(value));
-                if (list -> space <  strlen (entry) + 2)
+                if (list -> space <  strlen (entry))
                 {
-                    list -> space  = strlen (entry) + 2;
+                    list -> space  = strlen (entry);
                 }
                 fprintf (stdout, "%*s: ", list -> space, entry);
                 if (dtmp -> label != NULL)
@@ -178,10 +178,10 @@ void       displayshow  (display_l *list, uint8_t    flag)
             case LIST_MEM:
                 sys_force          = TRUE;
                 value              = IMEMGET (wtmp -> i32);
-                sprintf (entry, "[0x%.8X]", wtmp -> i32);
-                if (list -> space <  strlen (entry) + 2)
+                sprintf (entry, "0x%.8X", wtmp -> i32);
+                if (list -> space <  strlen (entry))
                 {
-                    list -> space  = strlen (entry) + 2;
+                    list -> space  = strlen (entry);
                 }
                 fprintf (stdout, "%*s: ", list -> space, entry);
 
