@@ -246,7 +246,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         immediate                      = word & 0x02000000;
         if (immediate                 == 0x02000000)
         {
-            rom_offset                 = rom_offset + 1;
+            //rom_offset                 = rom_offset + 1;
             immediate                  = IMEMGET(REG(IP) + 1);
             fimmediate                 = FMEMGET(REG(IP) + 1);
             decodeflags                = FLAG_IMMEDIATE;
@@ -396,6 +396,10 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         else
         {
             rom_offset                 = rom_offset   + 1;
+            if ((word & 0x02000000)   >  0)
+            {
+                rom_offset             = rom_offset   + 1;
+            }
         }
     }
 

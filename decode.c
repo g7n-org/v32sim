@@ -396,7 +396,8 @@ void  decode_process (uint32_t  instruction,
 
         case CALL:
             REG(SP)         = REG(SP) - 1;   // PUSH REG(IP) value to stack
-            memory_set (REG(SP), (REG(IP) + 1));
+            value           = (immflag == TRUE)   ? 2          : 1;
+            memory_set (REG(SP), (REG(IP) + value));
             REG(IP)         = (immflag == TRUE)   ? immediate  : DSTREG;
             rom_offset      = REG(IP);
             branchflag      = TRUE;
@@ -406,6 +407,7 @@ void  decode_process (uint32_t  instruction,
             REG(IP)         = IMEMGET (REG(SP));
             rom_offset      = REG(IP);  // POP REG(IP) off stack
             REG(SP)         = REG(SP) + 1;
+            branchflag      = TRUE;
             break;
 
         case JT:
