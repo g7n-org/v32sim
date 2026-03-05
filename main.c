@@ -51,15 +51,12 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // declare and initialize variables
     //
-    float      fimmediate              = 0.0;
     size_t     len                     = 0;
     uint8_t    decodeflags             = FLAG_NONE;
     uint8_t    processflag             = FALSE;
-    uint32_t   immediate               = 0x00000000;
     uint32_t   vbinoffset              = 0x00000000;
     uint32_t   vtexoffset              = 0x00000000;
     uint32_t   vsndoffset              = 0x00000000;
-    uint32_t   word                    = 0x00000000;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -227,10 +224,9 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         }
 
         REG(IP)                        = rom_offset;
-        word                           = IMEMGET(REG(IP));
-        REG(IR)                        = word;        // current instruction
+        REG(IR)                        = IMEMGET(REG(IP)); // current instruction
 
-        if (watch_word                == word)
+        if (watch_word                == REG(IR))
         {
             if (colorflag             == TRUE)
             {
@@ -244,30 +240,25 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             runflag                    = FALSE;
         }
 
-        immediate                      = word & 0x02000000;
-        if (immediate                 == 0x02000000)
+        if ((REG(IR) & 0x02000000)    == 0x02000000)
         {
-            //rom_offset                 = rom_offset + 1;
-            immediate                  = IMEMGET(REG(IP) + 1);
-            fimmediate                 = FMEMGET(REG(IP) + 1);
+            REG(IV)                    = IMEMGET(REG(IP) + 1);
             decodeflags                = FLAG_IMMEDIATE;
         }
         else
         {
-            immediate                  = 0x00000000;
-            fimmediate                 = 0.0;
+            REG(IV)                    = 0x00000000;
             decodeflags                = FLAG_NONE;
         }
-        REG(IV)                        = immediate;   // immediate value
 
         if ((debug                    != NULL) &&
             (runflag                  == TRUE))
         {
-            put_word (word, FLAG_DISPLAY);
-            decode   (word, immediate, fimmediate, decodeflags | FLAG_DISPLAY);
+            put_word (REG(IR), FLAG_DISPLAY);
+            decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
             if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
             {
-                put_word (immediate, FLAG_DISPLAY);
+                put_word (REG(IV), FLAG_DISPLAY);
             }
             fprintf  (stdout, "\n");
             displayshow  (dpoint, 0);
@@ -298,10 +289,10 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             }
             else
             {
-                put_word (word, FLAG_DISPLAY);
+                put_word (REG(IR), FLAG_DISPLAY);
             }
 
-            decode   (word, immediate, fimmediate, decodeflags | FLAG_DISPLAY);
+            decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
 
             if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
             {
@@ -326,7 +317,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                 }
                 else
                 {
-                    put_word (immediate, FLAG_DISPLAY);
+                    put_word (REG(IV), FLAG_DISPLAY);
                 }
                 fprintf  (stdout, "\n");
             }
@@ -338,7 +329,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                 //
                 // Display the prompt and obtain input
                 //
-                processflag            = prompt (word);
+                processflag            = prompt (REG(IR));
 
             }
             while (processflag        == FALSE);
@@ -350,7 +341,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         //
         if (ignoreflag                == FALSE)
         {
-            decode (word, immediate, fimmediate, decodeflags | FLAG_PROCESS);
+            decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_PROCESS);
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -403,7 +394,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         else
         {
             rom_offset                 = rom_offset   + 1;
-            if ((word & 0x02000000)   >  0)
+            if ((REG(IR) & 0x02000000)   >  0)
             {
                 rom_offset             = rom_offset   + 1;
             }
