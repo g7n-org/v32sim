@@ -108,6 +108,11 @@ float     word2float   (word_t *info)
     return (info -> f32);
 }
 
+uint32_t  word2raw     (word_t *info)
+{
+    return (info -> raw);
+}
+
 word_t   *new_word_i32 (uint32_t *value, uint8_t  num)
 {
     int32_t  index               = 0;

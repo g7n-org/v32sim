@@ -55,8 +55,8 @@ void  init_registers (void)
     //
     // initialize stack registers to system defaults
     //
-    BP_REG                             = 0x003FFFFF;
-    SP_REG                             = 0x003FFFFF;
+    REG(BP)                            = 0x003FFFFF;
+    REG(SP)                            = 0x003FFFFF;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -70,7 +70,7 @@ void  init_registers (void)
     //
     // initialize the system registers to system defaults
     //
-    IP_REG                             = 0x10000004; // BIOS entry point
+    REG(IP)                            = 0x10000004; // BIOS entry point
 }
 
 word_t *reg_get (uint8_t  id, uint8_t  sys_force)
@@ -89,7 +89,7 @@ word_t *reg_get (uint8_t  id, uint8_t  sys_force)
         {
             if (sys_force  == FALSE)
             {
-                fprintf (stderr, "[ERROR] register '%s' not accessible via READ!\n",
+                fprintf (stderr, "[reg_get] register '%s' not accessible via READ!\n",
                                  (reg+id) -> name);
                 wptr        = NULL;
             }

@@ -225,9 +225,9 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             runflag                    = FALSE;
         }
 
-        IP_REG                         = rom_offset;
-        word                           = IMEMGET (IP_REG);
-        IR_REG                         = word;        // current instruction
+        REG(IP)                        = rom_offset;
+        word                           = IMEMGET(REG(IP));
+        REG(IR)                        = word;        // current instruction
 
         if (watch_word                == word)
         {
@@ -247,8 +247,8 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         if (immediate                 == 0x02000000)
         {
             rom_offset                 = rom_offset + 1;
-            immediate                  = IMEMGET (IP_REG + 1);
-            fimmediate                 = FMEMGET (IP_REG + 1);
+            immediate                  = IMEMGET(REG(IP) + 1);
+            fimmediate                 = FMEMGET(REG(IP) + 1);
             decodeflags                = FLAG_IMMEDIATE;
         }
         else
@@ -257,7 +257,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             fimmediate                 = 0.0;
             decodeflags                = FLAG_NONE;
         }
-        IV_REG                         = immediate;   // immediate value
+        REG(IV)                        = immediate;   // immediate value
 
         if ((debug                    != NULL) &&
             (runflag                  == TRUE))
@@ -277,7 +277,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             if (sys_reg_show          == TRUE)
             {
                 show_sysregs ();
-                switch ((IP_REG & 0x30000000) >> 28)
+                switch ((REG(IP) & 0x30000000) >> 28)
                 {
                     case V32_PAGE_RAM:
                         fprintf (stdout, " [RAM]");
@@ -293,7 +293,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                         break;
                 }
 
-                fprintf (stdout, "[%.8X]: ", IP_REG);
+                fprintf (stdout, "[%.8X]: ", REG(IP));
             }
             else
             {
@@ -306,7 +306,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             {
                 if (sys_reg_show      == TRUE)
                 {
-                    switch ((IP_REG & 0x30000000) >> 28)
+                    switch ((REG(IP) & 0x30000000) >> 28)
                     {
                         case V32_PAGE_RAM:
                             fprintf (stdout, " [RAM]");
@@ -321,7 +321,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
                             fprintf (stdout, "[MEMC]");
                             break;
                     }
-                    fprintf  (stdout, "[%.8X]: 0x%.8X", (IP_REG + 1), IV_REG);
+                    fprintf  (stdout, "[%.8X]: 0x%.8X", (REG(IP) + 1), REG(IV));
                 }
                 else
                 {
@@ -358,8 +358,8 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             ////////////////////////////////////////////////////////////////////////////
             //
             // Per Vircon32  specifications, when a system  error occurs,
-            // the  system  error   value,  InstructionPointer  (IP_REG),
-            // InstructionRegister (IR_REG),  and ImmediateValue (IV_REG)
+            // the  system  error   value,  InstructionPointer (REG(IP)),
+            // InstructionRegister (REG(IR)), and ImmediateValue REG(IV),
             // are stored in R0, R1, R2,  and R3 respectively, the SP and
             // BP registers wiped, and flow  redirected to the BIOS error
             // handler at 0x10000000.
@@ -368,14 +368,14 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             // the error occurred on get incremented?
             //
             REG(R0)                    = sys_error;
-            REG(R1)                    = IP_REG;
-            REG(R2)                    = IR_REG;
-            REG(R3)                    = IV_REG;
+            REG(R1)                    = REG(IP);
+            REG(R2)                    = REG(IR);
+            REG(R3)                    = REG(IV);
 
-            SP_REG                     = 0x00000000;
-            BP_REG                     = 0x00000000;
+            REG(SP)                    = 0x00000000;
+            REG(BP)                    = 0x00000000;
 
-            IP_REG                     = BIOS_ERROR_OFFSET;
+            REG(IP)                    = BIOS_ERROR_OFFSET;
             continue; // kick to next iteration
         }
 

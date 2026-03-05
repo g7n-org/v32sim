@@ -159,15 +159,9 @@
 #define  REG(x)                  (reg+x)   -> value.i32
 #define  DSTREG                  (reg+dst) -> value.i32
 #define  SRCREG                  (reg+src) -> value.i32
-#define  BP_REG                  (reg+BP)  -> value.i32
-#define  SP_REG                  (reg+SP)  -> value.i32
-#define  IP_REG                  (reg+IP)  -> value.i32
-#define  IR_REG                  (reg+IR)  -> value.i32
-#define  IV_REG                  (reg+IV)  -> value.i32
 #define  FREG(x)                 (reg+x)   -> value.f32
 #define  FDSTREG                 (reg+dst) -> value.f32
 #define  FSRCREG                 (reg+src) -> value.f32
-#define  FIV_REG                 (reg+IV)  -> value.f32
 
 #define  IMEMGET(addr)           word2int (memory_get (addr))
 #define  FMEMGET(addr)           word2float (memory_get (addr))

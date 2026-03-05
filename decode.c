@@ -389,30 +389,30 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case JMP:
-            IP_REG          = (immflag == TRUE)   ? immediate  : DSTREG;
-            rom_offset      = IP_REG;
+            REG(IP)         = (immflag == TRUE)   ? immediate  : DSTREG;
+            rom_offset      = REG(IP);
             branchflag      = TRUE;
             break;
 
         case CALL:
-            SP_REG          = SP_REG - 1;   // PUSH IP_REG value to stack
-            memory_set (SP_REG, (IP_REG + 1));
-            IP_REG          = (immflag == TRUE)   ? immediate  : DSTREG;
-            rom_offset      = IP_REG;
+            REG(SP)         = REG(SP) - 1;   // PUSH REG(IP) value to stack
+            memory_set (REG(SP), (REG(IP) + 1));
+            REG(IP)         = (immflag == TRUE)   ? immediate  : DSTREG;
+            rom_offset      = REG(IP);
             branchflag      = TRUE;
             break;
 
         case RET:
-            IP_REG          = IMEMGET (SP_REG);
-            rom_offset      = IP_REG;  // POP IP_REG off stack
-            SP_REG          = SP_REG + 1;
+            REG(IP)         = IMEMGET (REG(SP));
+            rom_offset      = REG(IP);  // POP REG(IP) off stack
+            REG(SP)         = REG(SP) + 1;
             break;
 
         case JT:
             if (DSTREG     == TRUE)
             {
-                IP_REG      = (immflag == TRUE)   ? immediate  : SRCREG;
-                rom_offset  = IP_REG;
+                REG(IP)     = (immflag == TRUE)   ? immediate  : SRCREG;
+                rom_offset  = REG(IP);
                 branchflag  = TRUE;
             }
             break;
@@ -420,8 +420,8 @@ void  decode_process (uint32_t  instruction,
         case JF:
             if (DSTREG     == FALSE)
             {
-                IP_REG      = (immflag == TRUE)   ? immediate  : SRCREG;
-                rom_offset  = IP_REG;
+                REG(IP)     = (immflag == TRUE)   ? immediate  : SRCREG;
+                rom_offset  = REG(IP);
                 branchflag  = TRUE;
             }
             break;
@@ -549,15 +549,15 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case PUSH:
-            fprintf (debug, "[decode_process] PUSH: memory_set (0x%.8X, 0x%.8X)\n", SP_REG, DSTREG);
-            SP_REG          = SP_REG - 1; // adjust top of stack
-            MEMSET (SP_REG, DSTREG);      // place on top of stack
+            fprintf (debug, "[decode_process] PUSH: memory_set (0x%.8X, 0x%.8X)\n", REG(SP), DSTREG);
+            REG(SP)         = REG(SP) - 1; // adjust top of stack
+            MEMSET (REG(SP), DSTREG);      // place on top of stack
             break;
 
         case POP:
-            fprintf (debug, "[decode_process] POP: memory_get (0x%.8X)\n", SP_REG);
-            DSTREG          = IMEMGET (SP_REG);
-            SP_REG          = SP_REG + 1;
+            fprintf (debug, "[decode_process] POP: memory_get (0x%.8X)\n", REG(SP));
+            DSTREG          = IMEMGET (REG(SP));
+            REG(SP)         = REG(SP) + 1;
             break;
 
         case IN:
@@ -579,7 +579,7 @@ void  decode_process (uint32_t  instruction,
                 REG(DR)     = REG(DR) + 1;
                 REG(SR)     = REG(SR) + 1;
                 REG(CR)     = REG(CR) - 1;
-                //REG(IP)     = REG(IP) - 1;
+                //REG(IP)    = REG(IP) - 1;
             }
             while (REG(CR) >  0);
             break;
@@ -590,7 +590,7 @@ void  decode_process (uint32_t  instruction,
                 MEMSET(REG(DR), SR);
                 REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
                 REG(CR)     = REG(CR) - 1; // CR: Count Register (R11)
-                //IP          = IP - 1; // IP: InstructionPointer internal register
+                //REG(IP)    = REG(IP) - 1; // IP: InstructionPointer internal register
             }
             while (REG(CR) >  0);
             break;
