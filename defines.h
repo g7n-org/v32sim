@@ -86,6 +86,7 @@
 #define  INPUT_MEMADDR           13
 #define  INPUT_MEMRANGE          14
 #define  INPUT_IOPORT            15
+#define  INPUT_IGNORE            16
 
 #define  PARSE_NONE              0x7F
 #define  PARSE_IMMEDIATE         0x7E

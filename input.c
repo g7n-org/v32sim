@@ -957,6 +957,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             action  = INPUT_CONTINUE;
                             break;
 
+                        case 'i': // ignore
+                            action  = INPUT_IGNORE;
+                            break;
+
                         case 'n': // next
                             action  = INPUT_NEXT;
                             break;
@@ -1219,6 +1223,11 @@ uint8_t  prompt (uint32_t  word)
             runflag                     = TRUE;
             break;
 
+        case INPUT_IGNORE:
+            ignoreflag                  = TRUE;
+            processflag                 = TRUE;
+            break;
+
         case INPUT_LABEL:
             arg                         = strtok ((input+2), " ");
             value                       = strlen (arg);
@@ -1302,7 +1311,7 @@ uint8_t  prompt (uint32_t  word)
                 case PARSE_MEMORY:
                     arg                = strtok ((input+2), " ");
                     value              = strtol (arg, NULL, 16);
-                    fprintf (stdout, "arg: '%s', MEMDEREF: 0x%.8X\n", arg, value);
+                    fprintf (verbose, "arg: '%s', MEMDEREF: 0x%.8X\n", arg, value);
                     if (deref_flag    == TRUE)
                     {
                         dtmp           = newdispnode (LIST_MEM_DEREF, value);
@@ -1412,6 +1421,7 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "    0xMEM_ADDR          - 4-byte memory address\n");
             fprintf (stdout, "    [0xMEM_ADDR]        - dereferenced address\n");
             fprintf (stdout, "    0xIOP               - IOPort address\n");
+            fprintf (stdout, "  (i)gnore              - ignore this instruction\n");
             fprintf (stdout, "  (n)ext                - next (skip subroutines)\n");
             fprintf (stdout, "  (s)tep                - step to next instruction\n");
             fprintf (stdout, "  (h)elp/?              - display this help\n");

@@ -35,6 +35,7 @@ uint8_t    action;
 uint8_t    runflag;
 uint8_t    colorflag;
 uint8_t    branchflag;
+uint8_t    ignoreflag;
 uint8_t    derefaddr;
 uint8_t    haltflag;
 uint8_t    waitflag;
@@ -347,7 +348,10 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         //
         // process the current instruction
         //
-        decode (word, immediate, fimmediate, decodeflags | FLAG_PROCESS);
+        if (ignoreflag                == FALSE)
+        {
+            decode (word, immediate, fimmediate, decodeflags | FLAG_PROCESS);
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         //
@@ -383,7 +387,10 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         //
         // update the Cycle Counter
         //
-        update_cycle ();
+        if (ignoreflag                == FALSE)
+        {
+            update_cycle ();
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         //
@@ -400,6 +407,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             {
                 rom_offset             = rom_offset   + 1;
             }
+            ignoreflag                 = FALSE;
         }
     }
 
