@@ -882,19 +882,19 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     int8_t     *token            = NULL;
     uint8_t   **pattern          = NULL;
     uint8_t    *form0            = "^ *([a-z?]+) *$";
-    uint8_t    *form1            = "^ *([a-z]+) *(0x[0-9A-F]{8}) *$";
-    uint8_t    *form2            = "^ *([a-z]+) *(0x[0-9A-F]{8}) *(0x[0-9A-F]{8}) *$";
-    uint8_t    *form3            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
-    uint8_t    *form4            = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
-    uint8_t    *form5            = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
-    uint8_t    *form6            = "^ *(reg|regs|register|registers|r[*]) *$";  // registers
-    uint8_t    *form7            = "^ *(0x[0-9A-F]{8}) *$";                     // memory
-    uint8_t    *form8            = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
+    uint8_t    *form1            = "^ *([a-z]+) *(0x[0-9A-F]{8}){1,3} *$";
+    //uint8_t    *form2            = "^ *([a-z]+) *(0x[0-9A-F]{8}) *(0x[0-9A-F]{8}) *$";
+    uint8_t    *form2            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
+    uint8_t    *form3            = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
+    uint8_t    *form4            = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
+    uint8_t    *form5            = "^ *(reg|regs|register|registers|r[*]) *$";  // registers
+    uint8_t    *form6            = "^ *(0x[0-9A-F]{8}) *$";                     // memory
+    uint8_t    *form7            = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
     uint8_t     result           = 0;
 
     fprintf (verbose, "[tokenize_input] passed string: '%s'\n", input);
 
-    string                           = parse_deref (input, flag);
+    string                                  = parse_deref (input, flag);
 
     fprintf (verbose, "[tokenize_input] processed string: '%s'\n", string);
 
@@ -902,29 +902,28 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // allocate and populate pattern array
     //
-    pattern                          = (uint8_t **) malloc (sizeof (uint8_t *) * 9);
-    *(pattern+0)                     = form0;
-    *(pattern+1)                     = form1;
-    *(pattern+2)                     = form2;
-    *(pattern+3)                     = form3;
-    *(pattern+4)                     = form4;
-    *(pattern+5)                     = form5;
-    *(pattern+6)                     = form6;
-    *(pattern+7)                     = form7;
-    *(pattern+8)                     = form8;
+    pattern                                 = (uint8_t **) malloc (sizeof (uint8_t *) * 8);
+    *(pattern+0)                            = form0;
+    *(pattern+1)                            = form1;
+    *(pattern+2)                            = form2;
+    *(pattern+3)                            = form3;
+    *(pattern+4)                            = form4;
+    *(pattern+5)                            = form5;
+    *(pattern+6)                            = form6;
+    *(pattern+7)                            = form7;
 
-    for (index                       = 0;
-         index                      <  4;
-         index                       = index + 1)
+    for (index                              = 0;
+         index                             <  3;
+         index                              = index + 1)
     {
         ////////////////////////////////////////////////////////////////////////////////
         //
         // RegEx compilation: compile pattern into our regex for processing
         //
-        check                        = regcomp (&regex,
-                                               *(pattern+index),
-                                               REG_EXTENDED | REG_ICASE);
-        if (check                   != 0)
+        check                               = regcomp (&regex,
+                                                      *(pattern+index),
+                                                      REG_EXTENDED | REG_ICASE);
+        if (check                          != 0)
         {
             fprintf (stderr, "[ERROR] Invalid pattern: RegEx compilation failed\n");
             exit    (REGEX_COMPILE_ERROR);
@@ -934,8 +933,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution: make sure input conforms to provided pattern
         //
-        check                        = regexec (&regex, string, 4, match, 0);
-        if (check                   == REG_NOMATCH)
+        check                               = regexec (&regex, string, 4, match, 0);
+        if (check                          == REG_NOMATCH)
         {
             continue;
             fprintf (stderr, "ERROR: malformed input\n");
@@ -945,68 +944,71 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution success! Display the results
         //
-        else if (check              == 0)
+        else if (check                     == 0)
         {
             switch (index)
             {
                 case 0: // single-word command
-                    byte             = *(string + match[1].rm_so);
+                    byte                    = *(string + match[1].rm_so);
                     switch (byte)
                     {
                         case 'b': // break
-                            action   = INPUT_BREAK;
+                            action          = INPUT_BREAK;
                             break;
 
                         case 'c': // continue
-                            action   = INPUT_CONTINUE;
+                            action          = INPUT_CONTINUE;
                             break;
 
                         case 'i': // ignore
-                            action   = INPUT_IGNORE;
+                            action          = INPUT_IGNORE;
                             break;
 
                         case 'n': // next
-                            action   = INPUT_NEXT;
+                            action          = INPUT_NEXT;
                             break;
 
                         case 's': // step
-                            action   = INPUT_STEP;
+                            action          = INPUT_STEP;
                             break;
 
                         case 'h': // help
                         case '?': // help
-                            action   = INPUT_HELP;
+                            action          = INPUT_HELP;
                             break;
 
                         case 'e': // exit
                         case 'q': // quit
-                            action   = INPUT_QUIT;
+                            action          = INPUT_QUIT;
                             break;
                     }
                     break;
 
                 case 1: // replace-style command (one parameter)
-                case 2: // two parameter
-                    byte                 = *(string + match[1].rm_so);
+                    byte                    = *(string + match[1].rm_so);
                     switch (byte)
                     {
                         case 'r': // replace
-                            action       = INPUT_REPLACE;
-                            token        = strtok ((string + match[2].rm_so), " ");
-                            REG(IR)      = strtol (token, NULL, 16);
+                            action          = INPUT_REPLACE;
+                            token           = strtok ((string + match[2].rm_so), " ");
+                            REG(IR)         = strtol (token, NULL, 16);
+                            sys_force       = TRUE;
+                            MEMSET(REG(IP), REG(IR));
                             fprintf (verbose, "[tokenize_input] replacing current instruction with IR:0x%.8X ", REG(IR));
-                            if (index   == 2)
+                            if (index      == 2)
                             {
-                                token    = strtok ((string + match[3].rm_so), " ");
-                                REG(IV)  = strtol (token, NULL, 16);
+                                token       = strtok ((string + match[3].rm_so), " ");
+                                REG(IV)     = strtol (token, NULL, 16);
                                 fprintf (verbose, "0x%.8X", REG(IV));
+                                sys_force   = TRUE;
+                                MEMSET(REG(IP)+1, REG(IV));
                             }
                             fprintf (verbose, "\n");
                             break;
                     }
                     break;
 
-                case 3: // parametered command
+                case 2: // parametered command
                     byte                    = *(string + match[1].rm_so);
                     switch (byte)
                     {
@@ -1017,7 +1019,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                  count     <= PARSE_MEMRANGE;
                                  count      = count + 1)
                             {
-                                fprintf (verbose,  "[tokenize_input] value: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x75));
+                                fprintf (verbose,  "[tokenize_input] value: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x76));
                                 ////////////////////////////////////////////////////////
                                 //
                                 // PARSE_NONE              0x7F
@@ -1029,7 +1031,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 // PARSE_IOPORT            0x79
                                 //
                                 result      = parse_token (token,
-                                                           *(pattern+(count-0x75)),
+                                                           *(pattern+(count-0x76)),
                                                            count);
                                 if (result != PARSE_NONE)
                                 {
@@ -1062,7 +1064,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 // PARSE_IOPORT            0x79
                                 //
                                 result      = parse_token (token,
-                                                           *(pattern+(count-0x75)),
+                                                           *(pattern+(count-0x76)),
                                                            count);
                                 if (result != PARSE_NONE)
                                 {
@@ -1454,8 +1456,9 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "  (s)tep                - step to next instruction\n");
             fprintf (stdout, "  (i)gnore              - ignore this instruction\n");
             fprintf (stdout, "  (r)eplace             - replace this instruction\n");
-            fprintf (stdout, "    0xOPCODHEX          - with specified value\n");
-            fprintf (stdout, "    0xOPCODHEX 0xIMMED  - with specified values\n");
+            fprintf (stdout, "    0xOPC               -   with specified value\n");
+            fprintf (stdout, "    0xOPC 0xIMM         -   with specified values\n");
+            fprintf (stdout, "    0xMEM 0xOPC 0xIMM   -   with specified values\n");
             fprintf (stdout, "  (h)elp/?              - display this help\n");
             fprintf (stdout, "  (q)uit                - exit the simulator\n");
             action                     = INPUT_INIT;

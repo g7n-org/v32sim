@@ -1,7 +1,7 @@
 # v32sim
 
 A  text-based  Vircon32  simulator/debugger,  predominantly  for  use  in
-debugging/studying the system.
+debugging/hacking/studying the system.
 
 The aim  is to implement enough  of the Vircon32 Fantasy  Console so that
 code execution can be studied. Obviously, lacking an actual screen output
@@ -12,9 +12,16 @@ At this  point, many/most? instructions have  been implemented; registers
 and memory are present  and should behave in a manner  similar to how the
 system operates.
 
+All but the floating point math instructions have now been implemented; a
+few of the  simple floating point math instructions are  in place, mainly
+the basic arithmetic ones of `FADD`, `FSUB`, `FMUL`, `FDIV`, and `FMOD`.
+
 Many  IOPorts  are  present,  if  only  for  simple  reporting  or  basic
-operability.  The  TIM_,   RNG_,  and  CAR_  ports   should  actually  be
+operability.  The `TIM_`,  `RNG_`, and  `CAR_` ports  should actually  be
 fully functional.
+
+At  this  point  zero  work   has  gone  into  implementing  ANY  MEMCARD
+functionality.
 
 ## USAGE
 
@@ -24,12 +31,21 @@ Debugger/Simulator for Vircon32 Fantasy Console
 
 Mandatory arguments to long options are mandatory for short options too.
 
- -B, --biosfile=FILE    load this BIOS V32 file as BIOS
- -i, --index-math       output index math after decode
- -r, --run              do not enable single-step mode
- -s, --seek-to=OFFSET   run until OFFSET is encountered
- -v, --verbose          enable more verbose output
- -h, --help             display this information
+ -B, --biosfile=FILE       load this BIOS V32 file as BIOS
+ -C, --command-file=FILE   load this file with sim commands
+ -c, --colors              enable colorized output
+ -d, --deref-addr          output address of dereference
+ -D, --debug               enable debugging output
+ -E, --entry-point=OFFSET  set simulator entry point
+ -r, --run                 do not enable single-step mode
+ -s, --seek-to=OFFSET      run until OFFSET is encountered
+ -w, --watch-for=OPCODE    run until OPCODE is encountered
+ -v, --verbose             enable more verbose output
+ -h, --help                display this information
+
+FILE   is any path plus the filename desired
+OFFSET is the full 32-bit/4-byte memory address (hex)
+OPCODE is the full 32-bit/4-byte instruction hex
 ```
 
 The simulator will, by default,  use the Vircon32 `StandardBios.v32` from
@@ -45,7 +61,67 @@ To disable the "debugger", run with `--run`, it will just be a simulator.
 GNU readline is used for input prompt processing, allowing for shell-like
 input management (cursor keys, CTRL keys, command history, etc.).
 
+### POSIX REGEX
+
+The  simulator  currently  makes  extensive  use  of  the  POSIX  Regular
+Expressions functions.
+
+### MATH
+
+For some of the higher level math operations, the math library is used.
+
 ## ARGUMENTS
+
+### BIOSFILE
+
+By default,  `v32sim` attempts read `StandardBios.v32`  from the standard
+Vircon32 ComputerSoftware install location on the system.
+
+If desired, you can specify an alternate BIOS that the simulator will use
+at startup.
+
+### COMMAND-FILE
+
+While having  the ability to set  display list items in  the simulator is
+nice, extensive debugging sessions  would incur significant startup costs
+by constantly  having to specify  your display  list items over  and over
+again.
+
+To facilitate matters, a command-file can be specified, which is merely a
+plain text  file, with one  valid prompt  command per line  (only display
+list items are supported in command-files)
+
+### COLORS
+
+Specifying colors will colorize some of the output, in an attempt to help
+highlight important information and distinguish various data items.
+
+### DEREF-ADDR
+
+To  aid in  debugging and  study:  setting `--deref-addr`  will take  any
+dereferencing  or  indexed  dereferencing instruction,  and  display  the
+resulting value, alongside the instruction.
+
+### DEBUG
+
+Mostly  for  `v32sim` development,  the  `--debug`  argument causes  more
+output to be generated, mostly  on internal simulator operations, to help
+explore problems in simulator operation.
+
+### ENTRY-POINT
+
+Set the offset  of where the simulator will  start processing (overriding
+the system default BIOS entry point of `0x10000004`.
+
+Intended to  be used to force  start from the `CART`  at `0x20000000`, it
+should be used sparingly.
+
+### RUN
+ -r, --run                 do not enable single-step mode
+ -s, --seek-to=OFFSET      run until OFFSET is encountered
+ -w, --watch-for=OPCODE    run until OPCODE is encountered
+ -v, --verbose             enable more verbose output
+ -h, --help                display this information
 
 ## COMMANDS
 
@@ -87,6 +163,13 @@ updated to reference that instruction), whereas all the other values will
 be displayed  *AFTER* the instruction,  and not yet updated  (because the
 instruction hasn't run yet).
 
+### IGNORE
+
+Cause the current instruction to  be entirely skipped, with no processing
+performed.  No  cycle-count update,  no  registers  altered. No  nothing.
+Useful for  avoiding a  known problematic  instruction while  keeping the
+session going.
+
 ### MEMORY
 
 Removed with recent  improvements. Some functionality needs  to be folded
@@ -110,9 +193,31 @@ over any subroutine calls, then stop and ask for the next command.
 One-time printing of indicated value, any one of:
 
   * `R0`: identified register
+  * `[R0]`: dereferened register
   * `0x003FFFFF`: specified memory address
+  * `[0x003FFFFF]`: dereferenced memory address
   * `0x205`: IOPort
   * `IP`: system instruction pointer (supports `IP`, `IR`, and `IV`)
+
+### REPLACE
+
+Replace the  indicated instruction with  the provided hex  value (machine
+code). In some ways, you can think of this like a "Game Genie" mode,  and
+the "codes" are the direct machine code/binary words that would be stored
+in memory.
+
+There are three variants planned:
+
+  * replace just the instruction (`IR` register contents) at `IP`
+  * replace the `IR` and `IV` register contents at `IP`
+  * at *specified offset*, replace `IR` and `IV`
+
+NOTE: the full `0x`-prefixed, 4-byte hex value needs to be specified.
+
+In  all cases,  the data  in memory  will be  overwritten, so  any future
+encounters of that instruction/immediate value  at the offset (current or
+specified) will be updated for  the remainder of that simulator/debugging
+session.
 
 ### STEP
 
