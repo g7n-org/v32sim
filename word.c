@@ -64,7 +64,7 @@ void      put_word (uint32_t  word, uint8_t  flag)
     //
     if (flag         == FLAG_DISPLAY)
     {
-        fprintf (stdout, "[%.8X] ", IP_REG);
+        fprintf (stdout, "[%.8X] ", REG(IP));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
