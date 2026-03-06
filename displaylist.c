@@ -142,7 +142,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 sys_force          = TRUE;
                 value              = IMEMGET (wtmp -> i32);
                 check              = memory_chk (value);
-                sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, IMEMGET(value));
+                sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, value);//IMEMGET(value));
                 if (list -> space <  strlen (entry))
                 {
                     list -> space  = strlen (entry);
@@ -153,7 +153,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X \"%s\"\n",
-                                IMEMGET(IMEMGET(value)), dtmp -> label);
+                                IMEMGET(value), dtmp -> label);
                     }
                     else
                     {
@@ -166,7 +166,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X\n",
-                                IMEMGET(IMEMGET(value)));
+                                IMEMGET(value));
                     }
                     else
                     {
