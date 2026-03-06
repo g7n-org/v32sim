@@ -27,6 +27,7 @@ display_l *display_add  (display_l *list, display_l *node)
 
     if (node                            != NULL)
     {
+        node -> next                     = NULL;
         if (list                        != NULL)
         {
             tmp                          = list;

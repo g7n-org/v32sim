@@ -42,15 +42,16 @@ void  decode_display (uint32_t  instruction,
     //
     // Declare and initialize variables
     //
-    int8_t    sign                 = '+';
-    uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
-    uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
-    uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
-    uint32_t  dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
-    uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
-    uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
-    uint16_t  port                 = (instruction & IOPORT_MASK);
-    uint32_t  value                = 0;
+    display_l *ltmp                = NULL;
+    int8_t     sign                = '+';
+    uint8_t    displayflag         = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
+    uint8_t    immflag             = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
+    uint8_t    opcode              = (instruction & OPCODE_MASK) >> OPCODESHIFT;
+    uint32_t   dst                 = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
+    uint32_t   src                 = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
+    uint8_t    addr                = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
+    uint16_t   port                = (instruction & IOPORT_MASK);
+    uint32_t   value               = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -117,7 +118,24 @@ void  decode_display (uint32_t  instruction,
         case CALL:
             if (immflag             == TRUE)
             {
-                sprintf (destination, "0x%.8X", immediate);
+                ltmp                 = lpoint;
+                while (ltmp         != NULL)
+                {
+                    if (immediate   == ltmp -> list -> raw)
+                    {
+                        break;
+                    }
+                    ltmp             = ltmp -> next;
+                }
+
+                if (ltmp            == NULL)
+                {
+                    sprintf (destination, "0x%.8X", immediate);
+                }
+                else
+                {
+                    sprintf (destination, "%s",     ltmp -> label);
+                }
             }
             else
             {

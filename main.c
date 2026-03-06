@@ -43,7 +43,9 @@ uint8_t    wordsize;
 uint32_t   rom_offset;
 uint32_t   seek_word;
 uint32_t   watch_word;
+display_l *bpoint;
 display_l *dpoint;
+display_l *lpoint;
 
 int32_t    main (int32_t  argc, uint8_t **argv)
 {

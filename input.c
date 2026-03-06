@@ -872,8 +872,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // declare and initialize variables
     //
+    display_l  *ltmp             = NULL;
     int32_t     check            = 0;
     int32_t     count            = 0;
+    int32_t     value            = 0;
     int32_t     index            = 0;
     int32_t     len              = 0;
     int32_t     offset           = REG(IP);
@@ -1206,6 +1208,17 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
                         case 'l': // label
                             action          = INPUT_LABEL;
+                            token           = strtok ((string + match[2].rm_so), " ");
+                            result          = parse_token (token, *(pattern+7), 0x7C);
+                            fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
+                            value           = strtol (token, NULL, 16);
+                            ltmp            = newdispnode (LIST_MEM, value);
+                            token_label     = strtok ((string + match[3].rm_so), " ");
+                            fprintf (debug, "[label] token_label: '%s'\n", token_label);
+                            value           = sizeof (int8_t) * strlen (token_label) + 1;
+                            ltmp -> label   = (int8_t *) malloc (value);
+                            strcpy (ltmp -> label, token_label);
+                            lpoint          = display_add (lpoint, ltmp);
                             break;
 
                         case 'p': // print
@@ -1424,8 +1437,6 @@ uint8_t  prompt (uint32_t  word)
             break;
 
         case INPUT_LABEL:
-            arg                         = strtok ((input+2), " ");
-            value                       = strlen (arg);
             break;
 
         case INPUT_PRINT:
@@ -1600,12 +1611,12 @@ uint8_t  prompt (uint32_t  word)
             // if the instruction is a CALL, set seek_word and then
             // set runflag to TRUE; otherwise, should behave like step
             //
-            value                      = (word & 0xFC000000) >> 26;
+            value                      = (word & OPCODE_MASK) >> OPCODESHIFT;
             if (value                 == 0x03)
             {
                 runflag                = TRUE;
-                seek_word              = rom_offset;
-                value                  = (word & 0x02000000);
+                seek_word              = REG(IP) + 1;
+                value                  = (word & IMMVAL_MASK);
                 if (value             >  0)
                 {
                     seek_word          = seek_word  + 1; // if immediate value
@@ -1624,6 +1635,7 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "    0xMEM_ADDR          -   4-byte memory address\n");
             fprintf (stdout, "    [0xMEM_ADDR]        -   dereferenced address\n");
             fprintf (stdout, "    0xIOP               -   IOPort address\n");
+            fprintf (stdout, "  (l)abel 0xMEM LABEL   - add label list item\n");
             fprintf (stdout, "  (n)ext                - next (skip subroutines)\n");
             fprintf (stdout, "  (s)tep                - step to next instruction\n");
             fprintf (stdout, "  (i)gnore              - ignore this instruction\n");
