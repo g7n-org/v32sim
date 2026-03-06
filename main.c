@@ -188,9 +188,19 @@ int32_t    main (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Our registers will be in a word_t array
+    // Our registers will be in a data_t array
     //
     init_registers ();
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Load commands from command-file
+    //
+    if (commandfile                   != NULL)
+    {
+        fprintf (stdout, "LOADING COMMANDS\n");
+        load_command ();
+    }
 
     /*
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);

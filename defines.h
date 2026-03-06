@@ -115,6 +115,7 @@
 #define  MEM_PORT                6
 
 #define  OPCODE_MASK             0xFC000000
+#define  IMMVAL_MASK             0x02000000
 #define  DSTREG_MASK             0x01E00000
 #define  SRCREG_MASK             0x001E0000
 #define  MOVADR_MASK             0x0001C000

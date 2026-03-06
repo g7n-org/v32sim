@@ -875,14 +875,17 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     int32_t     check            = 0;
     int32_t     count            = 0;
     int32_t     index            = 0;
+    int32_t     len              = 0;
     regex_t     regex;
-    regmatch_t  match[4];
+    regmatch_t  match[5];
     uint8_t     byte             = 0;
+    uint8_t     entry[24];
+    int8_t     *pos              = NULL;
     int8_t     *string           = NULL;
     int8_t     *token            = NULL;
     uint8_t   **pattern          = NULL;
     uint8_t    *form0            = "^ *([a-z?]+) *$";
-    uint8_t    *form1            = "^ *([a-z]+) *(0x[0-9A-F]{8}){1,3} *$";
+    uint8_t    *form1            = "^ *([a-z]+) *(IP:0x[0-9A-F]{8})? *(IR:0x[0-9A-F]{8})? *(IV:0x[0-9A-F]{8})? *$";
     //uint8_t    *form2            = "^ *([a-z]+) *(0x[0-9A-F]{8}) *(0x[0-9A-F]{8}) *$";
     uint8_t    *form2            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
     uint8_t    *form3            = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
@@ -933,7 +936,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution: make sure input conforms to provided pattern
         //
-        check                               = regexec (&regex, string, 4, match, 0);
+        check                               = regexec (&regex, string, 5, match, 0);
         if (check                          == REG_NOMATCH)
         {
             continue;
@@ -946,6 +949,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         else if (check                     == 0)
         {
+            fprintf (verbose, "MATCH\n");
             switch (index)
             {
                 case 0: // single-word command
@@ -984,27 +988,52 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     }
                     break;
 
-                case 1: // replace-style command (one parameter)
+                case 1: // replace-style command
                     byte                    = *(string + match[1].rm_so);
-                    switch (byte)
+                    if (byte               == 'r') // replace
                     {
-                        case 'r': // replace
-                            action          = INPUT_REPLACE;
-                            token           = strtok ((string + match[2].rm_so), " ");
-                            REG(IR)         = strtol (token, NULL, 16);
-                            sys_force       = TRUE;
-                            MEMSET(REG(IP), REG(IR));
-                            fprintf (verbose, "[tokenize_input] replacing current instruction with IR:0x%.8X ", REG(IR));
-                            if (index      == 2)
+                        action              = INPUT_REPLACE;
+                        fprintf (verbose, "[tokenize_input] replacing ");
+                        for (count             = 2;
+                             count            <  5;
+                             count             = count + 1)
+                        {
+                            if (-1            != match[count].rm_so)
                             {
-                                token       = strtok ((string + match[3].rm_so), " ");
-                                REG(IV)     = strtol (token, NULL, 16);
-                                fprintf (verbose, "0x%.8X", REG(IV));
-                                sys_force   = TRUE;
-                                MEMSET(REG(IP)+1, REG(IV));
+                                len               = (match[count].rm_eo-match[count].rm_so);
+                                pos            = (string + match[count].rm_so + 1);
+                                snprintf (entry, len, "%.*s", len, pos);
+                                byte           = *(pos);
+                                token          = strtok (entry,  ":");
+                                token          = strtok (NULL,   ":");
+                                if (byte      == 'P')
+                                {
+                                    REG(IP)    = strtol (token, NULL, 16);
+                                    fprintf (verbose, "IP:0x%.8X ", REG(IP));
+                                }
+                                else if (byte == 'R')
+                                {
+                                    fprintf (verbose, "IR:0x%.8X ", REG(IR));
+                                    REG(IR)    = strtol (token, NULL, 16);
+                                    fprintf (verbose, "with IR:0x%.8X ", REG(IR));
+                                    sys_force  = TRUE;
+                                    MEMSET(REG(IP), REG(IR));
+                                }
+                                else if (byte == 'V')
+                                {
+                                    fprintf (verbose, "IV:0x%.8X ", REG(IV));
+                                    REG(IV)    = strtol (token, NULL, 16);
+                                    fprintf (verbose, "with IV:0x%.8X ", REG(IV));
+                                    if (0     <  (REG(IP) & IMMVAL_MASK))
+                                    {
+                                        sys_force  = TRUE;
+                                        MEMSET(REG(IP)+1, REG(IV));
+                                    }
+                                }
                             }
-                            fprintf (verbose, "\n");
-                            break;
+                        }
+                        fprintf (verbose, "\n");
+                        break;
                     }
                     break;
 
@@ -1077,7 +1106,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
             }
 
             for (count          = 0;
-                 count         <  4;
+                 count         <  5;
                  count          = count + 1)
             {
                 fprintf (debug, "match[%d]: %.*s (%lld - %lld)\n",
@@ -1185,11 +1214,6 @@ uint8_t  prompt (uint32_t  word)
     {
         displayshow  (dpoint, 0);
     }
-    else if (commandfile               != NULL)
-    {
-        fprintf (stdout, "LOADING COMMANDS\n");
-        load_command ();
-    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1256,7 +1280,8 @@ uint8_t  prompt (uint32_t  word)
             break;
 
         case INPUT_REPLACE:
-            processflag                 = TRUE;
+            processflag                 = FALSE;
+            action                      = INPUT_INIT;
             break;
 
         case INPUT_LABEL:
@@ -1445,7 +1470,7 @@ uint8_t  prompt (uint32_t  word)
         case INPUT_HELP:
             fprintf (stdout, "  (c)ontinue            - resume execution\n");
             fprintf (stdout, "  (p)rint XYZ           - one-time display of XYZ\n");
-            fprintf (stdout, "  (d)isplay XYZ [LABEL] - add displaylist item:\n");
+            fprintf (stdout, "  (d)isplay XYZ LABEL   - add displaylist item:\n");
             fprintf (stdout, "    R#                  -   general register\n");
             fprintf (stdout, "    [R#]                -   dereferenced register\n");
             fprintf (stdout, "    I(P|R|V)            -   system register\n");
@@ -1455,11 +1480,11 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "  (n)ext                - next (skip subroutines)\n");
             fprintf (stdout, "  (s)tep                - step to next instruction\n");
             fprintf (stdout, "  (i)gnore              - ignore this instruction\n");
-            fprintf (stdout, "  (r)eplace             - replace this instruction\n");
-            fprintf (stdout, "    0xOPC               -   with specified value\n");
-            fprintf (stdout, "    0xOPC 0xIMM         -   with specified values\n");
-            fprintf (stdout, "    0xMEM 0xOPC 0xIMM   -   with specified values\n");
-            fprintf (stdout, "  (h)elp/?              - display this help\n");
+            fprintf (stdout, "  (r)eplace X Y Z       - replace:\n");
+            fprintf (stdout, "    IP:0xMEM_ADDR       -   with this IP value\n");
+            fprintf (stdout, "    IR:0xINSTRUCT       -   with this IR value\n");
+            fprintf (stdout, "    IV:0xIMMEDIAT       -   with this IV value\n");
+            fprintf (stdout, "  (h)elp/(?)            - display this help\n");
             fprintf (stdout, "  (q)uit                - exit the simulator\n");
             action                     = INPUT_INIT;
             break;
