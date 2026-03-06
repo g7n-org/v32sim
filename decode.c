@@ -147,6 +147,36 @@ void  decode_display (uint32_t  instruction,
 
         case JT:
         case JF:
+            sprintf (destination, "R%u,", dst);
+            if (immflag             == TRUE)
+            {
+                ltmp                 = lpoint;
+                while (ltmp         != NULL)
+                {
+                    if (immediate   == ltmp -> list -> raw)
+                    {
+                        break;
+                    }
+                    ltmp             = ltmp -> next;
+                }
+
+                if (ltmp            == NULL)
+                {
+                    sprintf (source, "0x%.8X", immediate);
+                }
+                else
+                {
+                    sprintf (source, "%s",     ltmp -> label);
+                }
+            }
+            else
+            {
+                sprintf (source, "R%u",        src);
+            }
+            fprintf (display,    "%-5s %-16s %-16s\n",
+                                 lookup[opcode].name, destination, source);
+            break;
+
         case IEQ:
         case INE:
         case IGT:

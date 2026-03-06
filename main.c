@@ -252,7 +252,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             runflag                    = FALSE;
         }
 
-        if ((REG(IR) & 0x02000000)    == 0x02000000)
+        if ((REG(IR) & IMMVAL_MASK)   == IMMVAL_MASK)
         {
             REG(IV)                    = IMEMGET(REG(IP) + 1);
             decodeflags                = FLAG_IMMEDIATE;
