@@ -876,23 +876,28 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     int32_t     count            = 0;
     int32_t     index            = 0;
     int32_t     len              = 0;
+    int32_t     offset           = REG(IP);
+    int32_t     word             = 0xFFFFFFFF;
+    int32_t     immv             = 0xFFFFFFFF;
     regex_t     regex;
     regmatch_t  match[5];
     uint8_t     byte             = 0;
     uint8_t     entry[24];
+    uint8_t     lval[24];
     int8_t     *pos              = NULL;
     int8_t     *string           = NULL;
     int8_t     *token            = NULL;
     uint8_t   **pattern          = NULL;
     uint8_t    *form0            = "^ *([a-z?]+) *$";
+    //uint8_t    *form1            = "^ *([a-z]+) *(I[PRV]:0x[0-9A-F]{8}){1,3} *$";
     uint8_t    *form1            = "^ *([a-z]+) *(IP:0x[0-9A-F]{8})? *(IR:0x[0-9A-F]{8})? *(IV:0x[0-9A-F]{8})? *$";
-    //uint8_t    *form2            = "^ *([a-z]+) *(0x[0-9A-F]{8}) *(0x[0-9A-F]{8}) *$";
-    uint8_t    *form2            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
-    uint8_t    *form3            = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
-    uint8_t    *form4            = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
-    uint8_t    *form5            = "^ *(reg|regs|register|registers|r[*]) *$";  // registers
-    uint8_t    *form6            = "^ *(0x[0-9A-F]{8}) *$";                     // memory
-    uint8_t    *form7            = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
+    uint8_t    *form2            = "^ *([a-z]+) *([^ ]+) *= *([^ ]+) *$";
+    uint8_t    *form3            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
+    uint8_t    *form4            = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
+    uint8_t    *form5            = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
+    uint8_t    *form6            = "^ *(reg|regs|register|registers|r[*]) *$";  // registers
+    uint8_t    *form7            = "^ *(0x[0-9A-F]{8}) *$";                     // memory
+    uint8_t    *form8            = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
     uint8_t     result           = 0;
 
     fprintf (verbose, "[tokenize_input] passed string: '%s'\n", input);
@@ -905,7 +910,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // allocate and populate pattern array
     //
-    pattern                                 = (uint8_t **) malloc (sizeof (uint8_t *) * 8);
+    pattern                                 = (uint8_t **) malloc (sizeof (uint8_t *) * 9);
     *(pattern+0)                            = form0;
     *(pattern+1)                            = form1;
     *(pattern+2)                            = form2;
@@ -914,9 +919,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     *(pattern+5)                            = form5;
     *(pattern+6)                            = form6;
     *(pattern+7)                            = form7;
+    *(pattern+8)                            = form8;
 
     for (index                              = 0;
-         index                             <  3;
+         index                             <  4;
          index                              = index + 1)
     {
         ////////////////////////////////////////////////////////////////////////////////
@@ -1000,7 +1006,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             if (-1            != match[count].rm_so)
                             {
-                                len               = (match[count].rm_eo-match[count].rm_so);
+                                len            = (match[count].rm_eo-match[count].rm_so);
                                 pos            = (string + match[count].rm_so + 1);
                                 snprintf (entry, len, "%.*s", len, pos);
                                 byte           = *(pos);
@@ -1008,28 +1014,32 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 token          = strtok (NULL,   ":");
                                 if (byte      == 'P')
                                 {
-                                    REG(IP)    = strtol (token, NULL, 16);
+                                    offset     = strtol (token, NULL, 16);
                                     fprintf (verbose, "IP:0x%.8X ", REG(IP));
                                 }
                                 else if (byte == 'R')
                                 {
-                                    fprintf (verbose, "IR:0x%.8X ", REG(IR));
-                                    REG(IR)    = strtol (token, NULL, 16);
-                                    fprintf (verbose, "with IR:0x%.8X ", REG(IR));
+                                    fprintf (verbose, "IR:0x%.8X ", IMEMGET(offset));
+                                    word       = strtol (token, NULL, 16);
+                                    fprintf (verbose, "with IR:0x%.8X ", word);
                                     sys_force  = TRUE;
-                                    MEMSET(REG(IP), REG(IR));
+                                    MEMSET(offset, word);
                                 }
                                 else if (byte == 'V')
                                 {
-                                    fprintf (verbose, "IV:0x%.8X ", REG(IV));
-                                    REG(IV)    = strtol (token, NULL, 16);
-                                    fprintf (verbose, "with IV:0x%.8X ", REG(IV));
-                                    if (0     <  (REG(IP) & IMMVAL_MASK))
+                                    if (0     <  (word & IMMVAL_MASK))
                                     {
+                                        fprintf (verbose, "IV:0x%.8X ", IMEMGET(offset+1));
+                                        immv   = strtol (token, NULL, 16);
+                                        fprintf (verbose, "with IV:0x%.8X ", immv);
                                         sys_force  = TRUE;
-                                        MEMSET(REG(IP)+1, REG(IV));
+                                        MEMSET(offset+1, immv);
                                     }
                                 }
+                            }
+                            else
+                            {
+                                break;
                             }
                         }
                         fprintf (verbose, "\n");
@@ -1037,7 +1047,88 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     }
                     break;
 
-                case 2: // parametered command
+                case 2: // set command
+                    action         = INPUT_SET;
+                    //for (count             = 2;
+                    //     count            <  5;
+                    len            = (match[2].rm_eo - match[2].rm_so);
+                    pos            = (string + match[2].rm_so);
+                    snprintf (lval, (len+1), "%.*s", (len+1), pos);
+
+                    len            = (match[3].rm_eo - match[3].rm_so);
+                    pos            = (string + match[3].rm_so);
+                    snprintf (entry, (len+1), "%.*s", (len+1), pos);
+                    fprintf (debug, "[lval]  '%s'\n", lval);
+                    fprintf (debug, "[entry] '%s'\n", entry);
+                    switch (lval[0])
+                    {
+                        case 'I':
+                        case 'i':
+                            switch (lval[1])
+                            {
+                                case 'P':
+                                case 'p':
+                                    REG(IP)  = strtol (entry, NULL, 16);
+                                    REG(IR)  = IMEMGET(REG(IP));
+                                    if (0   <  (REG(IR) & IMMVAL_MASK))
+                                    {
+                                        REG(IV)  = IMEMGET(REG(IP)+1);
+                                    }
+                                    fprintf (debug, "[IP] setting to 0x%.8X\n", REG(IP));
+                                    break;
+
+                                case 'R':
+                                case 'r':
+                                    REG(IR)  = strtol (entry, NULL, 16);
+                                    fprintf (debug, "[IR] setting to 0x%.8X\n", REG(IR));
+                                    break;
+
+                                case 'V':
+                                case 'v':
+                                    REG(IV)  = strtol (entry, NULL, 16);
+                                    fprintf (debug, "[IV] setting to 0x%.8X\n", REG(IV));
+                                    break;
+                            }
+                            break;
+
+                        case 'C':
+                        case 'c':
+                            check            = strncasecmp (entry, "true", 4);
+                            fprintf (debug, "[color]: %s\n", entry);
+                            if (check       == 0)
+                            {    
+                                colorflag    = TRUE;
+                            }
+                            else
+                            {
+                                colorflag    = FALSE;
+                            }
+                            break;
+
+                        case 'D':
+                        case 'd':
+                            check            = strncasecmp (entry, "true", 4);
+                            fprintf (debug, "[derefaddr]: %s\n", entry);
+                            if (check       == 0)
+                            {    
+                                derefaddr    = TRUE;
+                            }
+                            else
+                            {
+                                derefaddr    = FALSE;
+                            }
+                            break;
+
+                        case 'R':
+                        case 'r':
+                            count            = strtol ((lval+1), NULL, 10);
+                            REG(count)       = strtol (entry,    NULL, 16);
+                            fprintf (debug, "[set] setting R%u to %s\n", count, entry);
+                            break;
+                    }
+                    break;
+
+                case 3: // parametered command
                     byte                    = *(string + match[1].rm_so);
                     switch (byte)
                     {
@@ -1048,7 +1139,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                  count     <= PARSE_MEMRANGE;
                                  count      = count + 1)
                             {
-                                fprintf (verbose,  "[tokenize_input] value: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x76));
+                                fprintf (verbose,  "[tokenize_input] value: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x75));
                                 ////////////////////////////////////////////////////////
                                 //
                                 // PARSE_NONE              0x7F
@@ -1060,7 +1151,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 // PARSE_IOPORT            0x79
                                 //
                                 result      = parse_token (token,
-                                                           *(pattern+(count-0x76)),
+                                                           *(pattern+(count-0x75)),
                                                            count);
                                 if (result != PARSE_NONE)
                                 {
@@ -1093,7 +1184,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 // PARSE_IOPORT            0x79
                                 //
                                 result      = parse_token (token,
-                                                           *(pattern+(count-0x76)),
+                                                           *(pattern+(count-0x75)),
                                                            count);
                                 if (result != PARSE_NONE)
                                 {
@@ -1277,6 +1368,11 @@ uint8_t  prompt (uint32_t  word)
         case INPUT_IGNORE:
             ignoreflag                  = TRUE;
             processflag                 = TRUE;
+            break;
+
+        case INPUT_SET:
+            processflag                 = FALSE;
+            action                      = INPUT_INIT;
             break;
 
         case INPUT_REPLACE:
@@ -1484,6 +1580,11 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "    IP:0xMEM_ADDR       -   with this IP value\n");
             fprintf (stdout, "    IR:0xINSTRUCT       -   with this IR value\n");
             fprintf (stdout, "    IV:0xIMMEDIAT       -   with this IV value\n");
+            fprintf (stdout, "  set NAME = VALUE      - set system feature\n");
+            fprintf (stdout, "    color:  boolean     -   set color output\n");
+            fprintf (stdout, "    deref:  boolean     -   set deref addr\n");
+            fprintf (stdout, "    I[PRV]: 0x0ADDRESS  -   set system register\n");
+            fprintf (stdout, "    R#:     0xTHEVALUE  -   set register to value\n");
             fprintf (stdout, "  (h)elp/(?)            - display this help\n");
             fprintf (stdout, "  (q)uit                - exit the simulator\n");
             action                     = INPUT_INIT;

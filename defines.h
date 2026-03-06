@@ -88,6 +88,7 @@
 #define  INPUT_IOPORT            15
 #define  INPUT_IGNORE            16
 #define  INPUT_REPLACE           17
+#define  INPUT_SET               18
 
 #define  PARSE_NONE              0x7F
 #define  PARSE_IMMEDIATE         0x7E
