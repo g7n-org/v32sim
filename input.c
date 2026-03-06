@@ -1107,15 +1107,38 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
                         case 'D':
                         case 'd':
-                            check            = strncasecmp (entry, "true", 4);
-                            fprintf (debug, "[derefaddr]: %s\n", entry);
-                            if (check       == 0)
-                            {    
-                                derefaddr    = TRUE;
-                            }
-                            else
+                            check              = strncasecmp (lval,  "debug", 5);
+                            if (check         == 0)
                             {
-                                derefaddr    = FALSE;
+                                check          = strncasecmp (entry, "true", 4);
+                                if (check     == 0)
+                                {    
+                                    debug      = stderr;
+                                    fprintf (debug, "[set] debugging ENABLED!\n");
+                                }
+                                else
+                                {
+                                    fprintf (debug, "[set] disabling debugging!\n");
+                                    debug      = devnull;
+                                }
+                                break;
+                            }
+
+                            check              = strncasecmp (lval,  "deref", 5);
+                            if (check         == 0)
+                            {
+                                check          = strncasecmp (entry, "true", 4);
+                                if (check     == 0)
+                                {    
+                                    derefaddr  = TRUE;
+                                    fprintf (debug, "[set] derefaddr ENABLED!\n");
+                                }
+                                else
+                                {
+                                    derefaddr  = FALSE;
+                                    fprintf (debug, "[set] derefaddr DISABLED!\n");
+                                }
+                                break;
                             }
                             break;
 
@@ -1124,6 +1147,26 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             count            = strtol ((lval+1), NULL, 10);
                             REG(count)       = strtol (entry,    NULL, 16);
                             fprintf (debug, "[set] setting R%u to %s\n", count, entry);
+                            break;
+
+                        case 'V':
+                        case 'v':
+                            check              = strncasecmp (lval,  "verbo", 5);
+                            if (check         == 0)
+                            {
+                                check          = strncasecmp (entry, "true", 4);
+                                if (check     == 0)
+                                {    
+                                    verbose    = stderr;
+                                    fprintf (debug, "[set] verbosity ENABLED!\n");
+                                }
+                                else
+                                {
+                                    fprintf (debug, "[set] disabling verbosity!\n");
+                                    debug      = devnull;
+                                }
+                                break;
+                            }
                             break;
                     }
                     break;
@@ -1139,7 +1182,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                  count     <= PARSE_MEMRANGE;
                                  count      = count + 1)
                             {
-                                fprintf (verbose,  "[tokenize_input] value: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x75));
+                                fprintf (verbose,  "[tokenize_input] count: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x75));
                                 ////////////////////////////////////////////////////////
                                 //
                                 // PARSE_NONE              0x7F
@@ -1394,7 +1437,12 @@ uint8_t  prompt (uint32_t  word)
 
                 case PARSE_MEMORY:
                     arg                 = strtok ((input+2), " ");
+                    if (deref_flag     == TRUE)
+                    {
+                        arg             = arg + 1;
+                    }
                     value               = strtol (arg, NULL, 16);
+                    fprintf (debug, "[input] arg: '%s', value: 0x%.8X\n", arg, value);
                     if (deref_flag     == TRUE)
                     {
                         fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X\n",
@@ -1462,8 +1510,11 @@ uint8_t  prompt (uint32_t  word)
 
                 case PARSE_MEMORY:
                     arg                = strtok ((input+2), " ");
+                    if (deref_flag     == TRUE)
+                    {
+                        arg             = arg + 1;
+                    }
                     value              = strtol (arg, NULL, 16);
-                    fprintf (verbose, "arg: '%s', MEMDEREF: 0x%.8X\n", arg, value);
                     if (deref_flag    == TRUE)
                     {
                         dtmp           = newdispnode (LIST_MEM_DEREF, value);
@@ -1581,8 +1632,8 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "    IR:0xINSTRUCT       -   with this IR value\n");
             fprintf (stdout, "    IV:0xIMMEDIAT       -   with this IV value\n");
             fprintf (stdout, "  set NAME = VALUE      - set system feature\n");
-            fprintf (stdout, "    color:  boolean     -   set color output\n");
-            fprintf (stdout, "    deref:  boolean     -   set deref addr\n");
+            fprintf (stdout, "    color:  true/false  -   set color output\n");
+            fprintf (stdout, "    deref:  true/false  -   set deref addr\n");
             fprintf (stdout, "    I[PRV]: 0x0ADDRESS  -   set system register\n");
             fprintf (stdout, "    R#:     0xTHEVALUE  -   set register to value\n");
             fprintf (stdout, "  (h)elp/(?)            - display this help\n");
@@ -1652,6 +1703,10 @@ void load_command (void)
 
                         case PARSE_MEMORY:
                             arg                = strtok ((input+2), " ");
+                            if (deref_flag    == TRUE)
+                            {
+                                arg            = arg + 1;
+                            }
                             value              = strtol (arg, NULL, 16);
                             if (deref_flag    == TRUE)
                             {
