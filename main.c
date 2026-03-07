@@ -142,6 +142,8 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         strcpy (biosfile, BIOS_DEFAULT_PATH);
     }
 
+	load_labels (biosfile);
+
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // 18 is the maximum length of potential columnar output of an operand:

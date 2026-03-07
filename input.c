@@ -872,6 +872,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // declare and initialize variables
     //
+    display_l  *btmp               = NULL;
     display_l  *ltmp               = NULL;
     int32_t     check              = 0;
     int32_t     count              = 0;
@@ -1156,7 +1157,41 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
             else if (index                == 3) // parametered command
             {
                 byte                       = *(string + match[1].rm_so);
-                if (byte                  == 'd') // display
+                fprintf (debug, "data is: '%s'\n", (string + match[1].rm_so));
+                if (byte                  == 'b') // break
+                {
+                    fprintf (debug, "BREAK encountered\n");
+                    action                 = INPUT_BREAK;
+                    token                  = strtok ((string + match[2].rm_so), " ");
+                    result                 = parse_token (token, *(pattern+2), PARSE_MEMORY);
+                    if (result            != PARSE_NONE) // memory address
+                    {
+                        fprintf (debug, "BREAK adding the offset '%s'\n", token);
+                        value              = strtol (token, NULL, 16);
+                        btmp               = newdispnode (LIST_MEM, value);
+                        bpoint             = display_add (bpoint, btmp);
+                    }
+                    else // not a memory address (assuming label)
+                    {
+                        ltmp               = lpoint;
+                        while (ltmp       != NULL)
+                        {
+                            if (ltmp -> label != NULL)
+                            {
+                                check          = strncasecmp (ltmp -> label, token, strlen (ltmp -> label));
+                                if (check     == 0) // existing label found in list
+                                {
+                                    fprintf (debug, "BREAK adding the label '%s'\n", ltmp -> label);
+                                    fprintf (debug, "adding 0x%.8X to the list\n", ltmp -> list -> i32);
+                                    btmp       = newdispnode (LIST_MEM, ltmp -> list -> i32);
+                                    bpoint     = display_add (bpoint, btmp);
+                                }
+                            }
+                            ltmp           = ltmp -> next;
+                        }
+                    }
+                }
+                else if (byte             == 'd') // display
                 {
                     action                 = INPUT_DISPLAY;
                     token                  = strtok ((string + match[2].rm_so), " ");
@@ -1189,7 +1224,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
                     action          = INPUT_LABEL;
                     token           = strtok ((string + match[2].rm_so), " ");
-                    result          = parse_token (token, *(pattern+2), 0x7C);
+                    result          = parse_token (token, *(pattern+2), PARSE_MEMORY);
                     fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
                     value           = strtol (token, NULL, 16);
                     ltmp            = newdispnode (LIST_MEM, value);
@@ -1392,6 +1427,8 @@ uint8_t  prompt (uint32_t  word)
     switch (action)
     {
         case INPUT_BREAK:
+            processflag                 = FALSE;
+            action                      = INPUT_INIT;
             break;
 
         case INPUT_CONTINUE:
@@ -1638,6 +1675,121 @@ uint8_t  prompt (uint32_t  word)
 
     return (processflag);
 }
+
+uint32_t  load_labels (uint8_t *filename)
+{
+    display_l *ltmp                    = NULL;
+    FILE      *fptr                    = NULL;
+    int32_t    index                   = 0;
+    int32_t    value                   = 0;
+    uint32_t   offset                  = 0;
+    uint32_t   line_number             = 0;
+    uint32_t   tally                   = 0;
+    uint8_t    input[128];
+    uint8_t   *input_string            = NULL;
+    uint8_t    token[128];
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Generate debug filename
+    //
+    strncpy (token, filename, strlen (filename));
+    fprintf (debug, "[load_labels] filename:     %s\n", filename);
+    fprintf (debug, "[load_labels] token:        %s\n", token);
+
+    input_string                       = strtok (token, ".");
+    fprintf (debug, "[load_labels] token:        %s\n", token);
+    fprintf (debug, "[load_labels] input_string: %s\n", input_string);
+    //snprintf (input, strlen (input_string) + 8, "%s.vbin.debug", input_string);
+    sprintf (input, "%s.vbin.debug", input_string);
+    fprintf (debug, "[load_labels] input:        %s\n", input);
+    
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Load labels from debug file (if it exists)
+    //
+    if (filename                      != NULL)
+    {
+        fptr                           = fopen (input, "r");
+        if (fptr                      == NULL)
+        {
+            fprintf (verbose, "No debug file for '%s' found. Skipping...\n", input);
+        }
+        else
+        {
+            fprintf (verbose, "LOADING DEBUGGING DATA FOR: %s\n", filename);
+            while (!feof (fptr))
+            {
+                index                  = 0;
+                //fprintf (stdout, "input: ");
+                input[index]           = ' ';
+                while (input[index]   != '\0')
+                {
+                    input[index]       = fgetc (fptr);
+                    if (input[index]  == '\n')
+                    {
+                        input[index]   = '\0';
+                        break;
+                    }
+
+                    if (feof (fptr))
+                    {
+                        break;
+                    }
+                //    fprintf (stdout, "%c", input[index]);
+                    index              = index + 1;
+                    input[index]       = ' ';
+                }
+                //fprintf (stdout, " (index: %d)\n", index);
+            
+                if (feof (fptr))
+                {
+                    break;
+                }
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Vircon32 assembler .debug files are of the following format:
+                //
+                // 0x10001AE4,obj/debuggerBIOS.asm,4654
+                // 0x10001AE6,obj/debuggerBIOS.asm,4656,__for_3281_continue
+                //
+                // For label loading, we are specifically interested in the lines
+                // with a label in the last field (second example)
+                //
+                //fprintf (stdout, "tally:       %u\n", tally);
+                //fprintf (stdout, "input:       '%s'\n", input);
+                input_string           = strtok (input, ","); // offset
+                //fprintf (stdout, "offset:      '%s'\n", input_string);
+                offset                 = strtol (input_string, NULL, 16);
+
+                input_string           = strtok (NULL, ",");  // filename
+                //fprintf (stdout, "filename:    '%s'\n", input_string);
+                input_string           = strtok (NULL, ",");  // line number
+                //fprintf (stdout, "line number: '%s'\n", input_string);
+                line_number            = strtol (input_string, NULL, 10);
+
+                input_string           = strtok (NULL, ",");  // label, if present
+                //fprintf (stdout, "label:       '%s'\n", input_string);
+
+                //fprintf (stdout, "offset: 0x%.8X, line number: %u, label: '%s'\n", offset, line_number, input_string);
+                ltmp                   = newdispnode (LIST_MEM, offset);
+                ltmp -> number         = line_number;
+                if (input_string      != NULL)
+                {
+                    value              = sizeof (int8_t) * strlen (input_string) + 1;
+                    ltmp -> label      = (int8_t *) malloc (value);
+                    strcpy (ltmp -> label, input_string);
+                }
+                lpoint                 = display_add (lpoint, ltmp);
+                tally                  = tally + 1;
+            }
+            //fprintf (stdout, "EOF encountered\n");
+            fclose (fptr);
+        }
+    }
+
+    return (tally);
+}    
 
 void load_command (void)
 {

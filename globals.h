@@ -22,6 +22,7 @@ struct display_list
     int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    space;
+	uint32_t   number;
     word_t    *list;
     display_l *next;
 };
@@ -98,6 +99,7 @@ int32_t    ioports_get    (uint16_t,    uint8_t);              // get value from
 void       ioports_set    (uint16_t,    int32_t,     uint8_t); // set value to port
 void       init_memory    (void);                              // initialize memory
 void       load_command   (void);
+uint32_t   load_labels    (uint8_t *);
 void       load_memory    (uint32_t,    int8_t *);             // load file into memory
 uint8_t    memory_chk     (uint32_t);
 word_t    *memory_get     (uint32_t,    uint8_t);              // get value from memory

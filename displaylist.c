@@ -16,7 +16,7 @@ display_l *newdispnode  (uint8_t  type, uint32_t  value)
     newnode -> list -> raw      = value;
     newnode -> next             = NULL;
 
-    fprintf (verbose, "[newdispnode] type: %hhu, value: %u\n", newnode -> type, value);
+    fprintf (debug, "[newdispnode] type: %hhu, value: %u\n", newnode -> type, value);
 
     return (newnode);
 }
