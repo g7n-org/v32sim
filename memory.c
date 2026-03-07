@@ -198,15 +198,11 @@ void    load_memory (uint32_t  page, int8_t *filename)
     {
         case V32_PAGE_CART:
             fseek (fptr, (22 * wordsize), SEEK_SET);
-            sys_force  = TRUE;
-            ioports_set (CAR_NumberOfTextures, get_word (fptr));
-            sys_force  = TRUE;
-            ioports_set (CAR_NumberOfSounds,   get_word (fptr));
+            ioports_set (CAR_NumberOfTextures, get_word (fptr), TRUE);
+            ioports_set (CAR_NumberOfSounds,   get_word (fptr), TRUE);
             get_word (fptr);
-            sys_force  = TRUE;
-            ioports_set (CAR_ProgramROMSize,   get_word (fptr));
-            sys_force  = TRUE;
-            ioports_set (CAR_Connected,        TRUE);
+            ioports_set (CAR_ProgramROMSize,   get_word (fptr), TRUE);
+            ioports_set (CAR_Connected,        TRUE,            TRUE);
         case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (both BIOS and CART)
             fseek (fptr, (35 * wordsize), SEEK_SET);
             break;
@@ -222,8 +218,7 @@ void    load_memory (uint32_t  page, int8_t *filename)
     //
     while (!feof (fptr))
     {
-        sys_force      = TRUE;
-        memory_set (offset, get_word (fptr));
+        memory_set (offset, get_word (fptr), TRUE);
         if (!feof (fptr))
         {
             offset     = offset + 1;
@@ -292,7 +287,7 @@ uint8_t  memory_chk (uint32_t  address)
 //
 // returns a word_t pointer to the requested content
 //
-word_t *memory_get (uint32_t  address)
+word_t *memory_get (uint32_t  address, uint8_t  sys_force)
 {
     data_t   *dptr                 = NULL;
     uint32_t  page                 = (address & 0xF0000000) >> 28;
@@ -317,7 +312,6 @@ word_t *memory_get (uint32_t  address)
                                 address);
                         sys_error  = ERROR_MEMORY_READ;
                     }
-                    sys_force      = FALSE;
                 }
                 break;
 
@@ -332,7 +326,6 @@ word_t *memory_get (uint32_t  address)
                                 address);
                         sys_error  = ERROR_MEMORY_READ;
                     }
-                    sys_force      = FALSE;
                 }
                 break;
 
@@ -347,7 +340,6 @@ word_t *memory_get (uint32_t  address)
                                 address);
                         sys_error  = ERROR_MEMORY_READ;
                     }
-                    sys_force      = FALSE;
                 }
                 break;
 
@@ -362,7 +354,6 @@ word_t *memory_get (uint32_t  address)
                                 address);
                         sys_error  = ERROR_MEMORY_READ;
                     }
-                    sys_force      = FALSE;
                 }
                 break;
         }
@@ -377,7 +368,7 @@ word_t *memory_get (uint32_t  address)
     return (wptr);
 }
 
-void    memory_set (uint32_t  address, uint32_t  dataword)
+void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
 {
     data_t   *dptr              = NULL;
     uint32_t  page              = (address & 0xF0000000) >> 28;
@@ -402,7 +393,6 @@ void    memory_set (uint32_t  address, uint32_t  dataword)
                     fprintf (stderr, "[ERROR] RAM address 0x%.8X not writable!\n", address);
                     exit (MEMORY_WRITE_ERROR);
                 }
-                sys_force       = FALSE;
             }
             break;
 
@@ -422,7 +412,6 @@ void    memory_set (uint32_t  address, uint32_t  dataword)
                     fprintf (stderr, "[ERROR] BIOS address 0x%.8X not writable!\n", address);
                     exit (MEMORY_WRITE_ERROR);
                 }
-                sys_force       = FALSE;
             }
             break;
 
@@ -442,7 +431,6 @@ void    memory_set (uint32_t  address, uint32_t  dataword)
                     fprintf (stderr, "[ERROR] CART address 0x%.8X not writable!\n", address);
                     exit (MEMORY_WRITE_ERROR);
                 }
-                sys_force       = FALSE;
             }
             break;
 
@@ -462,7 +450,6 @@ void    memory_set (uint32_t  address, uint32_t  dataword)
                     fprintf (stderr, "[ERROR] MEMC address 0x%.8X not writable!\n", address);
                     exit (MEMORY_WRITE_ERROR);
                 }
-                sys_force       = FALSE;
             }
             break;
     }

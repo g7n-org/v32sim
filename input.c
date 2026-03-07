@@ -872,69 +872,76 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // declare and initialize variables
     //
-    display_l  *ltmp             = NULL;
-    int32_t     check            = 0;
-    int32_t     count            = 0;
-    int32_t     value            = 0;
-    int32_t     index            = 0;
-    int32_t     len              = 0;
-    int32_t     offset           = REG(IP);
-    int32_t     word             = 0xFFFFFFFF;
-    int32_t     immv             = 0xFFFFFFFF;
+    display_l  *ltmp               = NULL;
+    int32_t     check              = 0;
+    int32_t     count              = 0;
+    int32_t     value              = 0;
+    int32_t     index              = 0;
+    int32_t     len                = 0;
+    int32_t     offset             = REG(IP);
+    int32_t     word               = 0xFFFFFFFF;
+    int32_t     immv               = 0xFFFFFFFF;
     regex_t     regex;
     regmatch_t  match[5];
-    uint8_t     byte             = 0;
+    uint8_t     byte               = 0;
     uint8_t     entry[24];
     uint8_t     lval[24];
-    int8_t     *pos              = NULL;
-    int8_t     *string           = NULL;
-    int8_t     *token            = NULL;
-    uint8_t   **pattern          = NULL;
-    uint8_t    *form0            = "^ *([a-z?]+) *$";
-    //uint8_t    *form1            = "^ *([a-z]+) *(I[PRV]:0x[0-9A-F]{8}){1,3} *$";
-    uint8_t    *form1            = "^ *([a-z]+) *(IP:0x[0-9A-F]{8})? *(IR:0x[0-9A-F]{8})? *(IV:0x[0-9A-F]{8})? *$";
-    uint8_t    *form2            = "^ *([a-z]+) *([^ ]+) *= *([^ ]+) *$";
-    uint8_t    *form3            = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
-    uint8_t    *form4            = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
-    uint8_t    *form5            = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
-    uint8_t    *form6            = "^ *(reg|regs|register|registers|r[*]) *$";  // registers
-    uint8_t    *form7            = "^ *(0x[0-9A-F]{8}) *$";                     // memory
-    uint8_t    *form8            = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
-    uint8_t     result           = 0;
+    int8_t     *pos                = NULL;
+    int8_t     *string             = NULL;
+    int8_t     *token              = NULL;
+    uint8_t   **form               = NULL;
+    uint8_t    *form0              = "^ *([a-z?]+) *$";
+    uint8_t    *form1              = "^ *([a-z]+) *(IP:0x[0-9A-F]{8})? *(IR:0x[0-9A-F]{8})? *(IV:0x[0-9A-F]{8})? *$";
+    uint8_t    *form2              = "^ *([a-z]+) *([^ ]+) *= *([^ ]+) *$";
+    uint8_t    *form3              = "^ *([a-z]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
+
+    uint8_t   **pattern            = NULL;
+    uint8_t    *pattern0           = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
+    uint8_t    *pattern1           = "^ *(reg|regs|register|registers|r[*]) *$";  // registers
+    uint8_t    *pattern2           = "^ *(0x[0-9A-F]{8}) *$";                     // memory
+    uint8_t    *pattern3           = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
+    uint8_t    *pattern4           = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
+    uint8_t     result             = 0;
 
     fprintf (verbose, "[tokenize_input] passed string: '%s'\n", input);
 
-    string                                  = parse_deref (input, flag);
+    string                         = parse_deref (input, flag);
 
     fprintf (verbose, "[tokenize_input] processed string: '%s'\n", string);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // allocate and populate form array
+    //
+    form                           = (uint8_t **) malloc (sizeof (uint8_t *) * 4);
+    *(form+0)                      = form0;
+    *(form+1)                      = form1;
+    *(form+2)                      = form2;
+    *(form+3)                      = form3;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // allocate and populate pattern array
     //
-    pattern                                 = (uint8_t **) malloc (sizeof (uint8_t *) * 9);
-    *(pattern+0)                            = form0;
-    *(pattern+1)                            = form1;
-    *(pattern+2)                            = form2;
-    *(pattern+3)                            = form3;
-    *(pattern+4)                            = form4;
-    *(pattern+5)                            = form5;
-    *(pattern+6)                            = form6;
-    *(pattern+7)                            = form7;
-    *(pattern+8)                            = form8;
+    pattern                        = (uint8_t **) malloc (sizeof (uint8_t *) * 5);
+    *(pattern+0)                   = pattern0;
+    *(pattern+1)                   = pattern1;
+    *(pattern+2)                   = pattern2;
+    *(pattern+3)                   = pattern3;
+    *(pattern+4)                   = pattern4;
 
-    for (index                              = 0;
-         index                             <  4;
-         index                              = index + 1)
+    for (index                     = 0;
+         index                    <  4;
+         index                     = index + 1)
     {
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // RegEx compilation: compile pattern into our regex for processing
+        // RegEx compilation: compile form pattern into our regex for processing
         //
-        check                               = regcomp (&regex,
-                                                      *(pattern+index),
-                                                      REG_EXTENDED | REG_ICASE);
-        if (check                          != 0)
+        check                      = regcomp (&regex,
+                                             *(form+index),
+                                             REG_EXTENDED | REG_ICASE);
+        if (check                 != 0)
         {
             fprintf (stderr, "[ERROR] Invalid pattern: RegEx compilation failed\n");
             exit    (REGEX_COMPILE_ERROR);
@@ -944,8 +951,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution: make sure input conforms to provided pattern
         //
-        check                               = regexec (&regex, string, 5, match, 0);
-        if (check                          == REG_NOMATCH)
+        check                      = regexec (&regex, string, 5, match, 0);
+        if (check                 == REG_NOMATCH)
         {
             continue;
             fprintf (stderr, "ERROR: malformed input\n");
@@ -955,301 +962,286 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution success! Display the results
         //
-        else if (check                     == 0)
+        else if (check            == 0)
         {
             fprintf (verbose, "MATCH\n");
-            switch (index)
+            if (index             == 0) // single-word command
             {
-                case 0: // single-word command
-                    byte                    = *(string + match[1].rm_so);
-                    switch (byte)
+                byte           = *(string + match[1].rm_so);
+                if (byte      == 'c')   // continue
+                {
+                    action     = INPUT_CONTINUE;
+                }
+                else if (byte == 'i') // ignore
+                {
+                    action     = INPUT_IGNORE;
+                }
+                else if (byte == 'n') // next
+                {
+                    action     = INPUT_NEXT;
+                }
+                else if (byte == 's') // step
+                {
+                    action     = INPUT_STEP;
+                }
+                else if (byte == 'h') // help
+                {
+                    action     = INPUT_HELP;
+                }
+                else if (byte             == '?') // help
+                {
+                    action                 = INPUT_HELP;
+                }
+                else if (byte             == 'q') // quit
+                {
+                    action                 = INPUT_QUIT;
+                }
+            }
+            else if (index                == 1) // replace-style command
+            {
+                byte                       = *(string + match[1].rm_so);
+                if (byte                  == 'r') // replace
+                {
+                    action                 = INPUT_REPLACE;
+                    fprintf (verbose, "[tokenize_input] replacing ");
+                    for (count             = 2;
+                         count            <  5;
+                         count             = count + 1)
                     {
-                        case 'b': // break
-                            action          = INPUT_BREAK;
-                            break;
-
-                        case 'c': // continue
-                            action          = INPUT_CONTINUE;
-                            break;
-
-                        case 'i': // ignore
-                            action          = INPUT_IGNORE;
-                            break;
-
-                        case 'n': // next
-                            action          = INPUT_NEXT;
-                            break;
-
-                        case 's': // step
-                            action          = INPUT_STEP;
-                            break;
-
-                        case 'h': // help
-                        case '?': // help
-                            action          = INPUT_HELP;
-                            break;
-
-                        case 'e': // exit
-                        case 'q': // quit
-                            action          = INPUT_QUIT;
-                            break;
-                    }
-                    break;
-
-                case 1: // replace-style command
-                    byte                    = *(string + match[1].rm_so);
-                    if (byte               == 'r') // replace
-                    {
-                        action              = INPUT_REPLACE;
-                        fprintf (verbose, "[tokenize_input] replacing ");
-                        for (count             = 2;
-                             count            <  5;
-                             count             = count + 1)
+                        if (-1            == match[count].rm_so)
                         {
-                            if (-1            != match[count].rm_so)
+                            break;
+                        }
+
+                        len                = (match[count].rm_eo-match[count].rm_so);
+                        pos                = (string + match[count].rm_so + 1);
+                        snprintf (entry, len, "%.*s", len, pos);
+                        byte               = *(pos);
+                        token              = strtok (entry,  ":");
+                        token              = strtok (NULL,   ":");
+                        if (byte          == 'P')
+                        {
+                            offset         = strtol (token, NULL, 16);
+                            fprintf (verbose, "IP:0x%.8X ", REG(IP));
+                        }
+                        else if (byte     == 'R')
+                        {
+                            fprintf (verbose, "IR:0x%.8X ", IMEMGET(offset, FALSE));
+                            word           = strtol (token, NULL, 16);
+                            fprintf (verbose, "with IR:0x%.8X ", word);
+                            MEMSET(offset, word, TRUE);
+                        }
+                        else if (byte     == 'V')
+                        {
+                            if (0         <  (word & IMMVAL_MASK))
                             {
-                                len            = (match[count].rm_eo-match[count].rm_so);
-                                pos            = (string + match[count].rm_so + 1);
-                                snprintf (entry, len, "%.*s", len, pos);
-                                byte           = *(pos);
-                                token          = strtok (entry,  ":");
-                                token          = strtok (NULL,   ":");
-                                if (byte      == 'P')
-                                {
-                                    offset     = strtol (token, NULL, 16);
-                                    fprintf (verbose, "IP:0x%.8X ", REG(IP));
-                                }
-                                else if (byte == 'R')
-                                {
-                                    fprintf (verbose, "IR:0x%.8X ", IMEMGET(offset));
-                                    word       = strtol (token, NULL, 16);
-                                    fprintf (verbose, "with IR:0x%.8X ", word);
-                                    sys_force  = TRUE;
-                                    MEMSET(offset, word);
-                                }
-                                else if (byte == 'V')
-                                {
-                                    if (0     <  (word & IMMVAL_MASK))
-                                    {
-                                        fprintf (verbose, "IV:0x%.8X ", IMEMGET(offset+1));
-                                        immv   = strtol (token, NULL, 16);
-                                        fprintf (verbose, "with IV:0x%.8X ", immv);
-                                        sys_force  = TRUE;
-                                        MEMSET(offset+1, immv);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                break;
+                                fprintf (verbose, "IV:0x%.8X ", IMEMGET(offset+1, FALSE));
+                                immv       = strtol (token, NULL, 16);
+                                fprintf (verbose, "with IV:0x%.8X ", immv);
+                                MEMSET(offset+1, immv, TRUE);
                             }
                         }
-                        fprintf (verbose, "\n");
-                        break;
                     }
-                    break;
+                    fprintf (verbose, "\n");
+                }
+            }
+            else if (index                == 2) // assign-style command
+            {
+                action                     = INPUT_SET;
+                len                        = (match[2].rm_eo - match[2].rm_so);
+                pos                        = (string + match[2].rm_so);
+                snprintf (lval, (len+1), "%.*s", (len+1), pos);
 
-                case 2: // set command
-                    action         = INPUT_SET;
-                    //for (count             = 2;
-                    //     count            <  5;
-                    len            = (match[2].rm_eo - match[2].rm_so);
-                    pos            = (string + match[2].rm_so);
-                    snprintf (lval, (len+1), "%.*s", (len+1), pos);
+                len                        = (match[3].rm_eo - match[3].rm_so);
+                pos                        = (string + match[3].rm_so);
+                snprintf (entry, (len+1), "%.*s", (len+1), pos);
+                fprintf (debug, "[lval]  '%s'\n", lval);
+                fprintf (debug, "[entry] '%s'\n", entry);
 
-                    len            = (match[3].rm_eo - match[3].rm_so);
-                    pos            = (string + match[3].rm_so);
-                    snprintf (entry, (len+1), "%.*s", (len+1), pos);
-                    fprintf (debug, "[lval]  '%s'\n", lval);
-                    fprintf (debug, "[entry] '%s'\n", entry);
-                    switch (lval[0])
-                    {
-                        case 'I':
-                        case 'i':
-                            switch (lval[1])
-                            {
-                                case 'P':
-                                case 'p':
-                                    REG(IP)  = strtol (entry, NULL, 16);
-                                    REG(IR)  = IMEMGET(REG(IP));
-                                    if (0   <  (REG(IR) & IMMVAL_MASK))
-                                    {
-                                        REG(IV)  = IMEMGET(REG(IP)+1);
-                                    }
-                                    fprintf (debug, "[IP] setting to 0x%.8X\n", REG(IP));
-                                    break;
+                switch (lval[0])
+                {
+                    case 'I':
+                    case 'i':
+                        switch (lval[1])
+                        {
+                            case 'P':
+                            case 'p':
+                                REG(IP)  = strtol (entry, NULL, 16);
+                                REG(IR)  = IMEMGET(REG(IP), FALSE);
+                                if (0   <  (REG(IR) & IMMVAL_MASK))
+                                {
+                                    REG(IV)  = IMEMGET(REG(IP)+1, FALSE);
+                                }
+                                fprintf (debug, "[IP] setting to 0x%.8X\n", REG(IP));
+                                break;
 
-                                case 'R':
-                                case 'r':
-                                    REG(IR)  = strtol (entry, NULL, 16);
-                                    fprintf (debug, "[IR] setting to 0x%.8X\n", REG(IR));
-                                    break;
+                            case 'R':
+                            case 'r':
+                                REG(IR)  = strtol (entry, NULL, 16);
+                                fprintf (debug, "[IR] setting to 0x%.8X\n", REG(IR));
+                                break;
 
-                                case 'V':
-                                case 'v':
-                                    REG(IV)  = strtol (entry, NULL, 16);
-                                    fprintf (debug, "[IV] setting to 0x%.8X\n", REG(IV));
-                                    break;
-                            }
-                            break;
+                            case 'V':
+                            case 'v':
+                                REG(IV)  = strtol (entry, NULL, 16);
+                                fprintf (debug, "[IV] setting to 0x%.8X\n", REG(IV));
+                                break;
+                        }
+                        break;
 
-                        case 'C':
-                        case 'c':
-                            check            = strncasecmp (entry, "true", 4);
-                            fprintf (debug, "[color]: %s\n", entry);
-                            if (check       == 0)
+                    case 'C':
+                    case 'c':
+                        check            = strncasecmp (entry, "true", 4);
+                        fprintf (debug, "[color]: %s\n", entry);
+                        if (check       == 0)
+                        {    
+                            colorflag    = TRUE;
+                        }
+                        else
+                        {
+                            colorflag    = FALSE;
+                        }
+                        break;
+
+                    case 'D':
+                    case 'd':
+                        check              = strncasecmp (lval,  "debug", 5);
+                        if (check         == 0)
+                        {
+                            check          = strncasecmp (entry, "true", 4);
+                            if (check     == 0)
                             {    
-                                colorflag    = TRUE;
+                                debug      = stderr;
+                                fprintf (debug, "[set] debugging ENABLED!\n");
                             }
                             else
                             {
-                                colorflag    = FALSE;
+                                fprintf (debug, "[set] disabling debugging!\n");
+                                debug      = devnull;
                             }
                             break;
+                        }
 
-                        case 'D':
-                        case 'd':
-                            check              = strncasecmp (lval,  "debug", 5);
-                            if (check         == 0)
+                        check              = strncasecmp (lval,  "deref", 5);
+                        if (check         == 0)
+                        {
+                            check          = strncasecmp (entry, "true", 4);
+                            if (check     == 0)
+                            {    
+                                derefaddr  = TRUE;
+                                fprintf (debug, "[set] derefaddr ENABLED!\n");
+                            }
+                            else
                             {
-                                check          = strncasecmp (entry, "true", 4);
-                                if (check     == 0)
-                                {    
-                                    debug      = stderr;
-                                    fprintf (debug, "[set] debugging ENABLED!\n");
-                                }
-                                else
-                                {
-                                    fprintf (debug, "[set] disabling debugging!\n");
-                                    debug      = devnull;
-                                }
-                                break;
+                                derefaddr  = FALSE;
+                                fprintf (debug, "[set] derefaddr DISABLED!\n");
                             }
+                            break;
+                        }
+                        break;
 
-                            check              = strncasecmp (lval,  "deref", 5);
-                            if (check         == 0)
+                    case 'R':
+                    case 'r':
+                        count            = strtol ((lval+1), NULL, 10);
+                        REG(count)       = strtol (entry,    NULL, 16);
+                        fprintf (debug, "[set] setting R%u to %s\n", count, entry);
+                        break;
+
+                    case 'V':
+                    case 'v':
+                        check              = strncasecmp (lval,  "verbo", 5);
+                        if (check         == 0)
+                        {
+                            check          = strncasecmp (entry, "true", 4);
+                            if (check     == 0)
+                            {    
+                                verbose    = stderr;
+                                fprintf (debug, "[set] verbosity ENABLED!\n");
+                            }
+                            else
                             {
-                                check          = strncasecmp (entry, "true", 4);
-                                if (check     == 0)
-                                {    
-                                    derefaddr  = TRUE;
-                                    fprintf (debug, "[set] derefaddr ENABLED!\n");
-                                }
-                                else
-                                {
-                                    derefaddr  = FALSE;
-                                    fprintf (debug, "[set] derefaddr DISABLED!\n");
-                                }
-                                break;
+                                fprintf (debug, "[set] disabling verbosity!\n");
+                                debug      = devnull;
                             }
                             break;
-
-                        case 'R':
-                        case 'r':
-                            count            = strtol ((lval+1), NULL, 10);
-                            REG(count)       = strtol (entry,    NULL, 16);
-                            fprintf (debug, "[set] setting R%u to %s\n", count, entry);
-                            break;
-
-                        case 'V':
-                        case 'v':
-                            check              = strncasecmp (lval,  "verbo", 5);
-                            if (check         == 0)
-                            {
-                                check          = strncasecmp (entry, "true", 4);
-                                if (check     == 0)
-                                {    
-                                    verbose    = stderr;
-                                    fprintf (debug, "[set] verbosity ENABLED!\n");
-                                }
-                                else
-                                {
-                                    fprintf (debug, "[set] disabling verbosity!\n");
-                                    debug      = devnull;
-                                }
-                                break;
-                            }
-                            break;
-                    }
-                    break;
-
-                case 3: // parametered command
-                    byte                    = *(string + match[1].rm_so);
-                    switch (byte)
+                        }
+                        break;
+                }
+            }
+            else if (index                == 3) // parametered command
+            {
+                byte                       = *(string + match[1].rm_so);
+                if (byte                  == 'd') // display
+                {
+                    action                 = INPUT_DISPLAY;
+                    token                  = strtok ((string + match[2].rm_so), " ");
+                    for (count             = PARSE_REGISTER;
+                         count            <= PARSE_IOPORT;
+                         count             = count + 1)
                     {
-                        case 'd': // display
-                            action          = INPUT_DISPLAY;
-                            token           = strtok ((string + match[2].rm_so), " ");
-                            for (count      = PARSE_IOPORT;
-                                 count     <= PARSE_MEMRANGE;
-                                 count      = count + 1)
-                            {
-                                fprintf (verbose,  "[tokenize_input] count: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x75));
-                                ////////////////////////////////////////////////////////
-                                //
-                                // PARSE_NONE              0x7F
-                                // PARSE_IMMEDIATE         0x7E
-                                // PARSE_MEMRANGE          0x7D
-                                // PARSE_MEMORY            0x7C
-                                // PARSE_REGISTERS         0x7B
-                                // PARSE_REGISTER          0x7A
-                                // PARSE_IOPORT            0x79
-                                //
-                                result      = parse_token (token,
-                                                           *(pattern+(count-0x75)),
-                                                           count);
-                                if (result != PARSE_NONE)
-                                {
-                                    break;
-                                }
-                            }
-                            token_label     = strtok (NULL, " ");
+                        fprintf (verbose,  "[tokenize_input] count: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x7B));
+                        ////////////////////////////////////////////////////////////////
+                        //
+                        // PARSE_REGISTER          0x7A
+                        // PARSE_REGISTERS         0x7B
+                        // PARSE_MEMORY            0x7C
+                        // PARSE_MEMRANGE          0x7D
+                        // PARSE_IOPORT            0x7E
+                        // PARSE_NONE              0x7F
+                        //
+                        result             = parse_token (token,
+                                                          *(pattern+(count-0x7A)),
+                                                          count);
+                        if (result        != PARSE_NONE)
+                        {
                             break;
-
-                        case 'l': // label
-                            action          = INPUT_LABEL;
-                            token           = strtok ((string + match[2].rm_so), " ");
-                            result          = parse_token (token, *(pattern+7), 0x7C);
-                            fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
-                            value           = strtol (token, NULL, 16);
-                            ltmp            = newdispnode (LIST_MEM, value);
-                            token_label     = strtok ((string + match[3].rm_so), " ");
-                            fprintf (debug, "[label] token_label: '%s'\n", token_label);
-                            value           = sizeof (int8_t) * strlen (token_label) + 1;
-                            ltmp -> label   = (int8_t *) malloc (value);
-                            strcpy (ltmp -> label, token_label);
-                            lpoint          = display_add (lpoint, ltmp);
-                            break;
-
-                        case 'p': // print
-                            action          = INPUT_PRINT;
-                            token           = strtok ((string + match[2].rm_so), " ");
-
-                            for (count      = PARSE_IOPORT;
-                                 count     <= PARSE_MEMRANGE;
-                                 count      = count + 1)
-                            {
-                                ////////////////////////////////////////////////////////
-                                //
-                                // PARSE_NONE              0x7F
-                                // PARSE_IMMEDIATE         0x7E
-                                // PARSE_MEMRANGE          0x7D
-                                // PARSE_MEMORY            0x7C
-                                // PARSE_REGISTERS         0x7B
-                                // PARSE_REGISTER          0x7A
-                                // PARSE_IOPORT            0x79
-                                //
-                                result      = parse_token (token,
-                                                           *(pattern+(count-0x75)),
-                                                           count);
-                                if (result != PARSE_NONE)
-                                {
-                                    break;
-                                }
-                            }
-                            break;
+                        }
                     }
-                    break;
+                    token_label            = strtok (NULL, " ");
+                }
+                else if (byte             == 'l') // label
+                {
+
+					action          = INPUT_LABEL;
+					token           = strtok ((string + match[2].rm_so), " ");
+					result          = parse_token (token, *(pattern+7), 0x7C);
+					fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
+					value           = strtol (token, NULL, 16);
+					ltmp            = newdispnode (LIST_MEM, value);
+					token_label     = strtok ((string + match[3].rm_so), " ");
+					fprintf (debug, "[label] token_label: '%s'\n", token_label);
+					value           = sizeof (int8_t) * strlen (token_label) + 1;
+					ltmp -> label   = (int8_t *) malloc (value);
+					strcpy (ltmp -> label, token_label);
+					lpoint          = display_add (lpoint, ltmp);
+				}
+				else if (byte      == 'p') // print
+				{
+					action          = INPUT_PRINT;
+					token           = strtok ((string + match[2].rm_so), " ");
+
+					for (count      = PARSE_REGISTER;
+						 count     <= PARSE_IOPORT;
+						 count      = count + 1)
+					{
+						////////////////////////////////////////////////////////////////
+						//
+						// PARSE_REGISTER          0x7A
+						// PARSE_REGISTERS         0x7B
+						// PARSE_MEMORY            0x7C
+						// PARSE_MEMRANGE          0x7D
+						// PARSE_IOPORT            0x7E
+						// PARSE_NONE              0x7F
+						//
+						result      = parse_token (token,
+												   *(pattern+(count-0x7A)),
+												   count);
+						if (result != PARSE_NONE)
+						{
+							break;
+						}
+					}
+				}
             }
 
             for (count          = 0;
@@ -1457,12 +1449,13 @@ uint8_t  prompt (uint32_t  word)
                     if (deref_flag     == TRUE)
                     {
                         fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X\n",
-                                value, IMEMGET(value), IMEMGET(IMEMGET(value)));
+                                value, IMEMGET(value, FALSE),
+								IMEMGET(IMEMGET(value, FALSE), FALSE));
                     }
                     else
                     {
                         fprintf (stdout, "[0x%.8X]: 0x%.8X\n",
-                                value, IMEMGET (value));
+                                value, IMEMGET (value, FALSE));
                     }
                     break;
 
@@ -1498,7 +1491,7 @@ uint8_t  prompt (uint32_t  word)
                             {
                                 fprintf (stdout, "[R%u(0x%.8X)]: 0x%.8X\n",
                                         token_type, REG(token_type),
-                                        IMEMGET(REG(token_type)));
+                                        IMEMGET(REG(token_type), FALSE));
                             }
                             else
                             {

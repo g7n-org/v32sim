@@ -90,13 +90,13 @@
 #define  INPUT_REPLACE           17
 #define  INPUT_SET               18
 
-#define  PARSE_NONE              0x7F
-#define  PARSE_IMMEDIATE         0x7E
-#define  PARSE_MEMRANGE          0x7D
-#define  PARSE_MEMORY            0x7C
-#define  PARSE_REGISTERS         0x7B
+#define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A
-#define  PARSE_IOPORT            0x79
+#define  PARSE_REGISTERS         0x7B
+#define  PARSE_MEMORY            0x7C
+#define  PARSE_MEMRANGE          0x7D
+#define  PARSE_IOPORT            0x7E
+#define  PARSE_NONE              0x7F
 
 #define  NUM_PORT_CATEGORIES     7
 #define  NUM_TIM_PORTS           4
@@ -167,9 +167,9 @@
 #define  FDSTREG                 (reg+dst) -> value.f32
 #define  FSRCREG                 (reg+src) -> value.f32
 
-#define  IMEMGET(addr)           word2int (memory_get (addr))
-#define  FMEMGET(addr)           word2float (memory_get (addr))
-#define  MEMSET(addr, word)      memory_set (addr, word)
+#define  IMEMGET(addr, sys)      word2int (memory_get (addr, sys))
+#define  FMEMGET(addr, sys)      word2float (memory_get (addr, sys))
+#define  MEMSET(addr, word, sys) memory_set (addr, word, sys)
 
 #define  REG_RAW                 0
 #define  REG_INT                 1

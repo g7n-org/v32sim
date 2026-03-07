@@ -295,7 +295,7 @@ void  init_ioports  (void)
     }
 }
 
-int32_t  ioports_get  (uint16_t  portaddr)
+int32_t  ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -317,7 +317,6 @@ int32_t  ioports_get  (uint16_t  portaddr)
                              (pptr+attr) -> name);
             exit (IOPORTS_READ_ERROR);
         }
-        sys_force           = FALSE;
     }
 
     switch (portaddr)
@@ -335,7 +334,7 @@ int32_t  ioports_get  (uint16_t  portaddr)
     return (value);
 }
 
-void      ioports_set  (uint16_t  portaddr, int32_t  value)
+void      ioports_set  (uint16_t  portaddr, int32_t  value, uint8_t  sys_force)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //

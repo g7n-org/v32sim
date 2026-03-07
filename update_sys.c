@@ -14,7 +14,7 @@ void      update_cycle (void)
     //
     if (waitflag      == FALSE)
     {
-        value          = ioports_get (TIM_CycleCounter);
+        value          = ioports_get (TIM_CycleCounter, FALSE);
         value          = value + 1;
     }
     else
@@ -32,8 +32,7 @@ void      update_cycle (void)
         value          = 0;
     }
 
-    sys_force          = TRUE;
-    ioports_set (TIM_CycleCounter, value);
+    ioports_set (TIM_CycleCounter, value, TRUE);
 }
 
 void      update_frame (void)
@@ -49,10 +48,9 @@ void      update_frame (void)
     //
     // increment frame counter
     //
-    value              = ioports_get (TIM_FrameCounter);
+    value              = ioports_get (TIM_FrameCounter, FALSE);
     value              = value + 1;
-    sys_force          = TRUE; // system override on a read-only port
-    ioports_set (TIM_FrameCounter, value);
+    ioports_set (TIM_FrameCounter, value, TRUE);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -60,7 +58,7 @@ void      update_frame (void)
     //
     if ((value % 60)  == 0)
     {
-        value          = ioports_get (TIM_CurrentTime);
+        value          = ioports_get (TIM_CurrentTime, FALSE);
         value          = value + 1;
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +67,7 @@ void      update_frame (void)
         //
         if (value     >= 86400)
         {
-            value      = ioports_get (TIM_CurrentDate);
+            value      = ioports_get (TIM_CurrentDate, FALSE);
             upper      = value & 0xFFFF0000; // isolate year from TIM_CurrentDate
             value      = value & 0x0000FFFF; // isolate day  from TIM_CurrentDate
             value      = value + 1;          // increment the day
@@ -84,13 +82,11 @@ void      update_frame (void)
                 upper  = upper + 0x00010000; // increment the year
                 value  = upper;              // recombine YEAR and DAY
             }
-            sys_force  = TRUE;
-            ioports_set (TIM_CurrentDate, value);
+            ioports_set (TIM_CurrentDate, value, TRUE);
 
             value      = 0;                  // TIM_CurrentTime resets to 0
         }
 
-        sys_force      = TRUE;
-        ioports_set (TIM_CurrentTime, value);
+        ioports_set (TIM_CurrentTime, value, TRUE);
     }
 }

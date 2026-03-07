@@ -77,7 +77,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X \"%s\"\n",
-                                IMEMGET(REG(value)), dtmp -> label);
+                                IMEMGET(REG(value), FALSE), dtmp -> label);
                     }
                     else
                     {
@@ -90,7 +90,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X\n",
-                                IMEMGET(REG(value)));
+                                IMEMGET(REG(value), FALSE));
                     }
                     else
                     {
@@ -140,10 +140,9 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 break;
 
             case LIST_MEM_DEREF:
-                sys_force          = TRUE;
-                value              = IMEMGET (wtmp -> i32);
+                value              = IMEMGET (wtmp -> i32, TRUE);
                 check              = memory_chk (value);
-                sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, value);//IMEMGET(value));
+                sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, value);
                 if (list -> space <  strlen (entry))
                 {
                     list -> space  = strlen (entry);
@@ -154,7 +153,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X \"%s\"\n",
-                                IMEMGET(value), dtmp -> label);
+                                IMEMGET(value, FALSE), dtmp -> label);
                     }
                     else
                     {
@@ -167,7 +166,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X\n",
-                                IMEMGET(value));
+                                IMEMGET(value, FALSE));
                     }
                     else
                     {
@@ -177,8 +176,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 break;
 
             case LIST_MEM:
-                sys_force          = TRUE;
-                value              = IMEMGET (wtmp -> i32);
+                value              = IMEMGET (wtmp -> i32, TRUE);
                 sprintf (entry, "0x%.8X", wtmp -> i32);
                 if (list -> space <  strlen (entry))
                 {
@@ -197,8 +195,7 @@ void       displayshow  (display_l *list, uint8_t    flag)
                 break;
 
             case LIST_IOP:
-                sys_force          = TRUE;
-                value              = ioports_get (wtmp -> i32);
+                value              = ioports_get (wtmp -> i32, TRUE);
                 sprintf (entry, "[0x%.3X]", wtmp -> i32);
                 fprintf (stdout, "%*s: ", list -> space, entry);
                 fprintf (stdout, "0x%.8X\n", value);

@@ -64,7 +64,6 @@ extern int8_t    *token_label;
 // Variables related to IOPorts
 //
 extern data_t   **ioports;
-extern uint8_t    sys_force;
 extern uint8_t    sys_reg_show;
 
 extern uint8_t    action;
@@ -95,14 +94,14 @@ void       decode         (uint32_t,    uint32_t,    float,    uint8_t);
 void       decode_display (uint32_t,    uint32_t,    float,    uint8_t);
 void       decode_process (uint32_t,    uint32_t,    float,    uint8_t);
 void       init_ioports   (void);                              // initialize IOPorts
-int32_t    ioports_get    (uint16_t);                          // get value from port
-void       ioports_set    (uint16_t,    int32_t);              // set value to port
+int32_t    ioports_get    (uint16_t,    uint8_t);              // get value from port
+void       ioports_set    (uint16_t,    int32_t,     uint8_t); // set value to port
 void       init_memory    (void);                              // initialize memory
 void       load_command   (void);
 void       load_memory    (uint32_t,    int8_t *);             // load file into memory
 uint8_t    memory_chk     (uint32_t);
-word_t    *memory_get     (uint32_t);                          // get value from memory
-void       memory_set     (uint32_t,    uint32_t);             // set value to memory
+word_t    *memory_get     (uint32_t,    uint8_t);              // get value from memory
+void       memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory
 void       init_registers (void);
 word_t    *reg_get        (uint8_t,     uint8_t);
 void       reg_set        (uint8_t,     uint32_t,    uint8_t);

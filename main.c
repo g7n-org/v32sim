@@ -24,7 +24,6 @@ int8_t    *token_label;
 data_t   **ioports;
 mem_t     *memory;
 int8_t     sys_error;
-uint8_t    sys_force;
 uint8_t    sys_reg_show;
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -176,7 +175,6 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // Allocate Vircon32 IOPorts (a 2D array of ports)
     //
-    sys_force                          = FALSE;
     init_ioports ();
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -236,7 +234,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
         }
 
         REG(IP)                        = rom_offset;
-        REG(IR)                        = IMEMGET(REG(IP)); // current instruction
+        REG(IR)                        = IMEMGET(REG(IP), FALSE); // current instruction
 
         if (watch_word                == REG(IR))
         {
@@ -254,7 +252,7 @@ int32_t    main (int32_t  argc, uint8_t **argv)
 
         if ((REG(IR) & IMMVAL_MASK)   == IMMVAL_MASK)
         {
-            REG(IV)                    = IMEMGET(REG(IP) + 1);
+            REG(IV)                    = IMEMGET(REG(IP) + 1, FALSE);
             decodeflags                = FLAG_IMMEDIATE;
         }
         else
