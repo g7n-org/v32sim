@@ -964,29 +964,29 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         else if (check            == 0)
         {
-            fprintf (verbose, "MATCH\n");
+            fprintf (verbose, "[tokenize_input] MATCH on form %u\n", index);
             if (index             == 0) // single-word command
             {
-                byte           = *(string + match[1].rm_so);
-                if (byte      == 'c')   // continue
+                byte               = *(string + match[1].rm_so);
+                if (byte          == 'c')   // continue
                 {
-                    action     = INPUT_CONTINUE;
+                    action         = INPUT_CONTINUE;
                 }
-                else if (byte == 'i') // ignore
+                else if (byte     == 'i') // ignore
                 {
-                    action     = INPUT_IGNORE;
+                    action         = INPUT_IGNORE;
                 }
-                else if (byte == 'n') // next
+                else if (byte     == 'n') // next
                 {
-                    action     = INPUT_NEXT;
+                    action         = INPUT_NEXT;
                 }
-                else if (byte == 's') // step
+                else if (byte     == 's') // step
                 {
-                    action     = INPUT_STEP;
+                    action         = INPUT_STEP;
                 }
-                else if (byte == 'h') // help
+                else if (byte     == 'h') // help
                 {
-                    action     = INPUT_HELP;
+                    action         = INPUT_HELP;
                 }
                 else if (byte             == '?') // help
                 {
@@ -1058,114 +1058,99 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 fprintf (debug, "[lval]  '%s'\n", lval);
                 fprintf (debug, "[entry] '%s'\n", entry);
 
-                switch (lval[0])
+                if (lval[0]     == 'I')
                 {
-                    case 'I':
-                    case 'i':
-                        switch (lval[1])
+                    if (lval[1] == 'P')
+                    {
+                        REG(IP)  = strtol (entry, NULL, 16);
+                        REG(IR)  = IMEMGET(REG(IP), FALSE);
+                        if (0   <  (REG(IR) & IMMVAL_MASK))
                         {
-                            case 'P':
-                            case 'p':
-                                REG(IP)  = strtol (entry, NULL, 16);
-                                REG(IR)  = IMEMGET(REG(IP), FALSE);
-                                if (0   <  (REG(IR) & IMMVAL_MASK))
-                                {
-                                    REG(IV)  = IMEMGET(REG(IP)+1, FALSE);
-                                }
-                                fprintf (debug, "[IP] setting to 0x%.8X\n", REG(IP));
-                                break;
-
-                            case 'R':
-                            case 'r':
-                                REG(IR)  = strtol (entry, NULL, 16);
-                                fprintf (debug, "[IR] setting to 0x%.8X\n", REG(IR));
-                                break;
-
-                            case 'V':
-                            case 'v':
-                                REG(IV)  = strtol (entry, NULL, 16);
-                                fprintf (debug, "[IV] setting to 0x%.8X\n", REG(IV));
-                                break;
+                            REG(IV)  = IMEMGET(REG(IP)+1, FALSE);
                         }
-                        break;
-
-                    case 'C':
-                    case 'c':
-                        check            = strncasecmp (entry, "true", 4);
-                        fprintf (debug, "[color]: %s\n", entry);
-                        if (check       == 0)
+                        fprintf (debug, "[IP] setting to 0x%.8X\n", REG(IP));
+                    }
+                    else if (lval[1] == 'R')
+                    {
+                        REG(IR)  = strtol (entry, NULL, 16);
+                        fprintf (debug, "[IR] setting to 0x%.8X\n", REG(IR));
+                    }
+                    else if (lval[1] == 'V')
+                    {
+                        REG(IV)  = strtol (entry, NULL, 16);
+                        fprintf (debug, "[IV] setting to 0x%.8X\n", REG(IV));
+                    }
+                }
+                else if (lval[0] == 'C')
+                {
+                    check            = strncasecmp (entry, "true", 4);
+                    fprintf (debug, "[color]: %s\n", entry);
+                    if (check       == 0)
+                    {    
+                        colorflag    = TRUE;
+                    }
+                    else
+                    {
+                        colorflag    = FALSE;
+                    }
+                }
+                else if (lval[0] == 'D')
+                {
+                    check              = strncasecmp (lval,  "debug", 5);
+                    if (check         == 0)
+                    {
+                        check          = strncasecmp (entry, "true", 4);
+                        if (check     == 0)
                         {    
-                            colorflag    = TRUE;
+                            debug      = stderr;
+                            fprintf (debug, "[set] debugging ENABLED!\n");
                         }
                         else
                         {
-                            colorflag    = FALSE;
+                            fprintf (debug, "[set] disabling debugging!\n");
+                            debug      = devnull;
                         }
-                        break;
+                    }
 
-                    case 'D':
-                    case 'd':
-                        check              = strncasecmp (lval,  "debug", 5);
-                        if (check         == 0)
+                    check              = strncasecmp (lval,  "deref", 5);
+                    if (check         == 0)
+                    {
+                        check          = strncasecmp (entry, "true", 4);
+                        if (check     == 0)
+                        {    
+                            derefaddr  = TRUE;
+                            fprintf (debug, "[set] derefaddr ENABLED!\n");
+                        }
+                        else
                         {
-                            check          = strncasecmp (entry, "true", 4);
-                            if (check     == 0)
-                            {    
-                                debug      = stderr;
-                                fprintf (debug, "[set] debugging ENABLED!\n");
-                            }
-                            else
-                            {
-                                fprintf (debug, "[set] disabling debugging!\n");
-                                debug      = devnull;
-                            }
-                            break;
+                            derefaddr  = FALSE;
+                            fprintf (debug, "[set] derefaddr DISABLED!\n");
                         }
-
-                        check              = strncasecmp (lval,  "deref", 5);
-                        if (check         == 0)
+                    }
+                }
+                else if (lval[0] == 'R')
+                {
+                    count            = strtol ((lval+1), NULL, 10);
+                    REG(count)       = strtol (entry,    NULL, 16);
+                    fprintf (debug, "[set] setting R%u to %s\n", count, entry);
+                }
+                else if (lval[0] == 'V')
+                {
+                    check              = strncasecmp (lval,  "verbo", 5);
+                    if (check         == 0)
+                    {
+                        check          = strncasecmp (entry, "true", 4);
+                        if (check     == 0)
+                        {    
+                            verbose    = stderr;
+                            fprintf (debug, "[set] verbosity ENABLED!\n");
+                        }
+                        else
                         {
-                            check          = strncasecmp (entry, "true", 4);
-                            if (check     == 0)
-                            {    
-                                derefaddr  = TRUE;
-                                fprintf (debug, "[set] derefaddr ENABLED!\n");
-                            }
-                            else
-                            {
-                                derefaddr  = FALSE;
-                                fprintf (debug, "[set] derefaddr DISABLED!\n");
-                            }
-                            break;
+                            fprintf (debug, "[set] disabling verbosity!\n");
+                            debug      = devnull;
                         }
-                        break;
-
-                    case 'R':
-                    case 'r':
-                        count            = strtol ((lval+1), NULL, 10);
-                        REG(count)       = strtol (entry,    NULL, 16);
-                        fprintf (debug, "[set] setting R%u to %s\n", count, entry);
-                        break;
-
-                    case 'V':
-                    case 'v':
-                        check              = strncasecmp (lval,  "verbo", 5);
-                        if (check         == 0)
-                        {
-                            check          = strncasecmp (entry, "true", 4);
-                            if (check     == 0)
-                            {    
-                                verbose    = stderr;
-                                fprintf (debug, "[set] verbosity ENABLED!\n");
-                            }
-                            else
-                            {
-                                fprintf (debug, "[set] disabling verbosity!\n");
-                                debug      = devnull;
-                            }
-                            break;
-                        }
-                        break;
+                    }
                 }
             }
             else if (index                == 3) // parametered command
@@ -1202,46 +1187,46 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 else if (byte             == 'l') // label
                 {
 
-					action          = INPUT_LABEL;
-					token           = strtok ((string + match[2].rm_so), " ");
-					result          = parse_token (token, *(pattern+7), 0x7C);
-					fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
-					value           = strtol (token, NULL, 16);
-					ltmp            = newdispnode (LIST_MEM, value);
-					token_label     = strtok ((string + match[3].rm_so), " ");
-					fprintf (debug, "[label] token_label: '%s'\n", token_label);
-					value           = sizeof (int8_t) * strlen (token_label) + 1;
-					ltmp -> label   = (int8_t *) malloc (value);
-					strcpy (ltmp -> label, token_label);
-					lpoint          = display_add (lpoint, ltmp);
-				}
-				else if (byte      == 'p') // print
-				{
-					action          = INPUT_PRINT;
-					token           = strtok ((string + match[2].rm_so), " ");
+                    action          = INPUT_LABEL;
+                    token           = strtok ((string + match[2].rm_so), " ");
+                    result          = parse_token (token, *(pattern+2), 0x7C);
+                    fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
+                    value           = strtol (token, NULL, 16);
+                    ltmp            = newdispnode (LIST_MEM, value);
+                    token_label     = strtok ((string + match[3].rm_so), " ");
+                    fprintf (debug, "[label] token_label: '%s'\n", token_label);
+                    value           = sizeof (int8_t) * strlen (token_label) + 1;
+                    ltmp -> label   = (int8_t *) malloc (value);
+                    strcpy (ltmp -> label, token_label);
+                    lpoint          = display_add (lpoint, ltmp);
+                }
+                else if (byte      == 'p') // print
+                {
+                    action          = INPUT_PRINT;
+                    token           = strtok ((string + match[2].rm_so), " ");
 
-					for (count      = PARSE_REGISTER;
-						 count     <= PARSE_IOPORT;
-						 count      = count + 1)
-					{
-						////////////////////////////////////////////////////////////////
-						//
-						// PARSE_REGISTER          0x7A
-						// PARSE_REGISTERS         0x7B
-						// PARSE_MEMORY            0x7C
-						// PARSE_MEMRANGE          0x7D
-						// PARSE_IOPORT            0x7E
-						// PARSE_NONE              0x7F
-						//
-						result      = parse_token (token,
-												   *(pattern+(count-0x7A)),
-												   count);
-						if (result != PARSE_NONE)
-						{
-							break;
-						}
-					}
-				}
+                    for (count      = PARSE_REGISTER;
+                         count     <= PARSE_IOPORT;
+                         count      = count + 1)
+                    {
+                        ////////////////////////////////////////////////////////////////
+                        //
+                        // PARSE_REGISTER          0x7A
+                        // PARSE_REGISTERS         0x7B
+                        // PARSE_MEMORY            0x7C
+                        // PARSE_MEMRANGE          0x7D
+                        // PARSE_IOPORT            0x7E
+                        // PARSE_NONE              0x7F
+                        //
+                        result      = parse_token (token,
+                                                   *(pattern+(count-0x7A)),
+                                                   count);
+                        if (result != PARSE_NONE)
+                        {
+                            break;
+                        }
+                    }
+                }
             }
 
             for (count          = 0;
@@ -1272,6 +1257,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         regfree (&regex);
     }
 
+    free    (form);
     free    (pattern);
 
     return  (result);
@@ -1429,6 +1415,8 @@ uint8_t  prompt (uint32_t  word)
             break;
 
         case INPUT_LABEL:
+            processflag                 = FALSE;
+            action                      = INPUT_INIT;
             break;
 
         case INPUT_PRINT:
@@ -1450,7 +1438,7 @@ uint8_t  prompt (uint32_t  word)
                     {
                         fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X\n",
                                 value, IMEMGET(value, FALSE),
-								IMEMGET(IMEMGET(value, FALSE), FALSE));
+                                IMEMGET(IMEMGET(value, FALSE), FALSE));
                     }
                     else
                     {
