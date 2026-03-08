@@ -872,6 +872,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // declare and initialize variables
     //
+    linked_l  **list               = NULL;
     linked_l   *ltmp               = NULL;
     linked_l   *tmp                = NULL;
     int32_t     check              = 0;
@@ -984,6 +985,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 else if (byte     == 'c')   // continue
                 {
                     action         = INPUT_CONTINUE;
+                }
+                else if (byte     == 'd')   // display
+                {
+                    action         = INPUT_DISPLAY;
                 }
                 else if (byte     == 'i')   // ignore
                 {
@@ -1299,18 +1304,19 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     byte            = *(string + match[1].rm_so + 2);
                     if (byte       == 'b')
                     {
-                        tmp         = bpoint;
+                        list        = &bpoint;
                     }
                     else if (byte  == 'd')
                     {
-                        tmp         = dpoint;
+                        list        = &dpoint;
                     }
                     else if (byte  == 'l')
                     {
-                        tmp         = lpoint;
+                        list        = &lpoint;
                     }
 
                     count           = 0;
+                    tmp             = *list;
                     while (tmp     != NULL)
                     {
                         if (count  == value)
@@ -1321,19 +1327,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         tmp         = tmp -> next;
                     }
 
-                    if (byte       == 'b')
-                    {
-                        tmp         = list_grab (&bpoint, tmp);
-                    }
-                    else if (byte  == 'd')
-                    {
-                        tmp         = list_grab (&dpoint, tmp);
-                    }
-                    else if (byte  == 'l')
-                    {
-                        tmp         = list_grab (&lpoint, tmp);
-                    }
-
+                    tmp             = list_grab (list, tmp);
                     if (tmp        != NULL)
                     {
                         free (tmp);
