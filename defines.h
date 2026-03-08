@@ -89,6 +89,7 @@
 #define  INPUT_IGNORE            16
 #define  INPUT_REPLACE           17
 #define  INPUT_SET               18
+#define  INPUT_UNDO              19
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A

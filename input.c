@@ -872,8 +872,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // declare and initialize variables
     //
-    linked_l   *btmp               = NULL;
     linked_l   *ltmp               = NULL;
+    linked_l   *tmp                = NULL;
     int32_t     check              = 0;
     int32_t     count              = 0;
     int32_t     value              = 0;
@@ -969,23 +969,51 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
             if (index             == 0) // single-word command
             {
                 byte               = *(string + match[1].rm_so);
-                if (byte          == 'c')   // continue
+                if (byte          == 'b')   // break
+                {
+                    tmp            = bpoint;
+                    count          = 0;
+                    while (tmp    != NULL)
+                    {
+                        fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> list -> raw);
+                        tmp        = tmp -> next;
+                        count      = count + 1;
+                    }
+                    action         = INPUT_BREAK;
+                }
+                else if (byte     == 'c')   // continue
                 {
                     action         = INPUT_CONTINUE;
                 }
-                else if (byte     == 'i') // ignore
+                else if (byte     == 'i')   // ignore
                 {
                     action         = INPUT_IGNORE;
                 }
-                else if (byte     == 'n') // next
+                else if (byte     == 'l')   // labels
+                {
+                    ltmp           = lpoint;
+                    count          = 0;
+                    while (ltmp   != NULL)
+                    {
+                        if (ltmp -> label != NULL)
+                        {
+                            fprintf (stdout, "[%u] %s -> 0x%.8X\n",
+                                    count, ltmp -> label, ltmp -> list -> raw);
+                        }
+                        ltmp       = ltmp -> next;
+                        count      = count + 1;
+                    }
+                    action         = INPUT_LABEL;
+                }
+                else if (byte     == 'n')   // next
                 {
                     action         = INPUT_NEXT;
                 }
-                else if (byte     == 's') // step
+                else if (byte     == 's')   // step
                 {
                     action         = INPUT_STEP;
                 }
-                else if (byte     == 'h') // help
+                else if (byte     == 'h')   // help
                 {
                     action         = INPUT_HELP;
                 }
@@ -1168,8 +1196,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     {
                         fprintf (debug, "BREAK adding the offset '%s'\n", token);
                         value              = strtol (token, NULL, 16);
-                        btmp               = listnode (LIST_MEM, value);
-                        bpoint             = list_add (bpoint, btmp);
+                        tmp                = listnode (LIST_MEM, value);
+                        bpoint             = list_add (bpoint, tmp);
                     }
                     else // not a memory address (assuming label)
                     {
@@ -1183,8 +1211,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 {
                                     fprintf (debug, "BREAK adding the label '%s'\n", ltmp -> label);
                                     fprintf (debug, "adding 0x%.8X to the list\n", ltmp -> list -> i32);
-                                    btmp       = listnode (LIST_MEM, ltmp -> list -> i32);
-                                    bpoint     = list_add (bpoint, btmp);
+                                    tmp        = listnode (LIST_MEM, ltmp -> list -> i32);
+                                    bpoint     = list_add (bpoint, tmp);
                                 }
                             }
                             ltmp           = ltmp -> next;
@@ -1260,6 +1288,56 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             break;
                         }
+                    }
+                }
+                else if (byte      == 'u') // un-something
+                {
+                    action          = INPUT_UNDO;
+                    token           = strtok ((string + match[2].rm_so), " ");
+
+                    value           = strtol (token, NULL, 10);
+                    byte            = *(string + match[1].rm_so + 2);
+                    if (byte       == 'b')
+                    {
+                        tmp         = bpoint;
+                    }
+                    else if (byte  == 'd')
+                    {
+                        tmp         = dpoint;
+                    }
+                    else if (byte  == 'l')
+                    {
+                        tmp         = lpoint;
+                    }
+
+                    count           = 0;
+                    while (tmp     != NULL)
+                    {
+                        if (count  == value)
+                        {
+                            break;
+                        }
+                        count       = count + 1;
+                        tmp         = tmp -> next;
+                    }
+
+                    if (byte       == 'b')
+                    {
+                        tmp         = list_grab (&bpoint, tmp);
+                    }
+                    else if (byte  == 'd')
+                    {
+                        tmp         = list_grab (&dpoint, tmp);
+                    }
+                    else if (byte  == 'l')
+                    {
+                        tmp         = list_grab (&lpoint, tmp);
+                    }
+
+                    if (tmp        != NULL)
+                    {
+                        free (tmp);
+                        tmp         = NULL;
                     }
                 }
             }
@@ -1427,33 +1505,18 @@ uint8_t  prompt (uint32_t  word)
     switch (action)
     {
         case INPUT_BREAK:
+        case INPUT_LABEL:
+        case INPUT_REPLACE:
+        case INPUT_SET:
+        case INPUT_UNDO:
             processflag                 = FALSE;
             action                      = INPUT_INIT;
             break;
 
         case INPUT_CONTINUE:
+        case INPUT_IGNORE:
             processflag                 = TRUE;
             runflag                     = TRUE;
-            break;
-
-        case INPUT_IGNORE:
-            ignoreflag                  = TRUE;
-            processflag                 = TRUE;
-            break;
-
-        case INPUT_SET:
-            processflag                 = FALSE;
-            action                      = INPUT_INIT;
-            break;
-
-        case INPUT_REPLACE:
-            processflag                 = FALSE;
-            action                      = INPUT_INIT;
-            break;
-
-        case INPUT_LABEL:
-            processflag                 = FALSE;
-            action                      = INPUT_INIT;
             break;
 
         case INPUT_PRINT:
@@ -1667,6 +1730,10 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "    deref:  true/false  -   set deref addr\n");
             fprintf (stdout, "    I[PRV]: 0x0ADDRESS  -   set system register\n");
             fprintf (stdout, "    R#:     0xTHEVALUE  -   set register to value\n");
+            fprintf (stdout, "  (u)nXYZ               - remove item from list\n");
+            fprintf (stdout, "    break               -   remove breakpoint #\n");
+            fprintf (stdout, "    display             -   remove displaypoint #\n");
+            fprintf (stdout, "    label               -   remove label #\n");
             fprintf (stdout, "  (h)elp/(?)            - display this help\n");
             fprintf (stdout, "  (q)uit                - exit the simulator\n");
             action                     = INPUT_INIT;
