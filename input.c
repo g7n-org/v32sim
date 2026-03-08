@@ -872,8 +872,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // declare and initialize variables
     //
-    display_l  *btmp               = NULL;
-    display_l  *ltmp               = NULL;
+    linked_l   *btmp               = NULL;
+    linked_l   *ltmp               = NULL;
     int32_t     check              = 0;
     int32_t     count              = 0;
     int32_t     value              = 0;
@@ -1168,8 +1168,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     {
                         fprintf (debug, "BREAK adding the offset '%s'\n", token);
                         value              = strtol (token, NULL, 16);
-                        btmp               = newdispnode (LIST_MEM, value);
-                        bpoint             = display_add (bpoint, btmp);
+                        btmp               = listnode (LIST_MEM, value);
+                        bpoint             = list_add (bpoint, btmp);
                     }
                     else // not a memory address (assuming label)
                     {
@@ -1183,8 +1183,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 {
                                     fprintf (debug, "BREAK adding the label '%s'\n", ltmp -> label);
                                     fprintf (debug, "adding 0x%.8X to the list\n", ltmp -> list -> i32);
-                                    btmp       = newdispnode (LIST_MEM, ltmp -> list -> i32);
-                                    bpoint     = display_add (bpoint, btmp);
+                                    btmp       = listnode (LIST_MEM, ltmp -> list -> i32);
+                                    bpoint     = list_add (bpoint, btmp);
                                 }
                             }
                             ltmp           = ltmp -> next;
@@ -1227,13 +1227,13 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     result          = parse_token (token, *(pattern+2), PARSE_MEMORY);
                     fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
                     value           = strtol (token, NULL, 16);
-                    ltmp            = newdispnode (LIST_MEM, value);
+                    ltmp            = listnode (LIST_MEM, value);
                     token_label     = strtok ((string + match[3].rm_so), " ");
                     fprintf (debug, "[label] token_label: '%s'\n", token_label);
                     value           = sizeof (int8_t) * strlen (token_label) + 1;
                     ltmp -> label   = (int8_t *) malloc (value);
                     strcpy (ltmp -> label, token_label);
-                    lpoint          = display_add (lpoint, ltmp);
+                    lpoint          = list_add (lpoint, ltmp);
                 }
                 else if (byte      == 'p') // print
                 {
@@ -1358,7 +1358,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 
 uint8_t  prompt (uint32_t  word)
 {
-    display_l *dtmp                     = NULL;
+    linked_l  *dtmp                     = NULL;
     int32_t    index                    = 0;
     int32_t    value                    = 0;
     size_t     len                      = 0;
@@ -1546,11 +1546,11 @@ uint8_t  prompt (uint32_t  word)
                     value              = strtol (arg, NULL, 16);
                     if (deref_flag    == TRUE)
                     {
-                        dtmp           = newdispnode (LIST_MEM_DEREF, value);
+                        dtmp           = listnode (LIST_MEM_DEREF, value);
                     }
                     else
                     {
-                        dtmp           = newdispnode (LIST_MEM,       value);
+                        dtmp           = listnode (LIST_MEM,       value);
                     }
 
                     if (token_label   != NULL)
@@ -1559,7 +1559,7 @@ uint8_t  prompt (uint32_t  word)
                         dtmp -> label  = (int8_t *) malloc (value);
                         strcpy (dtmp -> label, token_label);
                     }
-                    dpoint             = display_add (dpoint, dtmp);
+                    dpoint             = list_add (dpoint, dtmp);
                     break;
 
                 case PARSE_REGISTERS:
@@ -1567,8 +1567,8 @@ uint8_t  prompt (uint32_t  word)
                          index        <= 15;
                          index         = index + 1)
                     {
-                        dtmp           = newdispnode (LIST_REG, index);
-                        dpoint         = display_add (dpoint, dtmp);
+                        dtmp           = listnode (LIST_REG, index);
+                        dpoint         = list_add (dpoint, dtmp);
                     }
                     break;
 
@@ -1583,11 +1583,11 @@ uint8_t  prompt (uint32_t  word)
 
                     if (deref_flag    == TRUE)
                     {
-                        dtmp           = newdispnode (LIST_REG_DEREF, token_type);
+                        dtmp           = listnode (LIST_REG_DEREF, token_type);
                     }
                     else
                     {
-                        dtmp           = newdispnode (LIST_REG, token_type);
+                        dtmp           = listnode (LIST_REG, token_type);
                     }
 
                     if (token_label   != NULL)
@@ -1596,20 +1596,20 @@ uint8_t  prompt (uint32_t  word)
                         dtmp -> label  = (int8_t *) malloc (value);
                         strcpy (dtmp -> label, token_label);
                     }
-                    dpoint             = display_add (dpoint, dtmp);
+                    dpoint             = list_add (dpoint, dtmp);
                     break;
 
                 case PARSE_IOPORT:
                     arg                = strtok ((input+2), " ");
                     value              = strtol (arg, NULL, 16);
-                    dtmp               = newdispnode (LIST_IOP, value);
+                    dtmp               = listnode (LIST_IOP, value);
                     if (token_label   != NULL)
                     {
                         value          = sizeof (int8_t) * strlen (token_label) + 1;
                         dtmp -> label  = (int8_t *) malloc (value);
                         strcpy (dtmp -> label, token_label);
                     }
-                    dpoint             = display_add (dpoint, dtmp);
+                    dpoint             = list_add (dpoint, dtmp);
                     break;
             }
             lastaction                 = INPUT_NONE;
@@ -1644,6 +1644,7 @@ uint8_t  prompt (uint32_t  word)
             break;
 
         case INPUT_HELP:
+            fprintf (stdout, "  (b)reak 0xMEM|LABEL   - set breakpoint\n");
             fprintf (stdout, "  (c)ontinue            - resume execution\n");
             fprintf (stdout, "  (p)rint XYZ           - one-time display of XYZ\n");
             fprintf (stdout, "  (d)isplay XYZ LABEL   - add displaylist item:\n");
@@ -1678,16 +1679,16 @@ uint8_t  prompt (uint32_t  word)
 
 uint32_t  load_labels (uint8_t *filename)
 {
-    display_l *ltmp                    = NULL;
-    FILE      *fptr                    = NULL;
-    int32_t    index                   = 0;
-    int32_t    value                   = 0;
-    uint32_t   offset                  = 0;
-    uint32_t   line_number             = 0;
-    uint32_t   tally                   = 0;
-    uint8_t    input[128];
-    uint8_t   *input_string            = NULL;
-    uint8_t    token[128];
+    linked_l *ltmp                     = NULL;
+    FILE     *fptr                     = NULL;
+    int32_t   index                    = 0;
+    int32_t   value                    = 0;
+    uint32_t  offset                   = 0;
+    uint32_t  line_number              = 0;
+    uint32_t  tally                    = 0;
+    uint8_t   input[128];
+    uint8_t  *input_string             = NULL;
+    uint8_t   token[128];
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1772,7 +1773,7 @@ uint32_t  load_labels (uint8_t *filename)
                 //fprintf (stdout, "label:       '%s'\n", input_string);
 
                 //fprintf (stdout, "offset: 0x%.8X, line number: %u, label: '%s'\n", offset, line_number, input_string);
-                ltmp                   = newdispnode (LIST_MEM, offset);
+                ltmp                   = listnode (LIST_MEM, offset);
                 ltmp -> number         = line_number;
                 if (input_string      != NULL)
                 {
@@ -1780,7 +1781,7 @@ uint32_t  load_labels (uint8_t *filename)
                     ltmp -> label      = (int8_t *) malloc (value);
                     strcpy (ltmp -> label, input_string);
                 }
-                lpoint                 = display_add (lpoint, ltmp);
+                lpoint                 = list_add (lpoint, ltmp);
                 tally                  = tally + 1;
             }
             //fprintf (stdout, "EOF encountered\n");
@@ -1793,14 +1794,14 @@ uint32_t  load_labels (uint8_t *filename)
 
 void load_command (void)
 {
-    display_l *dtmp                    = NULL;
-    FILE      *fptr                    = NULL;
-    int32_t    index                   = 0;
-    int32_t    value                   = 0;
-    uint8_t   *arg                     = NULL;
-    uint8_t    deref_flag              = FALSE;
-    uint8_t    input[64];
-    uint8_t    token_type              = 0;
+    linked_l *dtmp                     = NULL;
+    FILE     *fptr                     = NULL;
+    int32_t   index                    = 0;
+    int32_t   value                    = 0;
+    uint8_t  *arg                      = NULL;
+    uint8_t   deref_flag               = FALSE;
+    uint8_t   input[64];
+    uint8_t   token_type               = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1855,11 +1856,11 @@ void load_command (void)
                             value              = strtol (arg, NULL, 16);
                             if (deref_flag    == TRUE)
                             {
-                                dtmp           = newdispnode (LIST_MEM_DEREF, value);
+                                dtmp           = listnode (LIST_MEM_DEREF, value);
                             }
                             else
                             {
-                                dtmp           = newdispnode (LIST_MEM,       value);
+                                dtmp           = listnode (LIST_MEM,       value);
                             }
                             if (token_label   != NULL)
                             {
@@ -1867,7 +1868,7 @@ void load_command (void)
                                 dtmp -> label  = (int8_t *) malloc (value);
                                 strcpy (dtmp -> label, token_label);
                             }
-                            dpoint             = display_add (dpoint, dtmp);
+                            dpoint             = list_add (dpoint, dtmp);
                             break;
 
                         case PARSE_REGISTERS:
@@ -1875,8 +1876,8 @@ void load_command (void)
                                  index        <= 15;
                                  index         = index + 1)
                             {
-                                dtmp           = newdispnode (LIST_REG, index);
-                                dpoint         = display_add (dpoint, dtmp);
+                                dtmp           = listnode (LIST_REG, index);
+                                dpoint         = list_add (dpoint, dtmp);
                             }
                             break;
 
@@ -1892,11 +1893,11 @@ void load_command (void)
                             token_type         = token_type & 0x0000001F;
                             if (deref_flag    == TRUE)
                             {
-                                dtmp           = newdispnode (LIST_REG_DEREF, token_type);
+                                dtmp           = listnode (LIST_REG_DEREF, token_type);
                             }
                             else
                             {
-                                dtmp           = newdispnode (LIST_REG, token_type);
+                                dtmp           = listnode (LIST_REG, token_type);
                             }
 
                             if (token_label   != NULL)
@@ -1905,20 +1906,20 @@ void load_command (void)
                                 dtmp -> label  = (int8_t *) malloc (value);
                                 strcpy (dtmp -> label, token_label);
                             }
-                            dpoint             = display_add (dpoint, dtmp);
+                            dpoint             = list_add (dpoint, dtmp);
                             break;
 
                         case PARSE_IOPORT:
                             arg                = strtok ((input+2), " ");
                             value              = strtol (arg, NULL, 16);
-                            dtmp               = newdispnode (LIST_IOP, value);
+                            dtmp               = listnode (LIST_IOP, value);
                             if (token_label   != NULL)
                             {
                                 value          = sizeof (int8_t) * strlen (token_label) + 1;
                                 dtmp -> label  = (int8_t *) malloc (value);
                                 strcpy (dtmp -> label, token_label);
                             }
-                            dpoint             = display_add (dpoint, dtmp);
+                            dpoint             = list_add (dpoint, dtmp);
                             break;
                     }
                     break;

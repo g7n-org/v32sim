@@ -4,82 +4,88 @@
 //
 // global variables - important file and memory/register resources
 //
-FILE      *display;
-FILE      *devnull;
-FILE      *debug;
-FILE      *verbose;
-uint8_t   *data;
-uint8_t   *destination;
-uint8_t   *source;
-int8_t    *biosfile;
-int8_t    *cartfile;
-int8_t    *commandfile;
-data_t    *reg;
-int8_t    *token_label;
+FILE     *display;
+FILE     *devnull;
+FILE     *debug;
+FILE     *verbose;
+uint8_t  *data;
+uint8_t  *destination;
+uint8_t  *source;
+int8_t   *biosfile;
+int8_t   *cartfile;
+int8_t   *commandfile;
+data_t   *reg;
+int8_t   *token_label;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // Variables related to IOPorts and memory
 //
-data_t   **ioports;
-mem_t     *memory;
-int8_t     sys_error;
-uint8_t    sys_reg_show;
+data_t  **ioports;
+mem_t    *memory;
+int8_t    sys_error;
+uint8_t   sys_reg_show;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // flags
 //
-uint8_t    action;
-uint8_t    runflag;
-uint8_t    colorflag;
-uint8_t    branchflag;
-uint8_t    ignoreflag;
-uint8_t    derefaddr;
-uint8_t    haltflag;
-uint8_t    waitflag;
-uint8_t    wordsize;
-uint32_t   rom_offset;
-uint32_t   seek_word;
-uint32_t   watch_word;
-display_l *bpoint;
-display_l *dpoint;
-display_l *lpoint;
+uint8_t   action;
+uint8_t   debugflag;
+uint8_t   runflag;
+uint8_t   colorflag;
+uint8_t   branchflag;
+uint8_t   ignoreflag;
+uint8_t   derefaddr;
+uint8_t   haltflag;
+uint8_t   waitflag;
+uint8_t   wordsize;
+uint32_t  rom_offset;
+uint32_t  seek_word;
+uint32_t  watch_word;
+linked_l *bpoint;
+linked_l *dpoint;
+linked_l *lpoint;
+linked_l *tpoint;
 
-int32_t    main (int32_t  argc, uint8_t **argv)
+int32_t   main (int32_t  argc, uint8_t **argv)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // declare and initialize variables
     //
-    size_t     len                     = 0;
-    uint8_t    decodeflags             = FLAG_NONE;
-    uint8_t    processflag             = FALSE;
-    uint32_t   vbinoffset              = 0x00000000;
-    uint32_t   vtexoffset              = 0x00000000;
-    uint32_t   vsndoffset              = 0x00000000;
+    linked_l *btmp                  = NULL;
+    linked_l *tmp                   = NULL;
+    size_t    len                   = 0;
+    uint8_t   decodeflags           = FLAG_NONE;
+    uint8_t   processflag           = FALSE;
+    uint32_t  vbinoffset            = 0x00000000;
+    uint32_t  vtexoffset            = 0x00000000;
+    uint32_t  vsndoffset            = 0x00000000;
+    uint32_t  value                 = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // initialize variables
     //
-    biosfile                           = NULL;
-    cartfile                           = NULL;
-    commandfile                        = NULL;
-    rom_offset                         = BIOS_START_OFFSET;
-    branchflag                         = FALSE;
-    runflag                            = FALSE;
-    colorflag                          = FALSE;
-    seek_word                          = 0xFFFFFFFF;
-    watch_word                         = 0x00000000;
-    wordsize                           = 4;
-    derefaddr                          = FALSE;
-    haltflag                           = FALSE;
-    waitflag                           = FALSE;
-    sys_error                          = ERROR_NONE;
-    sys_reg_show                       = FALSE;
-    action                             = INPUT_INIT;
-    token_label                        = NULL;
+    biosfile                        = NULL;
+    cartfile                        = NULL;
+    commandfile                     = NULL;
+    rom_offset                      = BIOS_START_OFFSET;
+    branchflag                      = FALSE;
+    debugflag                       = TRUE;
+    runflag                         = FALSE;
+    colorflag                       = FALSE;
+    seek_word                       = 0xFFFFFFFF;
+    watch_word                      = 0x00000000;
+    wordsize                        = 4;
+    derefaddr                       = FALSE;
+    haltflag                        = FALSE;
+    waitflag                        = FALSE;
+    sys_error                       = ERROR_NONE;
+    sys_reg_show                    = FALSE;
+    action                          = INPUT_INIT;
+    token_label                     = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -91,8 +97,8 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // Open /dev/null
     //
-    devnull                            = fopen ("/dev/null", "w");
-    if (devnull                       == NULL)
+    devnull                         = fopen ("/dev/null", "w");
+    if (devnull                    == NULL)
     {
         fprintf (stderr, "[error] could not open '/dev/null' for writing!\n");
         exit (2);
@@ -102,25 +108,25 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // if verbose has not been redirected, point it at devnull
     //
-    if (verbose                       == NULL)
+    if (verbose                    == NULL)
     {
-        verbose                        = devnull;
+        verbose                     = devnull;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // if debug has not been redirected, point it at devnull
     //
-    if (debug                         == NULL)
+    if (debug                      == NULL)
     {
-        debug                          = devnull;
+        debug                       = devnull;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Open the indicated V32 file
     //
-    if (cartfile                      == NULL)
+    if (cartfile                   == NULL)
     {
         fprintf (stderr, "[ERROR] Must specify Vircon32 cartridge file!\n");
         exit (NO_CART_ERROR);
@@ -130,19 +136,17 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // Set up 'biosfile'
     //
-    if (biosfile                      == NULL)
+    if (biosfile                   == NULL)
     {
-        len                            = strlen (BIOS_DEFAULT_PATH) + 1;
-        biosfile                       = (int8_t *) malloc (len);
-        if (biosfile                  == NULL)
+        len                         = strlen (BIOS_DEFAULT_PATH) + 1;
+        biosfile                    = (int8_t *) malloc (len);
+        if (biosfile               == NULL)
         {
             fprintf (stderr, "[ERROR] Allocation for '%s' failed\n", "biosfile");
             exit (STRING_ALLOC_FAIL);
         }
         strcpy (biosfile, BIOS_DEFAULT_PATH);
     }
-
-	load_labels (biosfile);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -151,11 +155,11 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     // "[RXX+0x12345678],\0" <- 17 bytes of string data + 1 NULL terminator
     // "0123456789ABCDEF10"
     //
-    len                                = sizeof (uint8_t) * 18;
-    destination                        = (uint8_t *) malloc (len);
-    source                             = (uint8_t *) malloc (len);
-    if ((destination                  == NULL) ||
-        (source                       == NULL))
+    len                             = sizeof (uint8_t) * 18;
+    destination                     = (uint8_t *) malloc (len);
+    source                          = (uint8_t *) malloc (len);
+    if ((destination               == NULL) ||
+        (source                    == NULL))
     {
         fprintf (stderr, "[ERROR] Allocation of string failed\n");
         exit (STRING_ALLOC_FAIL);
@@ -165,9 +169,9 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // This is merely the word of data being read in, so wordsize bytes
     //
-    len                                = sizeof (uint8_t) * wordsize;
-    data                               = (uint8_t *) malloc (len);
-    if (data                          == NULL)
+    len                             = sizeof (uint8_t) * wordsize;
+    data                            = (uint8_t *) malloc (len);
+    if (data                       == NULL)
     {
         fprintf (stderr, "[ERROR] Allocation of string '%s' failed\n", data);
         exit (STRING_ALLOC_FAIL);
@@ -184,8 +188,31 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     // Allocate Vircon32 memory regions (RAM, BIOS, CART, MEMC)
     //
     init_memory ();
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Initialize BIOS, optionally loading any debug file data
+    //
     load_memory (V32_PAGE_BIOS, biosfile); // load BIOS file contents into memory
+    if (debugflag                  == TRUE)
+    {
+        load_labels (biosfile);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Initialize CART, optionally loading any debug file data
+    //
     load_memory (V32_PAGE_CART, cartfile); // load CART file contents into memory
+    if (debugflag                  == TRUE)
+    {
+        load_labels (cartfile);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Initialize MEMC
+    //
     //load_memory (V32_PAGE_MEMC, memcfile); // load MEMC file contents into memory
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -198,10 +225,51 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     //
     // Load commands from command-file
     //
-    if (commandfile                   != NULL)
+    if (commandfile                != NULL)
     {
-        fprintf (stdout, "LOADING COMMANDS\n");
+        fprintf (verbose, "LOADING COMMAND-FILE\n");
         load_command ();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Process breakpoint waitlist (tpoint), if any
+    //
+    if (tpoint                     != NULL)
+    {
+        tmp                         = tpoint;
+        while (tmp                 != NULL)
+        {
+            if (tmp -> label       == NULL) // not a label: offset
+            {
+                value               = tmp -> list -> raw;
+                btmp                = find_value (bpoint, value);
+                if (btmp           == NULL) // not an existing breakpoint
+                {
+                    btmp            = list_grab (&tpoint, btmp);
+                    fprintf (debug, "[main] BREAKing at offset 0x%.8X\n", value);
+                    bpoint          = list_add (bpoint, btmp);
+                }
+            }
+            else // label
+            {
+                btmp                = find_label (lpoint, tmp  -> label);
+                if (btmp           != NULL)
+                {
+                    value           = btmp -> list -> raw;
+                    btmp            = find_value (bpoint, value);
+                    if (btmp       == NULL) // not an existing breakpoint
+                    {
+                        btmp        = list_grab (&tpoint, btmp);
+                        fprintf (debug, "[main] BREAKing at label: '%s'\n", btmp -> label);
+                        fprintf (debug, "[main] BREAKing at offset 0x%.8X\n", value);
+                        bpoint      = list_add (bpoint, btmp);
+                    }
+                }
+            }
+
+            tmp                     = tmp -> next;
+        }
     }
 
     /*
@@ -219,25 +287,35 @@ int32_t    main (int32_t  argc, uint8_t **argv)
     {
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // Check for delayed break to single-step via seek_word (argument)
+        // Check for breakpoint
         //
-        if (rom_offset                == seek_word)
+        btmp                           = bpoint;
+        while (btmp                   != NULL)
         {
-            if (colorflag             == TRUE)
+            value                      = btmp -> list -> raw;
+            if (rom_offset            == value)
             {
-                fprintf (stdout, "\e[1;31m");
+                if (colorflag         == TRUE)
+                {
+                    fprintf (stdout, "\e[1;31m");
+                }
+                fprintf (stdout, "[breakpoint] triggered on 0x%.8X\n", value);
+                if (colorflag         == TRUE)
+                {
+                    fprintf (stdout, "\e[m");
+                }
+                runflag                = FALSE;
             }
-            fprintf (stdout, "[seekword] trigger encountered (0x%.8X)\n", seek_word);
-            if (colorflag             == TRUE)
-            {
-                fprintf (stdout, "\e[m");
-            }
-            runflag                    = FALSE;
+            btmp                       = btmp -> next;
         }
 
         REG(IP)                        = rom_offset;
         REG(IR)                        = IMEMGET(REG(IP), FALSE); // current instruction
 
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Check for instruction opcode (watchfor trigger)
+        //
         if (watch_word                == REG(IR))
         {
             if (colorflag             == TRUE)
@@ -249,6 +327,15 @@ int32_t    main (int32_t  argc, uint8_t **argv)
             {
                 fprintf (stdout, "\e[m");
             }
+            runflag                    = FALSE;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Check for delayed break to single-step via seek_word (argument)
+        //
+        if (rom_offset                == seek_word)
+        {
             runflag                    = FALSE;
         }
 

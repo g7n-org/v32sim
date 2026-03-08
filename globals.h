@@ -16,15 +16,15 @@ union  word_type
 };
 typedef union word_type word_t;
 
-typedef struct display_list display_l;
-struct display_list
+typedef struct linked_list linked_l;
+struct linked_list
 {
     int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    space;
-	uint32_t   number;
+    uint32_t   number;
     word_t    *list;
-    display_l *next;
+    linked_l *next;
 };
 
 struct data_type
@@ -69,6 +69,7 @@ extern uint8_t    sys_reg_show;
 
 extern uint8_t    action;
 extern uint8_t   *data;
+extern uint8_t    debugflag;
 extern uint8_t    runflag;
 extern uint8_t    colorflag;
 extern uint8_t    branchflag;
@@ -80,52 +81,56 @@ extern uint8_t    wordsize;
 extern uint32_t   rom_offset;
 extern uint32_t   seek_word;
 extern uint32_t   watch_word;
-extern display_l *bpoint;
-extern display_l *dpoint;
-extern display_l *lpoint;
+extern linked_l *bpoint;
+extern linked_l *dpoint;
+extern linked_l *lpoint;
+extern linked_l *tpoint;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // Function prototypes
 //
-size_t     get_filesize   (int8_t *);
-uint32_t   get_word       (FILE *);
-void       put_word       (uint32_t,    uint8_t);
-void       decode         (uint32_t,    uint32_t,    float,    uint8_t);
-void       decode_display (uint32_t,    uint32_t,    float,    uint8_t);
-void       decode_process (uint32_t,    uint32_t,    float,    uint8_t);
-void       init_ioports   (void);                              // initialize IOPorts
-int32_t    ioports_get    (uint16_t,    uint8_t);              // get value from port
-void       ioports_set    (uint16_t,    int32_t,     uint8_t); // set value to port
-void       init_memory    (void);                              // initialize memory
-void       load_command   (void);
-uint32_t   load_labels    (uint8_t *);
-void       load_memory    (uint32_t,    int8_t *);             // load file into memory
-uint8_t    memory_chk     (uint32_t);
-word_t    *memory_get     (uint32_t,    uint8_t);              // get value from memory
-void       memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory
-void       init_registers (void);
-word_t    *reg_get        (uint8_t,     uint8_t);
-void       reg_set        (uint8_t,     uint32_t,    uint8_t);
-word_t    *new_word_i32   (uint32_t *,  uint8_t);
-void       update_cycle   (void);                              // updating CycleCounter
-void       update_frame   (void);                              // updating FrameCounter
-uint32_t   word2int       (word_t *);
-float      word2float     (word_t *);
-display_l *newdispnode    (uint8_t,     uint32_t);
-display_l *display_add    (display_l *, display_l *);
-void       displayshow    (display_l *, uint8_t);
-void       show_sysregs   (void);
-void       process_args   (int32_t,     int8_t **);
-void       usage          (int8_t  *);
-uint8_t   *parse_deref    (uint8_t *,   uint8_t *);
-uint8_t    parse_token    (uint8_t *,   uint8_t *,   uint8_t);
-uint8_t    parse_memrange (uint8_t *);
-uint8_t    parse_imm      (uint8_t *);
-uint8_t    parse_reg      (uint8_t *);
-uint32_t   tokenize_asm   (uint8_t *);
-uint8_t    tokenize_input (uint8_t *,   uint8_t *);
-uint8_t   *get_input      (FILE *,      const uint8_t *);
-uint8_t    prompt         (uint32_t);
+size_t    get_filesize   (int8_t *);
+uint32_t  get_word       (FILE *);
+void      put_word       (uint32_t,    uint8_t);
+void      decode         (uint32_t,    uint32_t,    float,    uint8_t);
+void      decode_display (uint32_t,    uint32_t,    float,    uint8_t);
+void      decode_process (uint32_t,    uint32_t,    float,    uint8_t);
+void      init_ioports   (void);                             // initialize IOPorts
+int32_t   ioports_get    (uint16_t,    uint8_t);              // get value from port
+void      ioports_set    (uint16_t,    int32_t,     uint8_t); // set value to port
+void      init_memory    (void);                             // initialize memory
+void      load_command   (void);
+uint32_t  load_labels    (uint8_t *);
+void      load_memory    (uint32_t,    int8_t *);             // load file into memory
+uint8_t   memory_chk     (uint32_t);
+word_t   *memory_get     (uint32_t,    uint8_t);              // get value from memory
+void      memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory
+void      init_registers (void);
+word_t   *reg_get        (uint8_t,     uint8_t);
+void      reg_set        (uint8_t,     uint32_t,    uint8_t);
+word_t   *new_word_i32   (uint32_t *,  uint8_t);
+void      update_cycle   (void);                              // updating CycleCounter
+void      update_frame   (void);                              // updating FrameCounter
+uint32_t  word2int       (word_t *);
+float     word2float     (word_t *);
+linked_l *listnode       (uint8_t,     uint32_t);
+linked_l *list_add       (linked_l *,  linked_l *);
+linked_l *list_grab      (linked_l **, linked_l *);
+void      displayshow    (linked_l *,  uint8_t);
+void      show_sysregs   (void);
+void      process_args   (int32_t,     int8_t **);
+void      usage          (int8_t  *);
+uint8_t  *parse_deref    (uint8_t *,   uint8_t *);
+uint8_t   parse_token    (uint8_t *,   uint8_t *,   uint8_t);
+uint8_t   parse_memrange (uint8_t *);
+uint8_t   parse_imm      (uint8_t *);
+uint8_t   parse_reg      (uint8_t *);
+uint32_t  tokenize_asm   (uint8_t *);
+uint8_t   tokenize_input (uint8_t *,   uint8_t *);
+uint8_t  *get_input      (FILE *,      const uint8_t *);
+uint8_t   prompt         (uint32_t);
+linked_l *find_label     (linked_l *,  int8_t *);
+linked_l *find_value     (linked_l *,  uint32_t);
 
 #endif

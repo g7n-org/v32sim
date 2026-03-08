@@ -7,13 +7,13 @@ void  usage (int8_t *program)
     fprintf (stdout, "Mandatory arguments to long options are mandatory ");
     fprintf (stdout, "for short options too.\n\n");
     fprintf (stdout, " -B, --biosfile=FILE       load this BIOS V32 file as BIOS\n");
+    fprintf (stdout, " -b, --break=OFFSET|LABEL  set breakpoint at OFFSET/LABEL\n");
     fprintf (stdout, " -C, --command-file=FILE   load this file with sim commands\n");
     fprintf (stdout, " -c, --colors              enable colorized output\n");
     fprintf (stdout, " -d, --deref-addr          output address of dereference\n");
-    fprintf (stdout, " -D, --debug               enable debugging output\n");
     fprintf (stdout, " -E, --entry-point=OFFSET  set simulator entry point\n");
+    fprintf (stdout, " -n, --no-debug            do not process any debug files\n");
     fprintf (stdout, " -r, --run                 do not enable single-step mode\n");
-    fprintf (stdout, " -s, --seek-to=OFFSET      run until OFFSET is encountered\n");
     fprintf (stdout, " -w, --watch-for=OPCODE    run until OPCODE is encountered\n");
     fprintf (stdout, " -v, --verbose             enable more verbose output\n");
     fprintf (stdout, " -h, --help                display this information\n\n");

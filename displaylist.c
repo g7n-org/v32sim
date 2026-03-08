@@ -1,54 +1,8 @@
 #include "defines.h"
 
-display_l *newdispnode  (uint8_t  type, uint32_t  value)
+void       displayshow  (linked_l *list, uint8_t    flag)
 {
-    display_l *newnode          = (display_l *) malloc (sizeof (display_l) * 1);
-    if (newnode                == NULL)
-    {
-        fprintf (stderr, "[ERROR] Could not allocate memory for displaylist node!\n");
-        exit (LIST_ALLOC_FAIL);
-    }
-
-    newnode -> label            = NULL;
-    newnode -> type             = type;
-    newnode -> list             = (word_t *) malloc (sizeof (word_t) * 1);
-    newnode -> space            = 7;
-    newnode -> list -> raw      = value;
-    newnode -> next             = NULL;
-
-    fprintf (debug, "[newdispnode] type: %hhu, value: %u\n", newnode -> type, value);
-
-    return (newnode);
-}
-
-display_l *display_add  (display_l *list, display_l *node)
-{
-    display_l *tmp                       = NULL;
-
-    if (node                            != NULL)
-    {
-        node -> next                     = NULL;
-        if (list                        != NULL)
-        {
-            tmp                          = list;
-            while (tmp -> next          != NULL)
-            {
-                tmp                      = tmp -> next;
-            }
-
-            tmp -> next                  = node;
-        }
-        else
-        {
-            list                         = node;
-        }
-    }
-    return (list);
-}
-
-void       displayshow  (display_l *list, uint8_t    flag)
-{
-    display_l *dtmp                = NULL;
+    linked_l *dtmp                = NULL;
     uint32_t   count               = 0;
     uint32_t   value               = 0;
     word_t    *wtmp                = NULL;

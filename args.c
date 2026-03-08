@@ -2,8 +2,10 @@
 
 void       process_args (int32_t  argc, int8_t **argv)
 {
-    int32_t   opt                  = 0;
-    int32_t   option_index         = 0;
+    int32_t    opt                 = 0;
+    int32_t    option_index        = 0;
+    linked_l  *tmp                 = NULL;
+    uint32_t   value               = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -11,14 +13,14 @@ void       process_args (int32_t  argc, int8_t **argv)
     //
     struct option long_options[]   = {
        { "biosfile",       required_argument, 0, 'B' },
-       { "binary",         no_argument,       0, 'b' },
+       { "break",          required_argument, 0, 'b' },
        { "colors",         no_argument,       0, 'c' },
        { "command-file",   required_argument, 0, 'C' },
        { "deref-addr",     no_argument,       0, 'd' },
        { "debug",          no_argument,       0, 'D' },
        { "entry-point",    required_argument, 0, 'E' },
+       { "no-debug",       no_argument,       0, 'n' },
        { "run",            no_argument,       0, 'r' },
-       { "seek-to",        required_argument, 0, 's' },
        { "watch-for",      required_argument, 0, 'w' },
        { "verbose",        no_argument,       0, 'v' },
        { "help",           no_argument,       0, 'h' },
@@ -30,7 +32,7 @@ void       process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:bC:cdDE:rs:w:vh", long_options,
+                                                  "B:b:C:cdDE:nrw:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -41,7 +43,20 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
 
             case 'b':
-                //binaryflag         = 1;
+                value              = strtol (optarg, NULL, 16);
+                tmp                = listnode (LIST_MEM, value);
+                if (value         != 0) // offset provided
+                {
+                    fprintf (debug, "[arg] BREAK adding the offset '%s'\n", optarg);
+                }
+                else // assuming label
+                {
+                    fprintf (debug, "[arg] BREAK adding the label: '%s'\n", optarg);
+                    value          = sizeof (int8_t) * strlen (optarg) + 1;
+                    tmp -> label   = (int8_t *) malloc (value);
+                    strcpy (tmp -> label, optarg);
+                }
+                tpoint             = list_add (tpoint, tmp);
                 break;
 
             case 'C':
@@ -59,21 +74,20 @@ void       process_args (int32_t  argc, int8_t **argv)
                 }
                 break;
 
-            case 'E':
-                rom_offset         = strtol (optarg, NULL, 16);
-                break;
-
             case 'd':
                 derefaddr          = TRUE;
                 break;
 
-            case 'r':
-                runflag            = TRUE;
+            case 'E':
+                rom_offset         = strtol (optarg, NULL, 16);
                 break;
 
-            case 's':
+            case 'n':
+                debugflag          = FALSE;
+                break;
+
+            case 'r':
                 runflag            = TRUE;
-                seek_word          = strtol (optarg, NULL, 16);
                 break;
 
             case 'w':
@@ -93,14 +107,12 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:bC:cdDE:rs:w:vh", long_options,
+                                                  "B:b:C:cdDE:nrw:vh", long_options,
                                                   &option_index);
     }
 
     if (optind                    <  argc)
     {
-        //fprintf (verbose, "[optind] %u\n", optind);
-        //fprintf (verbose, "[argc]   %u\n", argc);
         cartfile                   = *(argv+optind);
     }
 }
