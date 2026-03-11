@@ -2,20 +2,19 @@
 
 linked_l *listnode (uint8_t  type, uint32_t  value)
 {
-    linked_l *newnode          = (linked_l *) malloc (sizeof (linked_l) * 1);
-    if (newnode                == NULL)
+    linked_l *newnode    = (linked_l *) malloc (sizeof (linked_l) * 1);
+    if (newnode         == NULL)
     {
         fprintf (stderr, "[ERROR] Could not allocate memory for linked list node!\n");
         exit (LIST_ALLOC_FAIL);
     }
 
-    newnode -> label            = NULL;
-    newnode -> type             = type;
-    newnode -> list             = (word_t *) malloc (sizeof (word_t) * 1);
-    newnode -> number           = 0;
-    newnode -> space            = 7;
-    newnode -> list -> raw      = value;
-    newnode -> next             = NULL;
+    newnode -> label     = NULL;
+    newnode -> type      = type;
+    newnode -> number    = 0;
+    newnode -> space     = 7;
+    newnode -> data.raw  = value;
+    newnode -> next      = NULL;
 
     fprintf (debug, "[listnode] type: %hhu, value: %u\n", newnode -> type, value);
 
@@ -77,17 +76,20 @@ linked_l *list_grab (linked_l **list, linked_l *node)
 
 linked_l *find_label (linked_l *list, int8_t *label)
 {
-    int32_t   check  = 0;
-    linked_l *tmp    = list;
+    int32_t   check       = 0;
+    linked_l *tmp         = list;
 
-    while (tmp      != NULL)
+    while (tmp           != NULL)
     {
-        check        = strncmp (tmp -> label, label, strlen (tmp -> label));
-        if (check   == 0)
+        if (tmp -> label != NULL)
         {
-            break;
+            check         = strncmp (tmp -> label, label, strlen (tmp -> label));
+            if (check    == 0)
+            {
+                break;
+            }
         }
-        tmp          = tmp -> next;
+        tmp               = tmp -> next;
     }
 
     return (tmp);
@@ -99,7 +101,7 @@ linked_l *find_value (linked_l *list, uint32_t  value)
 
     while (tmp                 != NULL)
     {
-        if (tmp -> list -> raw == value)
+        if (tmp -> data.raw == value)
         {
             break;
         }

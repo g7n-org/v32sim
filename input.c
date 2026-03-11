@@ -978,7 +978,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     count          = 0;
                     while (tmp    != NULL)
                     {
-                        fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> list -> raw);
+                        fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> data.raw);
                         tmp        = tmp -> next;
                         count      = count + 1;
                     }
@@ -1005,7 +1005,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         if (ltmp -> label != NULL)
                         {
                             fprintf (stdout, "[%u] %s -> 0x%.8X\n",
-                                    count, ltmp -> label, ltmp -> list -> raw);
+                                    count, ltmp -> label, ltmp -> data.raw);
                         }
                         ltmp       = ltmp -> next;
                         count      = count + 1;
@@ -1217,8 +1217,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 if (check     == 0) // existing label found in list
                                 {
                                     fprintf (debug, "BREAK adding the label '%s'\n", ltmp -> label);
-                                    fprintf (debug, "adding 0x%.8X to the list\n", ltmp -> list -> i32);
-                                    tmp        = listnode (LIST_MEM, ltmp -> list -> i32);
+                                    fprintf (debug, "adding 0x%.8X to the list\n", ltmp -> data.i32);
+                                    tmp        = listnode (LIST_MEM, ltmp -> data.i32);
                                     bpoint     = list_add (bpoint, tmp);
                                 }
                             }
@@ -1388,7 +1388,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 }
                                 else if (fmt   == FORMAT_BINARY)
                                 {
-                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x.8X (binary not yet implemented)\n",
+                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X (binary not yet implemented)\n",
                                             value, IMEMGET(value, FALSE),
                                             IMEMGET(IMEMGET(value, FALSE), FALSE));
                                 }

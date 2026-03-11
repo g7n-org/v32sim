@@ -23,7 +23,7 @@ struct linked_list
     uint8_t    type;
     uint8_t    space;
     uint32_t   number;
-    word_t    *list;
+    word_t     data;
     linked_l *next;
 };
 

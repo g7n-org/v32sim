@@ -89,12 +89,6 @@ int32_t   main (int32_t  argc, uint8_t **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Process command-line arguments
-    //
-    process_args ((int32_t) argc, (int8_t **) argv);
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
     // Open /dev/null
     //
     devnull                         = fopen ("/dev/null", "w");
@@ -121,6 +115,12 @@ int32_t   main (int32_t  argc, uint8_t **argv)
     {
         debug                       = devnull;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Process command-line arguments
+    //
+    process_args ((int32_t) argc, (int8_t **) argv);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -242,7 +242,7 @@ int32_t   main (int32_t  argc, uint8_t **argv)
         {
             if (tmp -> label       == NULL) // not a label: offset
             {
-                value               = tmp -> list -> raw;
+                value               = tmp -> data.raw;
                 btmp                = find_value (bpoint, value);
                 if (btmp           == NULL) // not an existing breakpoint
                 {
@@ -254,15 +254,16 @@ int32_t   main (int32_t  argc, uint8_t **argv)
             else // label
             {
                 btmp                = find_label (lpoint, tmp  -> label);
-                if (btmp           != NULL)
+                if (btmp           != NULL) // yes, match for label in label list
                 {
-                    value           = btmp -> list -> raw;
-                    btmp            = find_value (bpoint, value);
-                    if (btmp       == NULL) // not an existing breakpoint
+                    value           = btmp -> data.raw;
+                    btmp            = find_value (bpoint, value); // check offset in breaklist
+                    if (btmp       == NULL) // not an existing breakpoint in breaklist
                     {
-                        btmp        = list_grab (&tpoint, btmp);
+                        btmp        = list_grab (&tpoint, tmp);
+						btmp -> data.raw  = value;
                         fprintf (debug, "[main] BREAKing at label: '%s'\n", btmp -> label);
-                        fprintf (debug, "[main] BREAKing at offset 0x%.8X\n", value);
+                        fprintf (debug, "[main] BREAKing at offset 0x%.8X\n", btmp -> data.raw);
                         bpoint      = list_add (bpoint, btmp);
                     }
                 }
@@ -292,7 +293,7 @@ int32_t   main (int32_t  argc, uint8_t **argv)
         btmp                           = bpoint;
         while (btmp                   != NULL)
         {
-            value                      = btmp -> list -> raw;
+            value                      = btmp -> data.raw;
             if (rom_offset            == value)
             {
                 if (colorflag         == TRUE)

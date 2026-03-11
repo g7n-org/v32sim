@@ -68,10 +68,7 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
 
             case 'D':
-                if (debug         == NULL)
-                {
-                    debug          = stderr;
-                }
+				debug              = stderr;
                 break;
 
             case 'd':
@@ -96,10 +93,7 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
 
             case 'v':
-                if (verbose       == NULL)
-                {
-                    verbose        = stderr;
-                }
+				verbose            = stderr;
                 break;
 
             case 'h':

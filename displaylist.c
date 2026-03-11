@@ -13,7 +13,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
     while (dtmp                   != NULL)
     {
         fprintf (stdout, "[%2u]  ", count);
-        wtmp                       = dtmp -> list;
+        wtmp                       = &(dtmp -> data);
         switch (dtmp -> type)
         {
             case LIST_REG_DEREF:
