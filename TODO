@@ -43,9 +43,7 @@ Allow for:
   * `/x` - lowercase hexadecimal
   * `/X` - hexadecimal (default)
 
-On `print` and `display`.
-
-Currently works at the prompt for `p` (not `print`).
+Need to implement for `display`, prompt and command-files
 
 ## MEMORY RANGES
 
