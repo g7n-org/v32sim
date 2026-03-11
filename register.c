@@ -99,6 +99,22 @@ word_t *reg_get (uint8_t  id, uint8_t  sys_force)
     return (wptr);
 }
 
+int8_t *reg_get_name (uint8_t  id, uint8_t  sys_force)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize local variables
+    //
+    int8_t   *name          = NULL;
+
+    if (id                 <  NUM_REGISTERS)
+    {
+        name                = (int8_t *) &(reg+id) -> name;
+    }
+
+    return (name);
+}
+
 void  reg_set (uint8_t  id, uint32_t  value, uint8_t  sys_force)
 {
     ////////////////////////////////////////////////////////////////////////////////////

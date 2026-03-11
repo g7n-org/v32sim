@@ -311,7 +311,7 @@ int32_t   main (int32_t  argc, uint8_t **argv)
         }
 
         REG(IP)                        = rom_offset;
-        REG(IR)                        = IMEMGET(REG(IP), FALSE); // current instruction
+        REG(IR)                        = IMEMGET(REG(IP)); // current instruction
 
         ////////////////////////////////////////////////////////////////////////////////
         //
@@ -342,7 +342,7 @@ int32_t   main (int32_t  argc, uint8_t **argv)
 
         if ((REG(IR) & IMMVAL_MASK)   == IMMVAL_MASK)
         {
-            REG(IV)                    = IMEMGET(REG(IP) + 1, FALSE);
+            REG(IV)                    = IMEMGET(REG(IP) + 1);
             decodeflags                = FLAG_IMMEDIATE;
         }
         else

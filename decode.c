@@ -268,7 +268,7 @@ void  decode_display (uint32_t  instruction,
                     if (derefaddr     == TRUE)
                     {
                         fprintf (debug, "REG(src): 0x%.8X\n", REG(src));
-                        fprintf (debug, "[SRCREG]: 0x%.8X\n", IMEMGET(REG(src), FALSE));
+                        fprintf (debug, "[SRCREG]: 0x%.8X\n", IMEMGET(REG(src)));
                     }
                     break;
 
@@ -287,7 +287,7 @@ void  decode_display (uint32_t  instruction,
                     if (derefaddr     == TRUE)
                     {
                         fprintf (debug, "value: 0x%.8X\n", value);
-                        fprintf (debug, "[SRCREG+Imm]: 0x%.8X\n", IMEMGET(value, FALSE));
+                        fprintf (debug, "[SRCREG+Imm]: 0x%.8X\n", IMEMGET(value));
                     }
                     break;
 
@@ -436,7 +436,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case RET:
-            REG(IP)         = IMEMGET (REG(SP), FALSE);
+            REG(IP)         = IMEMGET (REG(SP));
             rom_offset      = REG(IP);  // POP REG(IP) off stack
             REG(SP)         = REG(SP) + 1;
             branchflag      = TRUE;
@@ -547,37 +547,37 @@ void  decode_process (uint32_t  instruction,
                 case 02: // MOV DSTREG, [Immediate]
                     fprintf (debug, "[decode_process] MOV(2): memory_get (0x%.8X)\n",
                             immediate);
-                    DSTREG  = IMEMGET (immediate, FALSE);
+                    DSTREG  = IMEMGET (immediate);
                     break;
 
                 case 03: // MOV DSTREG, [SRCREG]
                     fprintf (debug, "[decode_process] MOV(3): memory_get (0x%.8X)\n",
                             SRCREG);
-                    DSTREG  = IMEMGET (SRCREG, FALSE);
+                    DSTREG  = IMEMGET (SRCREG);
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
                     fprintf (debug, "[decode_process] MOV(4): memory_get (0x%.8X)\n",
                             (SRCREG + immediate));
-                    DSTREG  = IMEMGET (SRCREG + immediate, FALSE);
+                    DSTREG  = IMEMGET (SRCREG + immediate);
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
                     fprintf (debug, "[decode_process] MOV(5): memory_set (0x%.8X, 0x%.8X)\n",
                             immediate, SRCREG);
-                    MEMSET (immediate, SRCREG, FALSE);
+                    MEMSET (immediate, SRCREG);
                     break;
 
                 case 06: // MOV [DSTREG], SRCREG
                     fprintf (debug, "[decode_process] MOV(6): memory_set (0x%.8X, 0x%.8X)\n",
                             DSTREG,    SRCREG);
-                    MEMSET (DSTREG,    SRCREG, FALSE);
+                    MEMSET (DSTREG,    SRCREG);
                     break;
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
                     fprintf (debug, "[decode_process] MOV(7): memory_set (0x%.8X, 0x%.8X)\n",
                             (DSTREG + immediate), SRCREG);
-                    MEMSET ((DSTREG + immediate), SRCREG, FALSE);
+                    MEMSET ((DSTREG + immediate), SRCREG);
                     break;
             }
             break;
@@ -585,12 +585,12 @@ void  decode_process (uint32_t  instruction,
         case PUSH:
             fprintf (debug, "[decode_process] PUSH: memory_set (0x%.8X, 0x%.8X)\n", REG(SP), DSTREG);
             REG(SP)         = REG(SP) - 1; // adjust top of stack
-            MEMSET (REG(SP), DSTREG, FALSE);      // place on top of stack
+            MEMSET (REG(SP), DSTREG);      // place on top of stack
             break;
 
         case POP:
             fprintf (debug, "[decode_process] POP: memory_get (0x%.8X)\n", REG(SP));
-            DSTREG          = IMEMGET (REG(SP), FALSE);
+            DSTREG          = IMEMGET (REG(SP));
             REG(SP)         = REG(SP) + 1;
             break;
 
@@ -609,8 +609,8 @@ void  decode_process (uint32_t  instruction,
         case MOVS:
             do
             {
-                value       = IMEMGET(REG(SR), FALSE);
-                MEMSET(REG(DR), value, FALSE);
+                value       = IMEMGET(REG(SR));
+                MEMSET(REG(DR), value);
                 REG(DR)     = REG(DR) + 1;
                 REG(SR)     = REG(SR) + 1;
                 REG(CR)     = REG(CR) - 1;
@@ -621,7 +621,7 @@ void  decode_process (uint32_t  instruction,
         case SETS:
             do
             {
-                MEMSET(REG(DR), SR, FALSE);
+                MEMSET(REG(DR), SR);
                 REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
                 REG(CR)     = REG(CR) - 1; // CR: Count Register (R11)
             }
@@ -631,7 +631,7 @@ void  decode_process (uint32_t  instruction,
         case CMPS:
             do
             {
-                DSTREG      = IMEMGET(REG(DR) - REG(SR), FALSE);
+                DSTREG      = IMEMGET(REG(DR) - REG(SR));
                 if (DSTREG != 0)
                 {
                     break;

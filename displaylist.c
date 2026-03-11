@@ -31,7 +31,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X \"%s\"\n",
-                                IMEMGET(REG(value), FALSE), dtmp -> label);
+                                IMEMGET(REG(value)), dtmp -> label);
                     }
                     else
                     {
@@ -44,7 +44,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X\n",
-                                IMEMGET(REG(value), FALSE));
+                                IMEMGET(REG(value)));
                     }
                     else
                     {
@@ -94,7 +94,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
                 break;
 
             case LIST_MEM_DEREF:
-                value              = IMEMGET (wtmp -> i32, TRUE);
+                value              = ISYSMEMGET (wtmp -> i32);
                 check              = memory_chk (value);
                 sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, value);
                 if (list -> space <  strlen (entry))
@@ -107,7 +107,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X \"%s\"\n",
-                                IMEMGET(value, FALSE), dtmp -> label);
+                                IMEMGET(value), dtmp -> label);
                     }
                     else
                     {
@@ -120,7 +120,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
                     if (check     == TRUE)
                     {
                         fprintf (stdout, "0x%.8X\n",
-                                IMEMGET(value, FALSE));
+                                IMEMGET(value));
                     }
                     else
                     {
@@ -130,7 +130,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
                 break;
 
             case LIST_MEM:
-                value              = IMEMGET (wtmp -> i32, TRUE);
+                value              = ISYSMEMGET (wtmp -> i32);
                 sprintf (entry, "0x%.8X", wtmp -> i32);
                 if (list -> space <  strlen (entry))
                 {

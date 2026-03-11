@@ -1062,19 +1062,19 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         }
                         else if (byte     == 'R')
                         {
-                            fprintf (verbose, "IR:0x%.8X ", IMEMGET(offset, FALSE));
+                            fprintf (verbose, "IR:0x%.8X ", IMEMGET(offset));
                             word           = strtol (token, NULL, 16);
                             fprintf (verbose, "with IR:0x%.8X ", word);
-                            MEMSET(offset, word, TRUE);
+                            SYSMEMSET(offset, word);
                         }
                         else if (byte     == 'V')
                         {
                             if (0         <  (word & IMMVAL_MASK))
                             {
-                                fprintf (verbose, "IV:0x%.8X ", IMEMGET(offset+1, FALSE));
+                                fprintf (verbose, "IV:0x%.8X ", IMEMGET(offset+1));
                                 immv       = strtol (token, NULL, 16);
                                 fprintf (verbose, "with IV:0x%.8X ", immv);
-                                MEMSET(offset+1, immv, TRUE);
+                                SYSMEMSET(offset+1, immv);
                             }
                         }
                     }
@@ -1099,10 +1099,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     if (lval[1] == 'P')
                     {
                         REG(IP)  = strtol (entry, NULL, 16);
-                        REG(IR)  = IMEMGET(REG(IP), FALSE);
+                        REG(IR)  = IMEMGET(REG(IP));
                         if (0   <  (REG(IR) & IMMVAL_MASK))
                         {
-                            REG(IV)  = IMEMGET(REG(IP)+1, FALSE);
+                            REG(IV)  = IMEMGET(REG(IP)+1);
                         }
                         fprintf (debug, "[IP] setting to 0x%.8X\n", REG(IP));
                     }
@@ -1353,44 +1353,44 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 if (fmt        == FORMAT_HEX)
                                 {
                                     fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X\n",
-                                            value, IMEMGET(value, FALSE),
-                                            IMEMGET(IMEMGET(value, FALSE), FALSE));
+                                            value, IMEMGET(value),
+                                            IMEMGET(IMEMGET(value)));
                                 }
                                 else if (fmt   == FORMAT_LOWERHEX)
                                 {
                                     fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8x\n",
-                                            value, IMEMGET(value, FALSE),
-                                            IMEMGET(IMEMGET(value, FALSE), FALSE));
+                                            value, IMEMGET(value),
+                                            IMEMGET(IMEMGET(value)));
                                 }
                                 else if (fmt   == FORMAT_UNSIGNED)
                                 {
                                     fprintf (stdout, "[0x%.8X(0x%.8X)]: %u\n",
-                                            value, IMEMGET(value, FALSE),
-                                            IMEMGET(IMEMGET(value, FALSE), FALSE));
+                                            value, IMEMGET(value),
+                                            IMEMGET(IMEMGET(value)));
                                 }
                                 else if (fmt   == FORMAT_OCTAL)
                                 {
                                     fprintf (stdout, "[0x%.8X(0x%.8X)]: 0%o\n",
-                                            value, IMEMGET(value, FALSE),
-                                            IMEMGET(IMEMGET(value, FALSE), FALSE));
+                                            value, IMEMGET(value),
+                                            IMEMGET(IMEMGET(value)));
                                 }
                                 else if (fmt   == FORMAT_FLOAT)
                                 {
                                     fprintf (stdout, "[0x%.8X(0x%.8X)]: %.2f\n",
-                                            value, IMEMGET(value, FALSE),
-                                            FMEMGET(IMEMGET(value, FALSE), FALSE));
+                                            value, IMEMGET(value),
+                                            FMEMGET(IMEMGET(value)));
                                 }
                                 else if (fmt   == FORMAT_SIGNED)
                                 {
                                     fprintf (stdout, "[0x%.8X(0x%.8X)]: %d\n",
-                                            value, IMEMGET(value, FALSE),
-                                            IMEMGET(IMEMGET(value, FALSE), FALSE));
+                                            value, IMEMGET(value),
+                                            IMEMGET(IMEMGET(value)));
                                 }
                                 else if (fmt   == FORMAT_BINARY)
                                 {
                                     fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X (binary not yet implemented)\n",
-                                            value, IMEMGET(value, FALSE),
-                                            IMEMGET(IMEMGET(value, FALSE), FALSE));
+                                            value, IMEMGET(value),
+                                            IMEMGET(IMEMGET(value)));
                                 }
                             }
                             else
@@ -1398,37 +1398,37 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 if (fmt        == FORMAT_HEX)
                                 {
                                     fprintf (stdout, "[0x%.8X]: 0x%.8X\n",
-                                            value, IMEMGET (value, FALSE));
+                                            value, IMEMGET (value));
                                 }
                                 else if (fmt   == FORMAT_LOWERHEX)
                                 {
                                     fprintf (stdout, "[0x%.8X]: 0x%.8x\n",
-                                            value, IMEMGET (value, FALSE));
+                                            value, IMEMGET (value));
                                 }
                                 else if (fmt   == FORMAT_UNSIGNED)
                                 {
                                     fprintf (stdout, "[0x%.8X]: %u\n",
-                                            value, IMEMGET (value, FALSE));
+                                            value, IMEMGET (value));
                                 }
                                 else if (fmt   == FORMAT_OCTAL)
                                 {
                                     fprintf (stdout, "[0x%.8X]: 0%o\n",
-                                            value, IMEMGET (value, FALSE));
+                                            value, IMEMGET (value));
                                 }
                                 else if (fmt   == FORMAT_FLOAT)
                                 {
                                     fprintf (stdout, "[0x%.8X]: %.2f\n",
-                                            value, FMEMGET (value, FALSE));
+                                            value, FMEMGET (value));
                                 }
                                 else if (fmt   == FORMAT_SIGNED)
                                 {
                                     fprintf (stdout, "[0x%.8X]: %d\n",
-                                            value, IMEMGET (value, FALSE));
+                                            value, IMEMGET (value));
                                 }
                                 else if (fmt   == FORMAT_BINARY)
                                 {
                                     fprintf (stdout, "[0x%.8X]: 0x%.8x (binary not yet implemented)\n",
-                                            value, IMEMGET (value, FALSE));
+                                            value, IMEMGET (value));
                                 }
                             }
                             break;
@@ -1465,7 +1465,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                     {
                                         fprintf (stdout, "[R%u(0x%.8X)]: 0x%.8X\n",
                                                 result, REG(result),
-                                                IMEMGET(REG(result), FALSE));
+                                                IMEMGET(REG(result)));
                                     }
                                     else
                                     {

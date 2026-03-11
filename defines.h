@@ -176,9 +176,11 @@
 #define  FDSTREG                 (reg+dst) -> value.f32
 #define  FSRCREG                 (reg+src) -> value.f32
 
-#define  IMEMGET(addr, sys)      word2int (memory_get (addr, sys))
-#define  FMEMGET(addr, sys)      word2float (memory_get (addr, sys))
-#define  MEMSET(addr, word, sys) memory_set (addr, word, sys)
+#define  IMEMGET(addr)           word2int (memory_get (addr, FALSE))
+#define  ISYSMEMGET(addr)        word2int (memory_get (addr, TRUE))
+#define  FMEMGET(addr)           word2float (memory_get (addr, FALSE))
+#define  MEMSET(addr, word)      memory_set (addr, word, FALSE)
+#define  SYSMEMSET(addr, word)   memory_set (addr, word, TRUE)
 
 #define  REG_RAW                 0
 #define  REG_INT                 1
