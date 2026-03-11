@@ -1192,7 +1192,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
             else if (index                == 3) // parametered command
             {
                 byte                       = *(string + match[1].rm_so);
-                fprintf (debug, "data is: '%s'\n", (string + match[1].rm_so));
+                fprintf (debug, "[debug] data is: '%s', byte is: '%c'\n", (string + match[1].rm_so), byte);
                 if (byte                  == 'b') // break
                 {
                     fprintf (debug, "BREAK encountered\n");
@@ -1272,44 +1272,51 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 else if (byte      == 'p') // print
                 {
                     action          = INPUT_PRINT;
-					fprintf (stdout, "(string+match[1].rm_so): %s\n", (string+match[1].rm_so));
-                    token           = strtok ((string + match[1].rm_so), " ");
-					fprintf (stdout, "token: %s\n", token);
-                    if (token[1]          == '/')
+                    fprintf (debug, "(string+match[1].rm_so): %s\n", (string+match[1].rm_so));
+                    strcpy (entry, (string+match[1].rm_so));
+                    fprintf (debug, "[before] entry: %s\n", entry);
+                    token           = strtok (entry, " ");
+                    fprintf (debug, "[after]  entry: %s\n", entry);
+                    token           = strtok (entry,  "/");
+                    fprintf (debug, "[after]  token: %s\n", token);
+                    pos             = strtok (NULL,   "/");
+                    fprintf (debug, "pos:            %s\n", pos);
+                    if ((pos       != NULL) &&
+                        (*(pos+0)          != '\0'))
                     {
-                        if (token[2]      == 'b')
+                        if (*(pos+0)      == 'b')
                         {
                             fmt            = FORMAT_BINARY;
                         }
-                        else if (token[2] == 'd')
+                        else if (*pos     == 'd')
                         {
                             fmt            = FORMAT_SIGNED;
                         }
-                        else if (token[2] == 'f')
+                        else if (*pos     == 'f')
                         {
                             fmt            = FORMAT_FLOAT;
                         }
-                        else if (token[2] == 'o')
+                        else if (*pos     == 'o')
                         {
                             fmt            = FORMAT_OCTAL;
                         }
-                        else if (token[2] == 'u')
+                        else if (*pos     == 'u')
                         {
                             fmt            = FORMAT_UNSIGNED;
                         }
-                        else if (token[2] == 'x')
+                        else if (*pos     == 'x')
                         {
                             fmt            = FORMAT_LOWERHEX;
                         }
-                        else if (token[2] == 'X') // default
+                        else if (*pos     == 'X') // default
                         {
                             fmt            = FORMAT_HEX;
                         }
-                        //token              = strtok ((string + match[3].rm_so), " "); // move to next token
-                        token              = strtok (NULL, " "); // move to next token
+                        //token              = strtok (NULL, " "); // move to next token
                     }
+                    token              = strtok ((string + match[2].rm_so), " "); // move to next token
 
-					fprintf (stdout, "parsing: token: %s, fmt: %u\n", token, fmt);
+                    fprintf (debug, "[print] parsing: token: %s, fmt: %u\n", token, fmt);
                     for (count      = PARSE_REGISTER;
                          count     <= PARSE_IOPORT;
                          count      = count + 1)
@@ -1339,98 +1346,9 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_MEMORY:
-                            //arg                 = strtok ((input+2), " ");
-                            /*
-                            if (deref_flag     == TRUE)
-                            {
-                                arg             = arg + 1;
-                            }
-                            */
                             value               = strtol (token, NULL, 16);
-                            fprintf (debug, "[input] token: '%s', value: 0x%.8X\n", token, value);
-                            if (*flag     == TRUE)
-                            {
-                                if (fmt        == FORMAT_HEX)
-                                {
-                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X\n",
-                                            value, IMEMGET(value),
-                                            IMEMGET(IMEMGET(value)));
-                                }
-                                else if (fmt   == FORMAT_LOWERHEX)
-                                {
-                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8x\n",
-                                            value, IMEMGET(value),
-                                            IMEMGET(IMEMGET(value)));
-                                }
-                                else if (fmt   == FORMAT_UNSIGNED)
-                                {
-                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: %u\n",
-                                            value, IMEMGET(value),
-                                            IMEMGET(IMEMGET(value)));
-                                }
-                                else if (fmt   == FORMAT_OCTAL)
-                                {
-                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: 0%o\n",
-                                            value, IMEMGET(value),
-                                            IMEMGET(IMEMGET(value)));
-                                }
-                                else if (fmt   == FORMAT_FLOAT)
-                                {
-                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: %.2f\n",
-                                            value, IMEMGET(value),
-                                            FMEMGET(IMEMGET(value)));
-                                }
-                                else if (fmt   == FORMAT_SIGNED)
-                                {
-                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: %d\n",
-                                            value, IMEMGET(value),
-                                            IMEMGET(IMEMGET(value)));
-                                }
-                                else if (fmt   == FORMAT_BINARY)
-                                {
-                                    fprintf (stdout, "[0x%.8X(0x%.8X)]: 0x%.8X (binary not yet implemented)\n",
-                                            value, IMEMGET(value),
-                                            IMEMGET(IMEMGET(value)));
-                                }
-                            }
-                            else
-                            {
-                                if (fmt        == FORMAT_HEX)
-                                {
-                                    fprintf (stdout, "[0x%.8X]: 0x%.8X\n",
-                                            value, IMEMGET (value));
-                                }
-                                else if (fmt   == FORMAT_LOWERHEX)
-                                {
-                                    fprintf (stdout, "[0x%.8X]: 0x%.8x\n",
-                                            value, IMEMGET (value));
-                                }
-                                else if (fmt   == FORMAT_UNSIGNED)
-                                {
-                                    fprintf (stdout, "[0x%.8X]: %u\n",
-                                            value, IMEMGET (value));
-                                }
-                                else if (fmt   == FORMAT_OCTAL)
-                                {
-                                    fprintf (stdout, "[0x%.8X]: 0%o\n",
-                                            value, IMEMGET (value));
-                                }
-                                else if (fmt   == FORMAT_FLOAT)
-                                {
-                                    fprintf (stdout, "[0x%.8X]: %.2f\n",
-                                            value, FMEMGET (value));
-                                }
-                                else if (fmt   == FORMAT_SIGNED)
-                                {
-                                    fprintf (stdout, "[0x%.8X]: %d\n",
-                                            value, IMEMGET (value));
-                                }
-                                else if (fmt   == FORMAT_BINARY)
-                                {
-                                    fprintf (stdout, "[0x%.8X]: 0x%.8x (binary not yet implemented)\n",
-                                            value, IMEMGET (value));
-                                }
-                            }
+                            fprintf (debug, "[input/print] token: '%s', value: 0x%.8X\n", token, value);
+                            output_mem (value, fmt, *flag);
                             break;
 
                         case PARSE_REGISTERS:
@@ -1438,41 +1356,16 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                  index         <= 15;
                                  index          = index + 1)
                             {
-                                fprintf (stdout, "R%u: 0x%.8X\n", index, REG(index));
+                                output_reg (index, fmt, *flag);
+                                //fprintf (stdout, "R%u: 0x%.8X\n", index, REG(index));
                             }
                             break;
 
                         case PARSE_REGISTER: // specific, general register
-                            //arg                 = strtok ((input+2), " ");
                             result              = parse_reg (token);
-
-                            switch (result)
+                            if (result         <  NUM_REGISTERS)
                             {
-                                case IP:
-                                    fprintf (stdout, "IP: 0x%.8X\n", REG(IP));
-                                    break;
-
-                                case IR:
-                                    fprintf (stdout, "IR: 0x%.8X\n", REG(IR));
-                                    break;
-
-                                case IV:
-                                    fprintf (stdout, "IV: 0x%.8X\n", REG(IV));
-                                    break;
-
-                                default:
-                                    if (*flag == TRUE)
-                                    {
-                                        fprintf (stdout, "[R%u(0x%.8X)]: 0x%.8X\n",
-                                                result, REG(result),
-                                                IMEMGET(REG(result)));
-                                    }
-                                    else
-                                    {
-                                        fprintf (stdout, "R%u: 0x%.8X\n",
-                                                result, REG(result));
-                                    }
-                                    break;
+                                output_reg (result, fmt, *flag);
                             }
                             break;
                     }
