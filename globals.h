@@ -99,6 +99,7 @@ void      decode_process (uint32_t,    uint32_t,    float,    uint8_t);
 void      init_ioports   (void);                             // initialize IOPorts
 int32_t   ioports_get    (uint16_t,    uint8_t);              // get value from port
 void      ioports_set    (uint16_t,    int32_t,     uint8_t); // set value to port
+void      update_ioports (void);
 void      init_memory    (void);                             // initialize memory
 void      load_command   (void);
 uint32_t  load_labels    (uint8_t *);

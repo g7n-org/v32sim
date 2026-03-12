@@ -89,4 +89,10 @@ void      update_frame (void)
 
         ioports_set (TIM_CurrentTime, value, TRUE);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // update all the ports that require per-frame changes
+    //
+    update_ioports ();
 }

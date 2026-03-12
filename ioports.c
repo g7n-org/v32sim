@@ -195,7 +195,7 @@ void  init_ioports  (void)
          index                       <  NUM_INP_PORTS;
          index                        = index + 1)
     {
-        (pptr+index) -> value.i32     = 0x00000000;
+        (pptr+index) -> value.i32     = -1; // not pressed, negative value
         (pptr+index) -> flag          = FLAG_READ;
         (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
         nptr                          = (pptr+index) -> name;
@@ -426,4 +426,42 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value, uint8_t  sys_force)
             (pptr+attr) -> value.i32  = value;
             break;
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// update_ioports(): maintenance function to be run after each frame has completed
+//
+void  update_ioports (void)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize local variables
+    //
+    int32_t   type  = 0;     // type of port (category)
+    int32_t   attr  = 0;     // specific port in the category
+    data_t   *pptr  = NULL;  // pointer to port
+    int32_t  *dptr  = NULL;  // pointer to port data
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // update INP_ ports, specifically the dpad and buttons: each frame the value
+    // moves away from 0 by 1 (be it negative- no pressed, or positive- pressed)
+    //
+    type            = INP_PORT;
+    pptr            = *(ioports+type); // pointer for sanity
+    for (attr       = INP_GamepadLeft;
+         attr      <= INP_GamepadButtonR;
+         attr       = attr + 1)
+    {
+        dptr        = (pptr+attr) -> value.i32;  // pointer to port data
+        if (*dptr  <  0) // if the button is NOT currently pressed
+        {
+            *dptr   = *dptr - 1;
+        }
+        else             // the button IS currently pressed
+        {
+            *dptr   = *dptr + 1;
+        }
+    }        
 }
