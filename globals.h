@@ -22,6 +22,7 @@ struct linked_list
     int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    space;
+	uint8_t    fmt;
     uint32_t   number;
     word_t     data;
     linked_l *next;
@@ -113,8 +114,8 @@ int8_t   *reg_get_name   (uint8_t,     uint8_t);
 void      reg_set        (uint8_t,     uint32_t,    uint8_t);
 word_t   *reg_get        (uint8_t,     uint8_t);
 void      reg_set        (uint8_t,     uint32_t,    uint8_t);
-void      output_reg     (uint8_t,     uint8_t,     uint8_t);
-void      output_mem     (uint32_t,    uint8_t,     uint8_t);
+void      output_reg     (uint8_t,     uint8_t,     uint8_t,  uint8_t *);
+void      output_mem     (uint32_t,    uint8_t,     uint8_t,  uint8_t *);
 word_t   *new_word_i32   (uint32_t *,  uint8_t);
 void      update_cycle   (void);                              // updating CycleCounter
 void      update_frame   (void);                              // updating FrameCounter

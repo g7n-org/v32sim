@@ -1222,17 +1222,58 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                     bpoint     = list_add (bpoint, tmp);
                                 }
                             }
-                            ltmp           = ltmp -> next;
+                            ltmp       = ltmp -> next;
                         }
                     }
                 }
-                else if (byte             == 'd') // display
+                else if (byte         == 'd') // display
                 {
-                    action                 = INPUT_DISPLAY;
-                    token                  = strtok ((string + match[2].rm_so), " ");
-                    for (count             = PARSE_REGISTER;
-                         count            <= PARSE_IOPORT;
-                         count             = count + 1)
+                    action             = INPUT_DISPLAY;
+                    fprintf (debug, "(string+match[1].rm_so): %s\n", (string+match[1].rm_so));
+                    strcpy (entry, (string+match[1].rm_so));
+                    fprintf (debug, "[before] entry: %s\n", entry);
+                    token              = strtok (entry, " ");
+                    fprintf (debug, "[after]  entry: %s\n", entry);
+                    token              = strtok (entry,  "/");
+                    fprintf (debug, "[after]  token: %s\n", token);
+                    pos                = strtok (NULL,   "/");
+                    fprintf (debug, "pos:            %s\n", pos);
+                    if ((pos          != NULL) &&
+                        (*(pos+0)     != '\0'))
+                    {
+                        if (*(pos+0)  == 'b')
+                        {
+                            fmt        = FORMAT_BINARY;
+                        }
+                        else if (*pos == 'd')
+                        {
+                            fmt        = FORMAT_SIGNED;
+                        }
+                        else if (*pos == 'f')
+                        {
+                            fmt        = FORMAT_FLOAT;
+                        }
+                        else if (*pos == 'o')
+                        {
+                            fmt        = FORMAT_OCTAL;
+                        }
+                        else if (*pos     == 'u')
+                        {
+                            fmt            = FORMAT_UNSIGNED;
+                        }
+                        else if (*pos     == 'x')
+                        {
+                            fmt            = FORMAT_LOWERHEX;
+                        }
+                        else // default
+                        {
+                            fmt            = FORMAT_HEX;
+                        }
+                    }
+                    token              = strtok ((string + match[2].rm_so), " ");
+                    for (count         = PARSE_REGISTER;
+                         count        <= PARSE_IOPORT;
+                         count         = count + 1)
                     {
                         fprintf (verbose,  "[tokenize_input] count: 0x%.2X, pattern: 0x%.2X\n", count, (count-0x7B));
                         ////////////////////////////////////////////////////////////////
@@ -1244,44 +1285,137 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         // PARSE_IOPORT            0x7E
                         // PARSE_NONE              0x7F
                         //
-                        result             = parse_token (token,
-                                                          *(pattern+(count-0x7A)),
-                                                          count);
-                        if (result        != PARSE_NONE)
+                        result         = parse_token (token,
+                                                      *(pattern+(count-0x7A)),
+                                                      count);
+                        if (result    != PARSE_NONE)
                         {
                             break;
                         }
                     }
-                    token_label            = strtok (NULL, " ");
+                    token_label        = strtok (NULL, " ");
+
+                    switch (result)
+                    {
+                        case PARSE_NONE:
+                            fprintf (stderr, "[ERROR] malformed display value\n");
+                            break;
+
+                        case PARSE_MEMORY:
+							fprintf (stdout, "[display] token: %s\n", token);
+								/*
+                            arg                = strtok ((input+2), " ");
+                            if (*flag         == TRUE)
+                            {
+                                arg            = arg + 1;
+                            }
+                            value              = strtol (arg, NULL, 16);
+							*/
+							value              = strtol (token, NULL, 16);
+                            if (*flag         == TRUE)
+                            {
+                                tmp            = listnode (LIST_MEM_DEREF, value);
+                            }
+                            else
+                            {
+                                tmp            = listnode (LIST_MEM,       value);
+                            }
+
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                tmp -> label   = (int8_t *) malloc (value);
+                                strcpy (tmp -> label, token_label);
+                            }
+                            tmp -> fmt         = fmt;
+                            dpoint             = list_add (dpoint, tmp);
+                            break;
+
+                        case PARSE_REGISTERS:
+                            for (index         = 0;
+                                 index        <= 15;
+                                 index         = index + 1)
+                            {
+                                tmp            = listnode (LIST_REG, index);
+                                tmp -> fmt     = fmt;
+                                dpoint         = list_add (dpoint, tmp);
+                            }
+                            break;
+
+                        case PARSE_REGISTER: // specific, general register
+                            //arg                = strtok ((input+2), " ");
+                            //token_type         = parse_reg (arg);
+							result             = parse_reg (token);
+                            if (result        >  15)
+                            {
+                                sys_reg_show   = TRUE;
+                                break;
+                            }
+
+                            if (*flag         == TRUE)
+                            {
+                                tmp            = listnode (LIST_REG_DEREF, result);
+                            }
+                            else
+                            {
+                                tmp            = listnode (LIST_REG,       result);
+                            }
+
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                tmp -> label   = (int8_t *) malloc (value);
+                                strcpy (tmp -> label, token_label);
+                            }
+                            tmp -> fmt         = fmt;
+                            dpoint             = list_add (dpoint, tmp);
+                            break;
+
+                        case PARSE_IOPORT:
+							/*
+                            arg                = strtok ((input+2), " ");
+                            value              = strtol (arg, NULL, 16);
+                            dtmp               = listnode (LIST_IOP, value);
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                dtmp -> label  = (int8_t *) malloc (value);
+                                strcpy (dtmp -> label, token_label);
+                            }
+                            dtmp -> fmt        = fmt;
+                            dpoint             = list_add (dpoint, dtmp);
+							*/
+                            break;
+                    }
                 }
-                else if (byte             == 'l') // label
+                else if (byte         == 'l') // label
                 {
-                    action          = INPUT_LABEL;
-                    token           = strtok ((string + match[2].rm_so), " ");
-                    result          = parse_token (token, *(pattern+2), PARSE_MEMORY);
+                    action             = INPUT_LABEL;
+                    token              = strtok ((string + match[2].rm_so), " ");
+                    result             = parse_token (token, *(pattern+2), PARSE_MEMORY);
                     fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
-                    value           = strtol (token, NULL, 16);
-                    ltmp            = listnode (LIST_MEM, value);
-                    token_label     = strtok ((string + match[3].rm_so), " ");
+                    value              = strtol (token, NULL, 16);
+                    ltmp               = listnode (LIST_MEM, value);
+                    token_label        = strtok ((string + match[3].rm_so), " ");
                     fprintf (debug, "[label] token_label: '%s'\n", token_label);
-                    value           = sizeof (int8_t) * strlen (token_label) + 1;
-                    ltmp -> label   = (int8_t *) malloc (value);
+                    value              = sizeof (int8_t) * strlen (token_label) + 1;
+                    ltmp -> label      = (int8_t *) malloc (value);
                     strcpy (ltmp -> label, token_label);
-                    lpoint          = list_add (lpoint, ltmp);
+                    lpoint             = list_add (lpoint, ltmp);
                 }
-                else if (byte      == 'p') // print
+                else if (byte         == 'p') // print
                 {
-                    action          = INPUT_PRINT;
+                    action             = INPUT_PRINT;
                     fprintf (debug, "(string+match[1].rm_so): %s\n", (string+match[1].rm_so));
                     strcpy (entry, (string+match[1].rm_so));
                     fprintf (debug, "[before] entry: %s\n", entry);
-                    token           = strtok (entry, " ");
+                    token              = strtok (entry, " ");
                     fprintf (debug, "[after]  entry: %s\n", entry);
-                    token           = strtok (entry,  "/");
+                    token              = strtok (entry,  "/");
                     fprintf (debug, "[after]  token: %s\n", token);
-                    pos             = strtok (NULL,   "/");
+                    pos                = strtok (NULL,   "/");
                     fprintf (debug, "pos:            %s\n", pos);
-                    if ((pos       != NULL) &&
+                    if ((pos          != NULL) &&
                         (*(pos+0)          != '\0'))
                     {
                         if (*(pos+0)      == 'b')
@@ -1308,11 +1442,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             fmt            = FORMAT_LOWERHEX;
                         }
-                        else if (*pos     == 'X') // default
+                        else // default
                         {
                             fmt            = FORMAT_HEX;
                         }
-                        //token              = strtok (NULL, " "); // move to next token
                     }
                     token              = strtok ((string + match[2].rm_so), " "); // move to next token
 
@@ -1348,7 +1481,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         case PARSE_MEMORY:
                             value               = strtol (token, NULL, 16);
                             fprintf (debug, "[input/print] token: '%s', value: 0x%.8X\n", token, value);
-                            output_mem (value, fmt, *flag);
+                            output_mem (value, fmt, *flag, NULL);
                             break;
 
                         case PARSE_REGISTERS:
@@ -1356,8 +1489,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                  index         <= 15;
                                  index          = index + 1)
                             {
-                                output_reg (index, fmt, *flag);
-                                //fprintf (stdout, "R%u: 0x%.8X\n", index, REG(index));
+                                output_reg (index, fmt, *flag, NULL);
                             }
                             break;
 
@@ -1365,7 +1497,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             result              = parse_reg (token);
                             if (result         <  NUM_REGISTERS)
                             {
-                                output_reg (result, fmt, *flag);
+                                output_reg (result, fmt, *flag, NULL);
                             }
                             break;
                     }
@@ -1589,93 +1721,10 @@ uint8_t  prompt (uint32_t  word)
             break;
 
         case INPUT_PRINT:
-            /*
-            */
             lastaction                  = INPUT_NONE;
             break;
 
         case INPUT_DISPLAY:
-            switch (token_type)
-            {
-                case PARSE_NONE:
-                    fprintf (stderr, "[ERROR] malformed display value\n");
-                    break;
-
-                case PARSE_MEMORY:
-                    arg                 = strtok ((input+2), " ");
-                    if (deref_flag     == TRUE)
-                    {
-                        arg             = arg + 1;
-                    }
-                    value              = strtol (arg, NULL, 16);
-                    if (deref_flag    == TRUE)
-                    {
-                        dtmp           = listnode (LIST_MEM_DEREF, value);
-                    }
-                    else
-                    {
-                        dtmp           = listnode (LIST_MEM,       value);
-                    }
-
-                    if (token_label   != NULL)
-                    {
-                        value          = sizeof (int8_t) * strlen (token_label) + 1;
-                        dtmp -> label  = (int8_t *) malloc (value);
-                        strcpy (dtmp -> label, token_label);
-                    }
-                    dpoint             = list_add (dpoint, dtmp);
-                    break;
-
-                case PARSE_REGISTERS:
-                    for (index         = 0;
-                         index        <= 15;
-                         index         = index + 1)
-                    {
-                        dtmp           = listnode (LIST_REG, index);
-                        dpoint         = list_add (dpoint, dtmp);
-                    }
-                    break;
-
-                case PARSE_REGISTER: // specific, general register
-                    arg                = strtok ((input+2), " ");
-                    token_type         = parse_reg (arg);
-                    if (token_type    >  15)
-                    {
-                        sys_reg_show   = TRUE;
-                        break;
-                    }
-
-                    if (deref_flag    == TRUE)
-                    {
-                        dtmp           = listnode (LIST_REG_DEREF, token_type);
-                    }
-                    else
-                    {
-                        dtmp           = listnode (LIST_REG, token_type);
-                    }
-
-                    if (token_label   != NULL)
-                    {
-                        value          = sizeof (int8_t) * strlen (token_label) + 1;
-                        dtmp -> label  = (int8_t *) malloc (value);
-                        strcpy (dtmp -> label, token_label);
-                    }
-                    dpoint             = list_add (dpoint, dtmp);
-                    break;
-
-                case PARSE_IOPORT:
-                    arg                = strtok ((input+2), " ");
-                    value              = strtol (arg, NULL, 16);
-                    dtmp               = listnode (LIST_IOP, value);
-                    if (token_label   != NULL)
-                    {
-                        value          = sizeof (int8_t) * strlen (token_label) + 1;
-                        dtmp -> label  = (int8_t *) malloc (value);
-                        strcpy (dtmp -> label, token_label);
-                    }
-                    dpoint             = list_add (dpoint, dtmp);
-                    break;
-            }
             lastaction                 = INPUT_NONE;
             break;
 

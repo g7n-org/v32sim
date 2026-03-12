@@ -261,7 +261,7 @@ int32_t   main (int32_t  argc, uint8_t **argv)
                     if (btmp       == NULL) // not an existing breakpoint in breaklist
                     {
                         btmp        = list_grab (&tpoint, tmp);
-						btmp -> data.raw  = value;
+                        btmp -> data.raw  = value;
                         fprintf (debug, "[main] BREAKing at label: '%s'\n", btmp -> label);
                         fprintf (debug, "[main] BREAKing at offset 0x%.8X\n", btmp -> data.raw);
                         bpoint      = list_add (bpoint, btmp);
@@ -359,9 +359,9 @@ int32_t   main (int32_t  argc, uint8_t **argv)
             if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
             {
                 put_word (REG(IV), FLAG_DISPLAY);
+                fprintf  (stdout, "\n");
             }
-            fprintf  (stdout, "\n");
-            displayshow  (dpoint, 0);
+            //displayshow  (dpoint, 0);
         }
 
         if (runflag                   == FALSE)
