@@ -234,7 +234,7 @@ void    load_memory (uint32_t  page, int8_t *filename)
 //
 // returns a TRUE or FALSE
 //
-uint8_t  memory_chk (uint32_t  address)
+uint8_t  memory_chk (uint32_t  address, uint8_t  sys_force)
 {
     uint32_t  page             = (address & 0xF0000000) >> 28;
     uint8_t   result           = TRUE;
@@ -244,8 +244,11 @@ uint8_t  memory_chk (uint32_t  address)
         case V32_PAGE_RAM:
             if (address       >  RAM_LAST_ADDR)
             {
-                fprintf (verbose, "[ERROR] invalid RAM access at 0x%.8X\n", address);
-                sys_error      = ERROR_MEMORY_READ;
+                if (sys_force == FALSE)
+                {
+                    fprintf (verbose, "[ERROR] invalid RAM access at 0x%.8X\n", address);
+                    sys_error  = ERROR_MEMORY_READ;
+                }
                 result         = FALSE;
             }
             break;
@@ -253,8 +256,11 @@ uint8_t  memory_chk (uint32_t  address)
         case V32_PAGE_BIOS:
             if (address       >  BIOS_LAST_ADDR)
             {
-                fprintf (verbose, "[ERROR] invalid BIOS access at 0x%.8X\n", address);
-                sys_error      = ERROR_MEMORY_READ;
+                if (sys_force == FALSE)
+                {
+                    fprintf (verbose, "[ERROR] invalid BIOS access at 0x%.8X\n", address);
+                    sys_error  = ERROR_MEMORY_READ;
+                }
                 result         = FALSE;
             }
             break;
@@ -262,8 +268,11 @@ uint8_t  memory_chk (uint32_t  address)
         case V32_PAGE_CART:
             if (address       >  CART_LAST_ADDR)
             {
-                fprintf (verbose, "[ERROR] invalid CART access at 0x%.8X\n", address);
-                sys_error      = ERROR_MEMORY_READ;
+                if (sys_force == FALSE)
+                {
+                    fprintf (verbose, "[ERROR] invalid CART access at 0x%.8X\n", address);
+                    sys_error  = ERROR_MEMORY_READ;
+                }
                 result         = FALSE;
             }
             break;
@@ -271,10 +280,22 @@ uint8_t  memory_chk (uint32_t  address)
         case V32_PAGE_MEMC:
             if (address       >  MEMC_LAST_ADDR)
             {
-                fprintf (verbose, "[ERROR] invalid MEMC access at 0x%.8X\n", address);
-                sys_error      = ERROR_MEMORY_READ;
+                if (sys_force == FALSE)
+                {
+                    fprintf (verbose, "[ERROR] invalid MEMC access at 0x%.8X\n", address);
+                    sys_error  = ERROR_MEMORY_READ;
+                }
                 result         = FALSE;
             }
+            break;
+
+        default:
+            if (sys_force     == FALSE)
+            {
+                fprintf (verbose,     "[ERROR] invalid memory access at 0x%.8X\n", address);
+                sys_error      = ERROR_MEMORY_READ;
+            }
+            result             = FALSE;
             break;
     }
 
@@ -296,7 +317,7 @@ word_t *memory_get (uint32_t  address, uint8_t  sys_force)
     uint8_t   flag                 = FLAG_NONE;
     word_t   *wptr                 = NULL;
 
-    check                          = memory_chk (address);
+    check                          = memory_chk (address, sys_force);
     if (check                     == TRUE)
     {
         switch (page)
@@ -354,6 +375,15 @@ word_t *memory_get (uint32_t  address, uint8_t  sys_force)
                                 address);
                         sys_error  = ERROR_MEMORY_READ;
                     }
+                }
+                break;
+
+            default:
+                if (sys_force     == FALSE)
+                {
+                    fprintf (verbose, "[ERROR] memory address 0x%.8X not readable!\n",
+                            address);
+                    sys_error      = ERROR_MEMORY_READ;
                 }
                 break;
         }

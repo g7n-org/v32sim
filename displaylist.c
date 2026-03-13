@@ -21,93 +21,23 @@ void       displayshow  (linked_l *list, uint8_t    flag)
         switch (dtmp -> type)
         {
             case LIST_REG_DEREF:
-                value              = wtmp -> i32;
-                output_reg (value, dtmp -> fmt, TRUE, dtmp -> label);
+                output_reg (wtmp -> i32, dtmp -> fmt, TRUE,  dtmp -> label);
                 break;
 
             case LIST_REG:
-                value              = wtmp -> i32;
-                output_reg (value, dtmp -> fmt, FALSE, dtmp -> label);
+                output_reg (wtmp -> i32, dtmp -> fmt, FALSE, dtmp -> label);
                 break;
 
             case LIST_MEM_DEREF:
-                value              = ISYSMEMGET (wtmp -> i32);
-                check              = memory_chk (value);
-                output_mem (value, dtmp -> fmt, TRUE, dtmp -> label);
-                /*
-                sprintf (entry, "[%.8X>%.8X]", wtmp -> i32, value);
-                if (list -> space <  strlen (entry))
-                {
-                    list -> space  = strlen (entry);
-                }
-                fprintf (stdout, "%*s: ", list -> space, entry);
-                if (colorflag     == TRUE)
-                {
-                    fprintf (stdout, "\e[1;36m");
-                }
-                if (dtmp -> label != NULL)
-                {
-                    if (check     == TRUE)
-                    {
-                        fprintf (stdout, "0x%.8X \"%s\"\n",
-                                IMEMGET(value), dtmp -> label);
-                    }
-                    else
-                    {
-                        fprintf (stdout, "<invalid address> \"%s\"\n",
-                                dtmp -> label);
-                    }
-                }
-                else
-                {
-                    if (check     == TRUE)
-                    {
-                        fprintf (stdout, "0x%.8X\n",
-                                IMEMGET(value));
-                    }
-                    else
-                    {
-                        fprintf (stdout, "<invalid address>\n");
-                    }
-                }
-                */
-                if (colorflag     == TRUE)
-                {
-                    fprintf (stdout, "\e[m");
-                }
+                output_mem (wtmp -> i32, dtmp -> fmt, TRUE,  dtmp -> label);
                 break;
 
             case LIST_MEM:
-                value              = ISYSMEMGET (wtmp -> i32);
-                output_mem (value, dtmp -> fmt, FALSE, dtmp -> label);
-                /*
-                sprintf (entry, "0x%.8X", wtmp -> i32);
-                if (list -> space <  strlen (entry))
-                {
-                    list -> space  = strlen (entry);
-                }
-                fprintf (stdout, "%*s: ", list -> space, entry);
-
-                if (colorflag     == TRUE)
-                {
-                    fprintf (stdout, "\e[1;36m");
-                }
-                if (dtmp -> label != NULL)
-                {
-                    fprintf (stdout, "0x%.8X \"%s\"\n", value, dtmp -> label);
-                }
-                else
-                {
-                    fprintf (stdout, "0x%.8X\n", value);
-                }
-                if (colorflag     == TRUE)
-                {
-                    fprintf (stdout, "\e[m");
-                }
-                */
+                output_mem (wtmp -> i32, dtmp -> fmt, FALSE, dtmp -> label);
                 break;
 
             case LIST_IOP:
+                //output_iop (wtmp -> i32, dtmp -> fmt, FALSE, dtmp -> label);
                 value              = ioports_get (wtmp -> i32, TRUE);
                 sprintf (entry, "[0x%.3X]", wtmp -> i32);
                 fprintf (stdout, "%*s: ", list -> space, entry);

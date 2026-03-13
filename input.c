@@ -1293,7 +1293,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
                         }
                     }
-                    token_label        = strtok (NULL, " ");
+                    token_label                = strtok (NULL, " ");
 
                     switch (result)
                     {
@@ -1302,15 +1302,6 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_MEMORY:
-							fprintf (stdout, "[display] token: %s\n", token);
-								/*
-                            arg                = strtok ((input+2), " ");
-                            if (*flag         == TRUE)
-                            {
-                                arg            = arg + 1;
-                            }
-                            value              = strtol (arg, NULL, 16);
-							*/
 							value              = strtol (token, NULL, 16);
                             if (*flag         == TRUE)
                             {
@@ -1343,8 +1334,6 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_REGISTER: // specific, general register
-                            //arg                = strtok ((input+2), " ");
-                            //token_type         = parse_reg (arg);
 							result             = parse_reg (token);
                             if (result        >  15)
                             {
@@ -1372,6 +1361,17 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_IOPORT:
+							value              = strtol (token, NULL, 16);
+							tmp                = listnode (LIST_IOP, value);
+
+                            if (token_label   != NULL)
+                            {
+                                value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                tmp -> label   = (int8_t *) malloc (value);
+                                strcpy (tmp -> label, token_label);
+                            }
+                            tmp -> fmt         = fmt;
+                            dpoint             = list_add (dpoint, tmp);
 							/*
                             arg                = strtok ((input+2), " ");
                             value              = strtol (arg, NULL, 16);
