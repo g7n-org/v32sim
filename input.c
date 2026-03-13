@@ -888,7 +888,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     uint8_t     byte               = 0;
     uint8_t     entry[24];
     uint8_t     lval[24];
-    uint8_t     fmt                = FORMAT_HEX;
+    uint8_t     fmt                = FORMAT_DEFAULT;
     int8_t     *pos                = NULL;
     int8_t     *string             = NULL;
     int8_t     *token              = NULL;
@@ -1265,7 +1265,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             fmt            = FORMAT_LOWERHEX;
                         }
-                        else // default
+                        else if (*pos     == 'X')
                         {
                             fmt            = FORMAT_HEX;
                         }
@@ -1442,7 +1442,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             fmt            = FORMAT_LOWERHEX;
                         }
-                        else // default
+                        else if (*pos     == 'X')
                         {
                             fmt            = FORMAT_HEX;
                         }
@@ -1954,6 +1954,7 @@ void load_command (void)
             }
             token_type                 = tokenize_input (input, &deref_flag);
 
+			/*
             switch (action)
             {
                 case INPUT_DISPLAY:
@@ -2040,7 +2041,7 @@ void load_command (void)
                             break;
                     }
                     break;
-            }
+            }*/
         }
         commandfile                            = NULL;
         fclose (fptr);
