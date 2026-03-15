@@ -31,33 +31,11 @@ Definitely want to implement MEMC.
 
 Currently does not handle leap years/days.
 
-## FORMATTED OUTPUT
-
-Allow for:
-
-  * `/b` - binary
-  * `/d` - signed decimal
-  * `/f` - floating point
-  * `/o` - octal
-  * `/u` - unsigned decimal
-  * `/x` - lowercase hexadecimal
-  * `/X` - hexadecimal (default)
-
-Need to implement for `display`, prompt and command-files
-
 ## MEMORY RANGES
 
 For `print` and `display`
 
 A RegEx is in place, but no logic has been laid down as yet.
-
-## SET MEMORY VALUES
-
-Use the `set` command to assign values to locations in memory.
-
-## SET IOPORT VALUES
-
-Use the `set` command to assign values to locations in ioports.
 
 ## VARIED DEBUG FILE LOCATION CHECK
 

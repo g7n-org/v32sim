@@ -898,7 +898,6 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     uint8_t    *form1              = "^ *([a-z]+) *(IP:0x[0-9A-F]{8})? *(IR:0x[0-9A-F]{8})? *(IV:0x[0-9A-F]{8})? *$";
     uint8_t    *form2              = "^ *([a-z]+) *([^ ]+) *= *([^ ]+) *$";
     uint8_t    *form3              = "^ *([a-z/]+) *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
-    //uint8_t    *form3              = "^ *([a-z]+)(/[bdfouxX])? *([^ ]+) *([A-Z_][A-Z0-9_+-]*)? *$";
 
     uint8_t   **pattern            = NULL;
     uint8_t    *pattern0           = "^ *(R[0-9]|R1[0-5]|[BCDS][PR]|I[PRV]) *$";  // register
@@ -935,18 +934,18 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     *(pattern+3)                   = pattern3;
     *(pattern+4)                   = pattern4;
 
-    for (index                     = 0;
-         index                    <  4;
-         index                     = index + 1)
+    for (index                             = 0;
+         index                            <  4;
+         index                             = index + 1)
     {
         ////////////////////////////////////////////////////////////////////////////////
         //
         // RegEx compilation: compile form pattern into our regex for processing
         //
-        check                      = regcomp (&regex,
-                                             *(form+index),
-                                             REG_EXTENDED | REG_ICASE);
-        if (check                 != 0)
+        check                              = regcomp (&regex,
+                                                     *(form+index),
+                                                     REG_EXTENDED | REG_ICASE);
+        if (check                         != 0)
         {
             fprintf (stderr, "[ERROR] Invalid pattern: RegEx compilation failed\n");
             exit    (REGEX_COMPILE_ERROR);
@@ -956,8 +955,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution: make sure input conforms to provided pattern
         //
-        check                      = regexec (&regex, string, 5, match, 0);
-        if (check                 == REG_NOMATCH)
+        check                              = regexec (&regex, string, 5, match, 0);
+        if (check                         == REG_NOMATCH)
         {
             continue;
             fprintf (stderr, "ERROR: malformed input\n");
@@ -967,63 +966,63 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution success! Display the results
         //
-        else if (check            == 0)
+        else if (check                    == 0)
         {
             fprintf (verbose, "[tokenize_input] MATCH on form %u\n", index);
-            if (index             == 0) // single-word command
+            if (index                     == 0) // single-word command
             {
-                byte               = *(string + match[1].rm_so);
-                if (byte          == 'b')   // break
+                byte                       = *(string + match[1].rm_so);
+                if (byte                  == 'b')   // break
                 {
-                    tmp            = bpoint;
-                    count          = 0;
-                    while (tmp    != NULL)
+                    tmp                    = bpoint;
+                    count                  = 0;
+                    while (tmp            != NULL)
                     {
                         fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> data.raw);
-                        tmp        = tmp -> next;
-                        count      = count + 1;
+                        tmp                = tmp -> next;
+                        count              = count + 1;
                     }
-                    action         = INPUT_BREAK;
+                    action                 = INPUT_BREAK;
                 }
-                else if (byte     == 'c')   // continue
+                else if (byte             == 'c')   // continue
                 {
-                    action         = INPUT_CONTINUE;
+                    action                 = INPUT_CONTINUE;
                 }
-                else if (byte     == 'd')   // display
+                else if (byte             == 'd')   // display
                 {
-                    action         = INPUT_DISPLAY;
+                    action                 = INPUT_DISPLAY;
                 }
-                else if (byte     == 'i')   // ignore
+                else if (byte             == 'i')   // ignore
                 {
-                    action         = INPUT_IGNORE;
+                    action                 = INPUT_IGNORE;
                 }
-                else if (byte     == 'l')   // labels
+                else if (byte             == 'l')   // labels
                 {
-                    ltmp           = lpoint;
-                    count          = 0;
-                    while (ltmp   != NULL)
+                    ltmp                   = lpoint;
+                    count                  = 0;
+                    while (ltmp           != NULL)
                     {
                         if (ltmp -> label != NULL)
                         {
                             fprintf (stdout, "[%u] %s -> 0x%.8X\n",
                                     count, ltmp -> label, ltmp -> data.raw);
                         }
-                        ltmp       = ltmp -> next;
-                        count      = count + 1;
+                        ltmp               = ltmp -> next;
+                        count              = count + 1;
                     }
-                    action         = INPUT_LABEL;
+                    action                 = INPUT_LABEL;
                 }
-                else if (byte     == 'n')   // next
+                else if (byte             == 'n')   // next
                 {
-                    action         = INPUT_NEXT;
+                    action                 = INPUT_NEXT;
                 }
-                else if (byte     == 's')   // step
+                else if (byte             == 's')   // step
                 {
-                    action         = INPUT_STEP;
+                    action                 = INPUT_STEP;
                 }
-                else if (byte     == 'h')   // help
+                else if (byte             == 'h')   // help
                 {
-                    action         = INPUT_HELP;
+                    action                 = INPUT_HELP;
                 }
                 else if (byte             == '?') // help
                 {
@@ -1673,7 +1672,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
     //
     // If colors are enabled, highlight the decoded instruction
     //
-    if (colorflag                 == TRUE)
+    if (colorflag         == TRUE)
     {
         fprintf (stdout, "\e[1;32m");
     }
@@ -1688,7 +1687,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
     //
     // If colors are enabled, complete the highlight the decoded instruction
     //
-    if (colorflag                 == TRUE)
+    if (colorflag         == TRUE)
     {
         fprintf (stdout, "\e[m");
     }
@@ -1720,11 +1719,7 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 
 uint8_t  prompt (uint32_t  word)
 {
-    linked_l  *dtmp                     = NULL;
-    int32_t    index                    = 0;
     int32_t    value                    = 0;
-    size_t     len                      = 0;
-    static uint8_t   *arg               = NULL;
     static uint8_t   *input             = NULL;
     static uint8_t    lastaction        = INPUT_INIT;
     uint8_t    deref_flag               = FALSE;
@@ -1735,22 +1730,6 @@ uint8_t  prompt (uint32_t  word)
         (action                        != INPUT_INIT))
     {
         displayshow  (dpoint, 0);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Unless I use some better input mechanism, input can be up to 256 bytes in 
-    // length (should be more than enough)
-    //
-    len                                 = sizeof (uint8_t) * 256;
-    if (input                          == NULL)
-    {
-        arg                             = (uint8_t *) malloc (len);
-        if (arg                        == NULL)
-        {
-            fprintf (stderr, "[ERROR] Allocation of string failed\n");
-            exit (STRING_ALLOC_FAIL);
-        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -1903,7 +1882,6 @@ uint32_t  load_labels (uint8_t *filename)
     input_string                       = strtok (token, ".");
     fprintf (debug, "[load_labels] token:        %s\n", token);
     fprintf (debug, "[load_labels] input_string: %s\n", input_string);
-    //snprintf (input, strlen (input_string) + 8, "%s.vbin.debug", input_string);
     sprintf (input, "%s.vbin.debug", input_string);
     fprintf (debug, "[load_labels] input:        %s\n", input);
     
@@ -1924,7 +1902,6 @@ uint32_t  load_labels (uint8_t *filename)
             while (!feof (fptr))
             {
                 index                  = 0;
-                //fprintf (stdout, "input: ");
                 input[index]           = ' ';
                 while (input[index]   != '\0')
                 {
@@ -1939,11 +1916,9 @@ uint32_t  load_labels (uint8_t *filename)
                     {
                         break;
                     }
-                //    fprintf (stdout, "%c", input[index]);
                     index              = index + 1;
                     input[index]       = ' ';
                 }
-                //fprintf (stdout, " (index: %d)\n", index);
             
                 if (feof (fptr))
                 {
@@ -1959,22 +1934,14 @@ uint32_t  load_labels (uint8_t *filename)
                 // For label loading, we are specifically interested in the lines
                 // with a label in the last field (second example)
                 //
-                //fprintf (stdout, "tally:       %u\n", tally);
-                //fprintf (stdout, "input:       '%s'\n", input);
                 input_string           = strtok (input, ","); // offset
-                //fprintf (stdout, "offset:      '%s'\n", input_string);
                 offset                 = strtol (input_string, NULL, 16);
 
                 input_string           = strtok (NULL, ",");  // filename
-                //fprintf (stdout, "filename:    '%s'\n", input_string);
                 input_string           = strtok (NULL, ",");  // line number
-                //fprintf (stdout, "line number: '%s'\n", input_string);
                 line_number            = strtol (input_string, NULL, 10);
 
                 input_string           = strtok (NULL, ",");  // label, if present
-                //fprintf (stdout, "label:       '%s'\n", input_string);
-
-                //fprintf (stdout, "offset: 0x%.8X, line number: %u, label: '%s'\n", offset, line_number, input_string);
                 ltmp                   = listnode (LIST_MEM, offset);
                 ltmp -> number         = line_number;
                 if (input_string      != NULL)
@@ -1986,7 +1953,6 @@ uint32_t  load_labels (uint8_t *filename)
                 lpoint                 = list_add (lpoint, ltmp);
                 tally                  = tally + 1;
             }
-            //fprintf (stdout, "EOF encountered\n");
             fclose (fptr);
         }
     }
@@ -1996,11 +1962,8 @@ uint32_t  load_labels (uint8_t *filename)
 
 void load_command (void)
 {
-    linked_l *dtmp                     = NULL;
     FILE     *fptr                     = NULL;
     int32_t   index                    = 0;
-    int32_t   value                    = 0;
-    uint8_t  *arg                      = NULL;
     uint8_t   deref_flag               = FALSE;
     uint8_t   input[64];
     uint8_t   token_type               = 0;
@@ -2038,98 +2001,9 @@ void load_command (void)
                 break;
             }
             token_type                 = tokenize_input (input, &deref_flag);
-
-            /*
-            switch (action)
-            {
-                case INPUT_DISPLAY:
-                    switch (token_type)
-                    {
-                        case PARSE_NONE:
-                            fprintf (stderr, "[ERROR] malformed display value\n");
-                            exit (1);
-                            break;
-
-                        case PARSE_MEMORY:
-                            arg                = strtok ((input+2), " ");
-                            if (deref_flag    == TRUE)
-                            {
-                                arg            = arg + 1;
-                            }
-                            value              = strtol (arg, NULL, 16);
-                            if (deref_flag    == TRUE)
-                            {
-                                dtmp           = listnode (LIST_MEM_DEREF, value);
-                            }
-                            else
-                            {
-                                dtmp           = listnode (LIST_MEM,       value);
-                            }
-                            if (token_label   != NULL)
-                            {
-                                value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                dtmp -> label  = (int8_t *) malloc (value);
-                                strcpy (dtmp -> label, token_label);
-                            }
-                            dpoint             = list_add (dpoint, dtmp);
-                            break;
-
-                        case PARSE_REGISTERS:
-                            for (index         = 0;
-                                 index        <= 15;
-                                 index         = index + 1)
-                            {
-                                dtmp           = listnode (LIST_REG, index);
-                                dpoint         = list_add (dpoint, dtmp);
-                            }
-                            break;
-
-                        case PARSE_REGISTER: // specific, general register
-                            arg                = strtok ((input+2), " ");
-                            token_type         = parse_reg (arg);
-                            if (token_type    >  15)
-                            {
-                                sys_reg_show   = TRUE;
-                                break;
-                            }
-
-                            token_type         = token_type & 0x0000001F;
-                            if (deref_flag    == TRUE)
-                            {
-                                dtmp           = listnode (LIST_REG_DEREF, token_type);
-                            }
-                            else
-                            {
-                                dtmp           = listnode (LIST_REG, token_type);
-                            }
-
-                            if (token_label   != NULL)
-                            {
-                                value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                dtmp -> label  = (int8_t *) malloc (value);
-                                strcpy (dtmp -> label, token_label);
-                            }
-                            dpoint             = list_add (dpoint, dtmp);
-                            break;
-
-                        case PARSE_IOPORT:
-                            arg                = strtok ((input+2), " ");
-                            value              = strtol (arg, NULL, 16);
-                            dtmp               = listnode (LIST_IOP, value);
-                            if (token_label   != NULL)
-                            {
-                                value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                dtmp -> label  = (int8_t *) malloc (value);
-                                strcpy (dtmp -> label, token_label);
-                            }
-                            dpoint             = list_add (dpoint, dtmp);
-                            break;
-                    }
-                    break;
-            }*/
         }
-        commandfile                            = NULL;
+        commandfile                    = NULL;
         fclose (fptr);
     }
-    action                                     = INPUT_INIT;
+    action                             = INPUT_INIT;
 }
