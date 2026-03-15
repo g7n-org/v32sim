@@ -460,7 +460,7 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
 
     if (label                    != NULL)
     {
-        fprintf (stdout, " %s", label);
+        fprintf (stdout, " (%s)", label);
     }
     fprintf (stdout, "\n");
 }

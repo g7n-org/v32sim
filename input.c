@@ -1333,17 +1333,17 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             fmt        = FORMAT_OCTAL;
                         }
-                        else if (*pos     == 'u')
+                        else if (*pos == 'u')
                         {
-                            fmt            = FORMAT_UNSIGNED;
+                            fmt        = FORMAT_UNSIGNED;
                         }
-                        else if (*pos     == 'x')
+                        else if (*pos == 'x')
                         {
-                            fmt            = FORMAT_LOWERHEX;
+                            fmt        = FORMAT_LOWERHEX;
                         }
-                        else if (*pos     == 'X')
+                        else if (*pos == 'X')
                         {
-                            fmt            = FORMAT_HEX;
+                            fmt        = FORMAT_HEX;
                         }
                     }
                     token              = strtok ((string + match[2].rm_so), " ");
@@ -1454,6 +1454,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 if (fmt       != FORMAT_DEFAULT)
                                 {
                                     tmp -> fmt = fmt;
+                                }
+                                else
+                                {
+                                    tmp -> fmt = dtmp -> fmt;
                                 }
                             }
                             strcpy (tmp -> label, token_label);
@@ -1859,6 +1863,8 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "    deref:  true/false  -   set deref addr\n");
             fprintf (stdout, "    I[PRV]: 0x0ADDRESS  -   set system register\n");
             fprintf (stdout, "    R#:     0xTHEVALUE  -   set register to value\n");
+            fprintf (stdout, "    0xMEM:  0xTHEVALUE  -   set memory to value\n");
+            fprintf (stdout, "    0xIOP:  0xTHEVALUE  -   set ioport to value\n");
             fprintf (stdout, "  (u)nXYZ               - remove item from list\n");
             fprintf (stdout, "    break               -   remove breakpoint #\n");
             fprintf (stdout, "    display             -   remove displaypoint #\n");
