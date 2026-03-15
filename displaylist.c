@@ -2,12 +2,9 @@
 
 void  displayshow (linked_l *list, uint8_t  flag)
 {
-	data_t   *itmp                 = NULL;
     linked_l *dtmp                 = NULL;
     uint32_t  count                = 0;
-    uint32_t  value                = 0;
     word_t   *wtmp                 = NULL;
-    uint8_t   check                = FALSE;
 
     dtmp                           = list;
     while (dtmp                   != NULL)

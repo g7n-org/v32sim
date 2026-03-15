@@ -342,7 +342,6 @@ uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  sys_force)
     uint8_t   flag          = FLAG_NONE;                 // short form access
     uint8_t   result        = TRUE;
     data_t   *pptr          = *(ioports+type);           // pointer for sanity
-    int32_t  *dptr          = (pptr+attr) -> value.i32;  // pointer to port data
 
     flag                    = (pptr+attr) -> flag;
     if ((flag & FLAG_READ) != FLAG_READ)
