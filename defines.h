@@ -183,6 +183,12 @@
 #define  MEMSET(addr, word)      memory_set (addr, word, FALSE)
 #define  SYSMEMSET(addr, word)   memory_set (addr, word, TRUE)
 
+#define  IPORTGET(addr)          ioports_get (addr, FALSE)
+#define  ISYSPORTGET(addr)       ioports_get (addr, TRUE)
+#define  FPORTGET(addr)          word2float (ioports_get (addr, FALSE))
+#define  PORTSET(addr, word)     ioports_set (addr, word, FALSE)
+#define  SYSPORTSET(addr, word)  ioports_set (addr, word, TRUE)
+
 #define  REG_RAW                 0
 #define  REG_INT                 1
 #define  REG_FLOAT               2

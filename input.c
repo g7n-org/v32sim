@@ -872,6 +872,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // declare and initialize variables
     //
+    data_t     *dtmp               = NULL;
     linked_l  **list               = NULL;
     linked_l   *ltmp               = NULL;
     linked_l   *tmp                = NULL;
@@ -1302,7 +1303,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_MEMORY:
-							value              = strtol (token, NULL, 16);
+                            value              = strtol (token, NULL, 16);
                             if (*flag         == TRUE)
                             {
                                 tmp            = listnode (LIST_MEM_DEREF, value);
@@ -1334,7 +1335,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_REGISTER: // specific, general register
-							result             = parse_reg (token);
+                            result             = parse_reg (token);
                             if (result        >  15)
                             {
                                 sys_reg_show   = TRUE;
@@ -1361,30 +1362,27 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_IOPORT:
-							value              = strtol (token, NULL, 16);
-							tmp                = listnode (LIST_IOP, value);
+                            value              = strtol (token, NULL, 16);
+                            tmp                = listnode (LIST_IOP, value);
 
                             if (token_label   != NULL)
                             {
                                 value          = sizeof (int8_t) * strlen (token_label) + 1;
                                 tmp -> label   = (int8_t *) malloc (value);
-                                strcpy (tmp -> label, token_label);
                             }
-                            tmp -> fmt         = fmt;
-                            dpoint             = list_add (dpoint, tmp);
-							/*
-                            arg                = strtok ((input+2), " ");
-                            value              = strtol (arg, NULL, 16);
-                            dtmp               = listnode (LIST_IOP, value);
-                            if (token_label   != NULL)
+                            else
                             {
+                                dtmp           = ioports_ptr (value);
+                                token_label    = dtmp -> name;
                                 value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                dtmp -> label  = (int8_t *) malloc (value);
-                                strcpy (dtmp -> label, token_label);
+                                tmp -> label   = (int8_t *) malloc (value);
+                                if (fmt       != FORMAT_DEFAULT)
+                                {
+                                    tmp -> fmt = fmt;
+                                }
                             }
-                            dtmp -> fmt        = fmt;
-                            dpoint             = list_add (dpoint, dtmp);
-							*/
+                            strcpy (tmp -> label, token_label);
+                            dpoint             = list_add (dpoint, tmp);
                             break;
                     }
                 }
@@ -1499,6 +1497,12 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             {
                                 output_reg (result, fmt, *flag, NULL);
                             }
+                            break;
+
+                        case PARSE_IOPORT:
+                            value               = strtol (token, NULL, 16);
+                            dtmp                = ioports_ptr (value);
+                            output_iop (value, dtmp -> fmt, dtmp -> name);
                             break;
                     }
                 }
@@ -1954,7 +1958,7 @@ void load_command (void)
             }
             token_type                 = tokenize_input (input, &deref_flag);
 
-			/*
+            /*
             switch (action)
             {
                 case INPUT_DISPLAY:

@@ -22,7 +22,7 @@ struct linked_list
     int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    space;
-	uint8_t    fmt;
+    uint8_t    fmt;
     uint32_t   number;
     word_t     data;
     linked_l *next;
@@ -33,6 +33,8 @@ struct data_type
     word_t   value;
     uint8_t  flag;
     uint8_t  mode;
+    uint8_t  qty;
+    uint8_t  fmt;
     int8_t  *name;
 };
 typedef struct data_type data_t;
@@ -98,6 +100,8 @@ void      decode         (uint32_t,    uint32_t,    float,    uint8_t);
 void      decode_display (uint32_t,    uint32_t,    float,    uint8_t);
 void      decode_process (uint32_t,    uint32_t,    float,    uint8_t);
 void      init_ioports   (void);                             // initialize IOPorts
+uint8_t   ioports_chk    (uint16_t,    uint8_t);
+data_t   *ioports_ptr    (uint16_t);
 int32_t   ioports_get    (uint16_t,    uint8_t);              // get value from port
 void      ioports_set    (uint16_t,    int32_t,     uint8_t); // set value to port
 void      update_ioports (void);
@@ -116,6 +120,7 @@ word_t   *reg_get        (uint8_t,     uint8_t);
 void      reg_set        (uint8_t,     uint32_t,    uint8_t);
 void      output_reg     (uint8_t,     uint8_t,     uint8_t,  uint8_t *);
 void      output_mem     (uint32_t,    uint8_t,     uint8_t,  uint8_t *);
+void      output_iop     (uint32_t,    uint8_t,     uint8_t *);
 word_t   *new_word_i32   (uint32_t *,  uint8_t);
 void      update_cycle   (void);                              // updating CycleCounter
 void      update_frame   (void);                              // updating FrameCounter

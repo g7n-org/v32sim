@@ -1,13 +1,13 @@
 #include "defines.h"
 
-void       displayshow  (linked_l *list, uint8_t    flag)
+void  displayshow (linked_l *list, uint8_t  flag)
 {
-    linked_l *dtmp                = NULL;
-    uint32_t   count               = 0;
-    uint32_t   value               = 0;
-    word_t    *wtmp                = NULL;
-    int8_t     entry[24];
-    uint8_t    check               = FALSE;
+	data_t   *itmp                 = NULL;
+    linked_l *dtmp                 = NULL;
+    uint32_t  count                = 0;
+    uint32_t  value                = 0;
+    word_t   *wtmp                 = NULL;
+    uint8_t   check                = FALSE;
 
     dtmp                           = list;
     while (dtmp                   != NULL)
@@ -16,7 +16,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
         {
             fprintf (stdout, "\e[0;36m");
         }
-        fprintf (stdout, "[%2u]  ", count);
+        fprintf (stdout, "[%2u] ", count);
         wtmp                       = &(dtmp -> data);
         switch (dtmp -> type)
         {
@@ -37,19 +37,7 @@ void       displayshow  (linked_l *list, uint8_t    flag)
                 break;
 
             case LIST_IOP:
-                //output_iop (wtmp -> i32, dtmp -> fmt, FALSE, dtmp -> label);
-                value              = ioports_get (wtmp -> i32, TRUE);
-                sprintf (entry, "[0x%.3X]", wtmp -> i32);
-                fprintf (stdout, "%*s: ", list -> space, entry);
-                if (colorflag     == TRUE)
-                {
-                    fprintf (stdout, "\e[1;36m");
-                }
-                fprintf (stdout, "0x%.8X\n", value);
-                if (colorflag     == TRUE)
-                {
-                    fprintf (stdout, "\e[m");
-                }
+                output_iop (wtmp -> i32, dtmp -> fmt, dtmp -> label);
                 break;
         }
 

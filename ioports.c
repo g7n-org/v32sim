@@ -34,6 +34,7 @@ void  init_ioports  (void)
     len                                    = sizeof (data_t)   * NUM_TIM_PORTS;
     *(ioports+TIM_PORT)                    = (data_t *) malloc (len);
     pptr                                   = *(ioports+TIM_PORT);
+    pptr -> qty                            = NUM_TIM_PORTS;
 
     current_time_raw                       = time (NULL); // obtain current time (raw)
     current_time_tm                        = localtime (&current_time_raw);
@@ -44,6 +45,7 @@ void  init_ioports  (void)
     {
         (pptr+index) -> value.i32          = 0x00000000;
         (pptr+index) -> flag               = FLAG_READ;
+        (pptr+index) -> fmt                = FORMAT_UNSIGNED;
         (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
         nptr                               = (pptr+index) -> name;
 
@@ -54,6 +56,7 @@ void  init_ioports  (void)
                 value                      = value << 16;
                 value                     |= current_time_tm -> tm_yday + 1;
                 (pptr+index) -> value.i32  = value;
+                (pptr+index) -> fmt        = FORMAT_DEFAULT;
                 sprintf (nptr, "TIM_CurrentDate");
                 break;
 
@@ -62,6 +65,7 @@ void  init_ioports  (void)
                 value                     += current_time_tm -> tm_min  * 60;
                 value                     += current_time_tm -> tm_sec  * 60;
                 (pptr+index) -> value.i32  = value;
+                (pptr+index) -> fmt        = FORMAT_DEFAULT;
                 sprintf (nptr, "TIM_CurrentTime");
                 break;
 
@@ -79,42 +83,46 @@ void  init_ioports  (void)
     //
     // RNG ports: allocate and initialize
     //
-    len                               = sizeof (data_t)   * NUM_RNG_PORTS;
-    *(ioports+RNG_PORT)               = (data_t *) malloc (len);
-    pptr                              = *(ioports+RNG_PORT);
+    len                                    = sizeof (data_t)   * NUM_RNG_PORTS;
+    *(ioports+RNG_PORT)                    = (data_t *) malloc (len);
+    pptr                                   = *(ioports+RNG_PORT);
+    pptr -> qty                            = NUM_RNG_PORTS;
 
-    (pptr+0) -> value.i32             = 0x00000000; //rand ();
-    (pptr+0) -> flag                  = FLAG_READ | FLAG_WRITE;
-    (pptr+0) -> name                  = (int8_t *) malloc (sizeof (int8_t) * 32);
-    nptr                              = (pptr+0) -> name;
+    (pptr+0) -> value.i32                  = 0x00000000; //rand ();
+    (pptr+0) -> flag                       = FLAG_READ | FLAG_WRITE;
+    (pptr+index) -> fmt                    = FORMAT_SIGNED;
+    (pptr+0) -> name                       = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                                   = (pptr+0) -> name;
     sprintf (nptr, "RNG_CurrentValue");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // GPU ports: allocate and initialize
     //
-    len                               = sizeof (data_t)   * NUM_GPU_PORTS;
-    *(ioports+GPU_PORT)               = (data_t *) malloc (len);
-    pptr                              = *(ioports+GPU_PORT);
+    len                                    = sizeof (data_t)   * NUM_GPU_PORTS;
+    *(ioports+GPU_PORT)                    = (data_t *) malloc (len);
+    pptr                                   = *(ioports+GPU_PORT);
+    pptr -> qty                            = NUM_GPU_PORTS;
 
-    for (index                        = 0;
-         index                       <  NUM_GPU_PORTS;
-         index                        = index + 1)
+    for (index                             = 0;
+         index                            <  NUM_GPU_PORTS;
+         index                             = index + 1)
     {
-        (pptr+index) -> value.i32     = 0x00000000;
-        (pptr+index) -> flag          = FLAG_READ | FLAG_WRITE;
-        (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
-        nptr                          = (pptr+index) -> name;
+        (pptr+index) -> value.i32          = 0x00000000;
+        (pptr+index) -> flag               = FLAG_READ | FLAG_WRITE;
+        (pptr+index) -> fmt                = FORMAT_UNSIGNED;
+        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                               = (pptr+index) -> name;
 
         switch (GPU_Command | index)
         {
             case GPU_Command:
-                (pptr+index) -> flag  = FLAG_WRITE;
+                (pptr+index) -> flag       = FLAG_WRITE;
                 sprintf (nptr, "GPU_Command");
                 break;
 
             case GPU_RemainingPixels:
-                (pptr+index) -> flag  = FLAG_READ;
+                (pptr+index) -> flag       = FLAG_READ;
                 sprintf (nptr, "GPU_RemainingPixels");
                 break;
 
@@ -146,14 +154,17 @@ void  init_ioports  (void)
                 break;
 
             case GPU_DrawingScaleX:
+                (pptr+index) -> fmt        = FORMAT_FLOAT;
                 sprintf (nptr, "GPU_DrawingScaleX");
                 break;
 
             case GPU_DrawingScaleY:
+                (pptr+index) -> fmt        = FORMAT_FLOAT;
                 sprintf (nptr, "GPU_DrawingScaleY");
                 break;
 
             case GPU_DrawingAngle:
+                (pptr+index) -> fmt        = FORMAT_FLOAT;
                 sprintf (nptr, "GPU_DrawingAngle");
                 break;
 
@@ -187,9 +198,10 @@ void  init_ioports  (void)
     //
     // INP ports: allocate and initialize
     //
-    len                               = sizeof (data_t)   * NUM_INP_PORTS;
-    *(ioports+INP_PORT)               = (data_t *) malloc (len);
-    pptr                              = *(ioports+INP_PORT);
+    len                                    = sizeof (data_t)   * NUM_INP_PORTS;
+    *(ioports+INP_PORT)                    = (data_t *) malloc (len);
+    pptr                                   = *(ioports+INP_PORT);
+    pptr -> qty                            = NUM_INP_PORTS;
 
     for (index                        = 0;
          index                       <  NUM_INP_PORTS;
@@ -197,6 +209,7 @@ void  init_ioports  (void)
     {
         (pptr+index) -> value.i32     = -1; // not pressed, negative value
         (pptr+index) -> flag          = FLAG_READ;
+        (pptr+index) -> fmt           = FORMAT_SIGNED;
         (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
         nptr                          = (pptr+index) -> name;
 
@@ -261,18 +274,20 @@ void  init_ioports  (void)
     //
     // CAR ports: allocate and initialize
     //
-    len                               = sizeof (data_t)   * NUM_CAR_PORTS;
-    *(ioports+CAR_PORT)               = (data_t *) malloc (len);
-    pptr                              = *(ioports+CAR_PORT);
+    len                                    = sizeof (data_t)   * NUM_CAR_PORTS;
+    *(ioports+CAR_PORT)                    = (data_t *) malloc (len);
+    pptr                                   = *(ioports+CAR_PORT);
+    pptr -> qty                            = NUM_CAR_PORTS;
 
-    for (index                        = 0;
-         index                       <  NUM_CAR_PORTS;
-         index                        = index + 1)
+    for (index                             = 0;
+         index                            <  NUM_CAR_PORTS;
+         index                             = index + 1)
     {
-        (pptr+index) -> value.i32     = 0x00000000;
-        (pptr+index) -> flag          = FLAG_READ;
-        (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
-        nptr                          = (pptr+index) -> name;
+        (pptr+index) -> value.i32          = 0x00000000;
+        (pptr+index) -> flag               = FLAG_READ;
+        (pptr+index) -> fmt                = FORMAT_DEFAULT;
+        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                               = (pptr+index) -> name;
 
         switch (CAR_Connected | index)
         {
@@ -293,6 +308,68 @@ void  init_ioports  (void)
                 break;
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // MEM ports: allocate and initialize
+    //
+    len                                    = sizeof (data_t)   * NUM_MEM_PORTS;
+    *(ioports+MEM_PORT)                    = (data_t *) malloc (len);
+    pptr                                   = *(ioports+MEM_PORT);
+    pptr -> qty                            = NUM_MEM_PORTS;
+    pptr -> value.i32                      = 0x00000000;
+    pptr -> flag                           = FLAG_READ;
+    pptr -> fmt                            = FORMAT_DEFAULT;
+    pptr -> name                           = (int8_t *) malloc (sizeof (int8_t) * 32);
+    nptr                                   = pptr -> name;
+    sprintf (nptr, "MEM_Connected");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// ioports_chk(): check that the address being transacted is valid
+//
+// returns a TRUE or FALSE
+//
+uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  sys_force)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize local variables
+    //
+    uint16_t  type          = (portaddr & 0x0700) >> 8;  // port category
+    uint16_t  attr          = (portaddr & 0x00FF);       // item within category
+    uint8_t   flag          = FLAG_NONE;                 // short form access
+    uint8_t   result        = TRUE;
+    data_t   *pptr          = *(ioports+type);           // pointer for sanity
+    int32_t  *dptr          = (pptr+attr) -> value.i32;  // pointer to port data
+
+    flag                    = (pptr+attr) -> flag;
+    if ((flag & FLAG_READ) != FLAG_READ)
+    {
+        if (sys_force      == FALSE)
+        {
+            fprintf (stderr, "[ERROR] port '%s' not accessible via READ!\n",
+                             (pptr+attr) -> name);
+            sys_error       = ERROR_PORT_READ;
+            result          = FALSE;
+        }
+    }
+
+    return (result);
+}
+
+data_t  *ioports_ptr  (uint16_t  portaddr)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize local variables
+    //
+    uint16_t  type          = (portaddr & 0x0700) >> 8;  // port category
+    uint16_t  attr          = (portaddr & 0x00FF);       // item within category
+    data_t   *pptr          = *(ioports+type);           // pointer for sanity
+
+    return ((pptr+attr));
 }
 
 int32_t  ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
@@ -315,7 +392,7 @@ int32_t  ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
         {
             fprintf (stderr, "[ERROR] port '%s' not accessible via READ!\n",
                              (pptr+attr) -> name);
-            exit (IOPORTS_READ_ERROR);
+            sys_error       = ERROR_PORT_READ;
         }
     }
 
