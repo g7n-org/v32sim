@@ -1138,11 +1138,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                                           PARSE_MEMORY);
                 if (result                == PARSE_MEMORY)
                 {
-                    result                 = strtol (lval,  NULL, 16);
+                    count                  = strtol (lval,  NULL, 16);
                     value                  = strtol (entry, NULL, 16);
                     fprintf (debug, "[0x%.8X] setting memory to 0x%.8X\n",
-                                    result, value);
-                    SYSMEMSET(result, value);
+                                    count , value);
+                    SYSMEMSET(count, value);
                 }
 
                 ////////////////////////////////////////////////////////////////////////
@@ -1154,11 +1154,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                                           PARSE_IOPORT);
                 if (result                == PARSE_IOPORT)
                 {
-                    result                 = strtol (lval,  NULL, 16);
+                    count                  = strtol (lval,  NULL, 16);
                     value                  = strtol (entry, NULL, 16);
                     fprintf (debug, "[0x%.3X] setting ioport to 0x%.8X\n",
-                                    result, value);
-                    SYSPORTSET(result, value);
+                                    count, value);
+                    SYSPORTSET(count, value);
                 }
 
                 /*
