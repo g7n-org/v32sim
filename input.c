@@ -1094,98 +1094,173 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 snprintf (entry, (len+1), "%.*s", (len+1), pos);
                 fprintf (debug, "[lval]  '%s'\n", lval);
                 fprintf (debug, "[entry] '%s'\n", entry);
+                fprintf (debug, "[token] '%s'\n", token);
 
-                if (lval[0]     == 'I')
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Check if we are setting a register of any sort
+                //
+                result                     = parse_token (lval,
+                                                          *(pattern+0),
+                                                          PARSE_REGISTER);
+                if (result                == PARSE_REGISTER)
                 {
-                    if (lval[1] == 'P')
+                    result                 = parse_reg (lval);
+                    value                  = strtol (entry, NULL, 16);
+                    fprintf (debug, "[%s] setting to 0x%.8X\n",
+                                    REGNAME(result), value);
+                    REG(result)            = value;
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // If setting IP, adjust IR and (if needed) IV as well.
+                    //
+                    if (result            == IP)
                     {
-                        REG(IP)  = strtol (entry, NULL, 16);
-                        REG(IR)  = IMEMGET(REG(IP));
-                        if (0   <  (REG(IR) & IMMVAL_MASK))
+                        REG(IR)            = IMEMGET(REG(IP));
+                        if (0             <  (REG(IR) & IMMVAL_MASK))
                         {
-                            REG(IV)  = IMEMGET(REG(IP)+1);
+                            REG(IV)        = IMEMGET(REG(IP)+1);
                         }
-                        fprintf (debug, "[IP] setting to 0x%.8X\n", REG(IP));
-                    }
-                    else if (lval[1] == 'R')
-                    {
-                        REG(IR)  = strtol (entry, NULL, 16);
-                        fprintf (debug, "[IR] setting to 0x%.8X\n", REG(IR));
-                    }
-                    else if (lval[1] == 'V')
-                    {
-                        REG(IV)  = strtol (entry, NULL, 16);
-                        fprintf (debug, "[IV] setting to 0x%.8X\n", REG(IV));
+                        else
+                        {
+                            REG(IV)        = 0;
+                        }
                     }
                 }
-                else if (lval[0] == 'C')
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Check if we are setting a memory address
+                //
+                result                     = parse_token (lval,
+                                                          *(pattern+2),
+                                                          PARSE_MEMORY);
+                if (result                == PARSE_MEMORY)
                 {
-                    check            = strncasecmp (entry, "true", 4);
+                    result                 = strtol (lval,  NULL, 16);
+                    value                  = strtol (entry, NULL, 16);
+                    fprintf (debug, "[0x%.8X] setting memory to 0x%.8X\n",
+                                    result, value);
+                    SYSMEMSET(result, value);
+                }
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Check if we are setting an IOPort
+                //
+                result                     = parse_token (lval,
+                                                          *(pattern+4),
+                                                          PARSE_IOPORT);
+                if (result                == PARSE_IOPORT)
+                {
+                    result                 = strtol (lval,  NULL, 16);
+                    value                  = strtol (entry, NULL, 16);
+                    fprintf (debug, "[0x%.3X] setting ioport to 0x%.8X\n",
+                                    result, value);
+                    SYSPORTSET(result, value);
+                }
+
+                /*
+                if ((lval[0]              == 'I') ||
+                    (lval[0]              == 'i'))
+                {
+                    if ((lval[1]          == 'P') ||
+                        (lval[1]          == 'p'))
+                    {
+                        REG(IP)            = strtol (entry, NULL, 16);
+                        REG(IR)            = IMEMGET(REG(IP));
+                        if (0             <  (REG(IR) & IMMVAL_MASK))
+                        {
+                            REG(IV)        = IMEMGET(REG(IP)+1);
+                        }
+                    }
+                    else if ((lval[1]     == 'R') ||
+                             (lval[1]     == 'r'))
+                    {
+                        REG(IR)            = strtol (entry, NULL, 16);
+                        fprintf (debug, "[IR] setting to 0x%.8X\n", REG(IR));
+                    }
+                    else if ((lval[1]     == 'V') ||
+                             (lval[1]     == 'v'))
+                    {
+                        REG(IV)            = strtol (entry, NULL, 16);
+                        fprintf (debug, "[IV] setting to 0x%.8X\n", REG(IV));
+                    }
+                    else if ((lval[0]         == 'R') ||
+                             (lval[0]         == 'r'))
+                    {
+                        count                  = strtol ((lval+1), NULL, 10);
+                        REG(count)             = strtol (entry,    NULL, 16);
+                        fprintf (debug, "[set] setting R%u to %s\n", count, entry);
+                    }
+                }
+                */
+                else if ((lval[0]         == 'C') ||
+                         (lval[0]         == 'c'))
+                {
+                    check                  = strncasecmp (entry, "true", 4);
                     fprintf (debug, "[color]: %s\n", entry);
-                    if (check       == 0)
+                    if (check             == 0)
                     {    
-                        colorflag    = TRUE;
+                        colorflag          = TRUE;
                     }
                     else
                     {
-                        colorflag    = FALSE;
+                        colorflag          = FALSE;
                     }
                 }
-                else if (lval[0] == 'D')
+                else if ((lval[0]         == 'D') ||
+                         (lval[0]         == 'd'))
                 {
-                    check              = strncasecmp (lval,  "debug", 5);
-                    if (check         == 0)
+                    check                  = strncasecmp (lval,  "debug", 5);
+                    if (check             == 0)
                     {
-                        check          = strncasecmp (entry, "true", 4);
-                        if (check     == 0)
+                        check              = strncasecmp (entry, "true", 4);
+                        if (check         == 0)
                         {    
-                            debug      = stderr;
+                            debug          = stderr;
                             fprintf (debug, "[set] debugging ENABLED!\n");
                         }
                         else
                         {
                             fprintf (debug, "[set] disabling debugging!\n");
-                            debug      = devnull;
+                            debug          = devnull;
                         }
                     }
 
-                    check              = strncasecmp (lval,  "deref", 5);
-                    if (check         == 0)
+                    check                  = strncasecmp (lval,  "deref", 5);
+                    if (check             == 0)
                     {
-                        check          = strncasecmp (entry, "true", 4);
-                        if (check     == 0)
+                        check              = strncasecmp (entry, "true", 4);
+                        if (check         == 0)
                         {    
-                            derefaddr  = TRUE;
+                            derefaddr      = TRUE;
                             fprintf (debug, "[set] derefaddr ENABLED!\n");
                         }
                         else
                         {
-                            derefaddr  = FALSE;
+                            derefaddr      = FALSE;
                             fprintf (debug, "[set] derefaddr DISABLED!\n");
                         }
                     }
                 }
-                else if (lval[0] == 'R')
+                else if ((lval[0]         == 'V') ||
+                         (lval[0]         == 'v'))
                 {
-                    count            = strtol ((lval+1), NULL, 10);
-                    REG(count)       = strtol (entry,    NULL, 16);
-                    fprintf (debug, "[set] setting R%u to %s\n", count, entry);
-                }
-                else if (lval[0] == 'V')
-                {
-                    check              = strncasecmp (lval,  "verbo", 5);
-                    if (check         == 0)
+                    check                  = strncasecmp (lval,  "verbo", 5);
+                    if (check             == 0)
                     {
-                        check          = strncasecmp (entry, "true", 4);
-                        if (check     == 0)
+                        check              = strncasecmp (entry, "true", 4);
+                        if (check         == 0)
                         {    
-                            verbose    = stderr;
+                            verbose        = stderr;
                             fprintf (debug, "[set] verbosity ENABLED!\n");
                         }
                         else
                         {
                             fprintf (debug, "[set] disabling verbosity!\n");
-                            debug      = devnull;
+                            debug          = devnull;
                         }
                     }
                 }
