@@ -110,7 +110,7 @@ void  init_ioports  (void)
     {
         (pptr+index) -> value.i32          = 0x00000000;
         (pptr+index) -> flag               = FLAG_READ | FLAG_WRITE;
-        (pptr+index) -> fmt                = FORMAT_UNSIGNED;
+        (pptr+index) -> fmt                = FORMAT_SIGNED;
         (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
         nptr                               = (pptr+index) -> name;
 
