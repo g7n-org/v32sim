@@ -220,14 +220,14 @@ void  decode_display (uint32_t  instruction,
             if (immflag               == TRUE)
             {
                 sign  = ((signed) immediate >= 0) ? '+' : '-';
-                sprintf (source,       "[R%u%c%d]",     src, sign, abs (immediate));
+                sprintf (source,       "[R%u%c%d]",     src, sign, abs ((signed) immediate));
                 if (sign              == '+')
                 {
-                    value              = REG(src) + abs (immediate);
+                    value              = REG(src) + abs ((signed) immediate);
                 }
                 else
                 {
-                    value              = REG(src) - abs (immediate);
+                    value              = REG(src) - abs ((signed) immediate);
                 }
                 fprintf (display,      "%-5s %-16s %-16s (deref address: 0x%.8X)\n",
                                        lookup[opcode].name,
@@ -688,7 +688,7 @@ void  decode_process (uint32_t  instruction,
             }
             else
             {
-                DSTREG      = DSTREG   >> abs (value);
+                DSTREG      = DSTREG   >> abs ((signed) value);
             }
             break;
 
@@ -759,7 +759,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case IABS:
-            DSTREG          = abs (DSTREG);
+            DSTREG          = abs ((signed) DSTREG);
             break;
 
         case FADD:
