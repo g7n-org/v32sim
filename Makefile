@@ -8,6 +8,13 @@ CC = gcc
 SRC = $(wildcard *.c)
 OBJ = $(SRC:.c=.o)
 TARGET = v32sim
+OS = $(shell uname -s)
+
+# Conditional check for (NOT) macOS -- handle gnu readline history library
+ifneq ($(OS),Darwin)
+    LIBS += -lhistory 
+endif
+
 all: $(TARGET)
 
 debug: CFLAGS += -DDEBUG -g
