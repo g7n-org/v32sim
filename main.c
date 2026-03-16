@@ -48,7 +48,7 @@ linked_l *dpoint;
 linked_l *lpoint;
 linked_l *tpoint;
 
-int32_t   main (int32_t  argc, uint8_t **argv)
+int32_t   main (int32_t  argc, char **argv)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //

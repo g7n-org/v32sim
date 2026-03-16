@@ -1724,7 +1724,7 @@ uint8_t  prompt (uint32_t  word)
     static uint8_t    lastaction        = INPUT_INIT;
     uint8_t    deref_flag               = FALSE;
     uint8_t    processflag              = FALSE;
-    uint8_t    token_type               = PARSE_NONE;
+    //uint8_t    token_type               = PARSE_NONE;
 
     if ((action                        != INPUT_NONE) &&
         (action                        != INPUT_INIT))
@@ -1752,7 +1752,8 @@ uint8_t  prompt (uint32_t  word)
 
     if (action                         != INPUT_NONE)
     {
-        token_type                      = tokenize_input (input, &deref_flag);
+        //token_type                      = tokenize_input (input, &deref_flag);
+        tokenize_input (input, &deref_flag);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -1966,7 +1967,7 @@ void load_command (void)
     int32_t   index                    = 0;
     uint8_t   deref_flag               = FALSE;
     uint8_t   input[64];
-    uint8_t   token_type               = 0;
+    //uint8_t   token_type               = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -2000,7 +2001,8 @@ void load_command (void)
             {
                 break;
             }
-            token_type                 = tokenize_input (input, &deref_flag);
+            //token_type                 = tokenize_input (input, &deref_flag);
+            tokenize_input (input, &deref_flag);
         }
         commandfile                    = NULL;
         fclose (fptr);

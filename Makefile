@@ -1,5 +1,6 @@
 ARCH = $(shell uname -m)
-LIBS =    -lreadline -lhistory -lm
+#LIBS =    -lreadline -lhistory -lm
+LIBS =    -lreadline -lm
 CFLAGS =  -Wall --std=gnu18 -funsigned-char -Wno-unused-value
 CFLAGS += -Wno-pointer-sign -Wno-main -Wno-int-conversion
 INC = 
@@ -14,7 +15,7 @@ debug: DEBUG = debug
 debug: $(SRC) $(OBJ) $(TARGET)
 
 %.o: %.c
-	$(CC) $(INC) $(CFLAGS) -c $< -o $@ $(LIBS)
+	$(CC) $(INC) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJ)
 	$(CC) $(INC) $(CFLAGS)    $^ -o $@ $(LIBS)
