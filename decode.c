@@ -596,14 +596,14 @@ void  decode_process (uint32_t  instruction,
 
         case IN:
             fprintf (debug, "[decode_process] IN: ioports_get (0x%.3X)\n", port);
-            DSTREG          = ioports_get (port, FALSE);
+            DSTREG          = IPORTGET(port);
             break;
 
         case OUT:
             value           = (immflag == TRUE)  ? immediate  : DSTREG;
             fprintf (debug, "[decode_process] OUT: ioports_set (0x%.3X, 0x%.8X)\n",
                             port, value);
-            ioports_set (port, value, FALSE);
+            PORTSET (port, value);
             break;
 
         case MOVS:

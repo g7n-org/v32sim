@@ -331,7 +331,7 @@ void  init_ioports  (void)
 //
 // returns a TRUE or FALSE
 //
-uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  sys_force)
+uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  mode, uint8_t  sys_force)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -341,16 +341,71 @@ uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  sys_force)
     uint16_t  attr          = (portaddr & 0x00FF);       // item within category
     uint8_t   flag          = FLAG_NONE;                 // short form access
     uint8_t   result        = TRUE;
-    data_t   *pptr          = *(ioports+type);           // pointer for sanity
+    data_t   *pptr          = NULL;                      // pointer for sanity
+    int8_t    error         = ERROR_NONE;
 
-    flag                    = (pptr+attr) -> flag;
-    if ((flag & FLAG_READ) != FLAG_READ)
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // ensure this function was called correctly (specify specific mode of
+    // ioport transaction)
+    //
+    if ((mode              != FLAG_READ)  &&
+        (mode              != FLAG_WRITE))
     {
-        if (sys_force      == FALSE)
+        fprintf (stderr, "[ERROR] invalid IOPorts access mode\n");
+        exit (IOPORTS_ACCESS_ERROR);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // based on the mode, set the likely error to occur (if an error occurs)
+    //
+    if (mode               == FLAG_READ)
+    {
+        error               = ERROR_PORT_READ;
+    }
+    else
+    {
+        error               = ERROR_PORT_WRITE;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // make sure the port being requested is a valid port within the category
+    //
+    if (attr               >= pptr -> qty)
+    {
+        fprintf (verbose, "[ERROR] invalid %.3s port 0x%.3hX\n",
+                          pptr -> name, portaddr);
+        sys_error           = error;
+        result              = FALSE;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // if we get here: valid port within category, valid access method, now check
+    // to make sure it is valid for the read/write transaction requested
+    //
+    else
+    {
+        pptr                = *(ioports+type);
+        flag                = (pptr+attr) -> flag;
+        if ((flag & mode)  != mode)
         {
-            fprintf (stderr, "[ERROR] port '%s' not accessible via READ!\n",
-                             (pptr+attr) -> name);
-            sys_error       = ERROR_PORT_READ;
+            if (sys_force  == FALSE)
+            {
+                if (mode   == FLAG_READ)
+                {
+                    fprintf (verbose, "[ERROR] port '%s' not accessible via READ!\n",
+                                     (pptr+attr) -> name);
+                }
+                else
+                {
+                    fprintf (verbose, "[ERROR] port '%s' not accessible via WRITE!\n",
+                                     (pptr+attr) -> name);
+                }
+                sys_error   = error;
+            }
             result          = FALSE;
         }
     }
@@ -367,50 +422,63 @@ data_t  *ioports_ptr  (uint16_t  portaddr)
     uint16_t  type          = (portaddr & 0x0700) >> 8;  // port category
     uint16_t  attr          = (portaddr & 0x00FF);       // item within category
     data_t   *pptr          = *(ioports+type);           // pointer for sanity
+    data_t   *result        = NULL;
 
-    return ((pptr+attr));
+    result                  = ioports_chk (portaddr, FLAG_READ, TRUE);
+    if (result             != NULL)
+    {
+        result              = (pptr+attr);
+    }
+
+    return (result);
 }
 
-int32_t  ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
+word_t *ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Declare and initialize local variables
     //
-    int32_t   value         = 0x00000000;                // obtained value
-    uint16_t  type          = (portaddr & 0x0700) >> 8;  // port category
-    uint16_t  attr          = (portaddr & 0x00FF);       // item within category
-    uint8_t   flag          = FLAG_NONE;                 // short form access
-    data_t   *pptr          = *(ioports+type);           // pointer for sanity
-    int32_t  *dptr          = (pptr+attr) -> value.i32;  // pointer to port data
+    data_t   *pptr                        = NULL;   // pointer for sanity
+    uint16_t  type                        = 0;      // port category
+    uint16_t  attr                        = 0;      // item within category
+    uint8_t   check                       = FALSE;  // valid port status
+    word_t   *result                      = NULL;   // return value
 
-    flag                    = (pptr+attr) -> flag;
-    if ((flag & FLAG_READ) != FLAG_READ)
+    check                                 = ioports_chk (portaddr, FLAG_READ, TRUE);
+    if (check                            == TRUE)
     {
-        if (sys_force      == FALSE)
+        type                              = (portaddr & 0x0700) >> 8;
+        attr                              = (portaddr & 0x00FF);
+        pptr                              = *(ioports+type);
+        result                            = (word_t *) malloc (sizeof (word_t) * 1);
+        switch (portaddr)
         {
-            fprintf (stderr, "[ERROR] port '%s' not accessible via READ!\n",
-                             (pptr+attr) -> name);
-            sys_error       = ERROR_PORT_READ;
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // all the ports that transact in floating point values
+            //
+            case GPU_DrawingScaleX:
+            case GPU_DrawingScaleY:
+            case GPU_DrawingAngle:
+            case SPU_GlobalVolume:
+            case SPU_ChannelVolume:
+            case SPU_ChannelSpeed:
+                result -> f32             = (pptr+attr) -> value.f32;
+                break;
+
+            case RNG_CurrentValue: // obtain pseudorandom value, place in port
+                (pptr+attr) -> value.i32  = rand ();
+            default:
+                result -> i32             = (pptr+attr) -> value.i32;
+                break;
         }
     }
 
-    switch (portaddr)
-    {
-        case RNG_CurrentValue: // obtain pseudorandom value, place in port
-            *dptr           = rand ();
-            value           = (pptr+attr) -> value.i32;
-            break;
-
-        default:
-            value           = (pptr+attr) -> value.i32;
-            break;
-    }
-
-    return (value);
+    return (result);
 }
 
-void      ioports_set  (uint16_t  portaddr, int32_t  value, uint8_t  sys_force)
+uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys_force)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -418,90 +486,38 @@ void      ioports_set  (uint16_t  portaddr, int32_t  value, uint8_t  sys_force)
     //
     uint16_t  type           = (portaddr & 0x0700) >> 8;    // port category
     uint16_t  attr           = (portaddr & 0x00FF);         // item within category
-    uint8_t   flag           = FLAG_NONE;                   // short form access
+    uint8_t   check          = FALSE;
     data_t   *pptr           = *(ioports+type);             // pointer for sanity
 
-    flag                     = (pptr+attr) -> flag;
-    if ((flag & FLAG_WRITE) != FLAG_WRITE)
+    check                    = ioports_chk (portaddr, FLAG_WRITE, TRUE);
+    if (check               == TRUE)
     {
-        if (sys_force       == FALSE)
+        switch (portaddr)
         {
-            fprintf (stderr, "[ERROR] port '%s' not accessible via WRITE!\n",
-                             (pptr+attr) -> name);
-            exit (IOPORTS_WRITE_ERROR);
+            case RNG_CurrentValue:
+                srand (i32);
+                break;
+                    
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // all the ports that transact in floating point values
+            //
+            case GPU_DrawingScaleX:
+            case GPU_DrawingScaleY:
+            case GPU_DrawingAngle:
+            case SPU_GlobalVolume:
+            case SPU_ChannelVolume:
+            case SPU_ChannelSpeed:
+                (pptr+attr) -> value.f32  = f32;
+                break;
+
+            default: // catch all- the standard transaction for external setting
+                (pptr+attr) -> value.i32  = i32;
+                break;
         }
-        sys_force            = FALSE;
     }
 
-    switch (type)
-    {
-        case TIM_PORT:
-            if (attr        >= NUM_TIM_PORTS)
-            {
-                fprintf (stderr, "[ERROR] invalid TIM port 0x%.3hX\n", portaddr);
-                exit (IOPORTS_BAD_PORT);
-            }
-            break;
-
-        case RNG_PORT:
-            if (attr        >= NUM_RNG_PORTS)
-            {
-                fprintf (stderr, "[ERROR] invalid RNG port 0x%.3hX\n", portaddr);
-                exit (IOPORTS_BAD_PORT);
-            }
-            break;
-
-        case GPU_PORT:
-            if (attr        >= NUM_GPU_PORTS)
-            {
-                fprintf (stderr, "[ERROR] invalid GPU port 0x%.3hX\n", portaddr);
-                exit (IOPORTS_BAD_PORT);
-            }
-            break;
-
-        case SPU_PORT:
-            if (attr        >= NUM_SPU_PORTS)
-            {
-                fprintf (stderr, "[ERROR] invalid SPU port 0x%.3hX\n", portaddr);
-                exit (IOPORTS_BAD_PORT);
-            }
-            break;
-
-        case INP_PORT:
-            if (attr        >= NUM_INP_PORTS)
-            {
-                fprintf (stderr, "[ERROR] invalid INP port 0x%.3hX\n", portaddr);
-                exit (IOPORTS_BAD_PORT);
-            }
-            break;
-
-        case CAR_PORT:
-            if (attr        >= NUM_CAR_PORTS)
-            {
-                fprintf (stderr, "[ERROR] invalid CAR port 0x%.3hX\n", portaddr);
-                exit (IOPORTS_BAD_PORT);
-            }
-            break;
-
-        case MEM_PORT:
-            if (attr        >= NUM_MEM_PORTS)
-            {
-                fprintf (stderr, "[ERROR] invalid MEM port 0x%.3hX\n", portaddr);
-                exit (IOPORTS_BAD_PORT);
-            }
-            break;
-    }
-
-    switch (portaddr)
-    {
-        case RNG_CurrentValue:
-            srand (value);
-            break;
-
-        default: // catch all- the standard transaction for external setting
-            (pptr+attr) -> value.i32  = value;
-            break;
-    }
+    return (check);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////

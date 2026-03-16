@@ -357,7 +357,7 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
     uint8_t   entry[8];
 
     sprintf (addr, "0x%.3X", value);
-    check                         = ioports_chk (value, TRUE);
+    check                         = ioports_chk (value, FLAG_READ, TRUE);
 
     switch (fmt)
     {

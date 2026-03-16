@@ -198,11 +198,11 @@ void    load_memory (uint32_t  page, int8_t *filename)
     {
         case V32_PAGE_CART:
             fseek (fptr, (22 * wordsize), SEEK_SET);
-            ioports_set (CAR_NumberOfTextures, get_word (fptr), TRUE);
-            ioports_set (CAR_NumberOfSounds,   get_word (fptr), TRUE);
+            SYSPORTSET(CAR_NumberOfTextures, get_word (fptr));
+            SYSPORTSET(CAR_NumberOfSounds,   get_word (fptr));
             get_word (fptr);
-            ioports_set (CAR_ProgramROMSize,   get_word (fptr), TRUE);
-            ioports_set (CAR_Connected,        TRUE,            TRUE);
+            SYSPORTSET(CAR_ProgramROMSize,   get_word (fptr));
+            SYSPORTSET(CAR_Connected,        TRUE);
         case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (both BIOS and CART)
             fseek (fptr, (35 * wordsize), SEEK_SET);
             break;
@@ -218,7 +218,7 @@ void    load_memory (uint32_t  page, int8_t *filename)
     //
     while (!feof (fptr))
     {
-        memory_set (offset, get_word (fptr), TRUE);
+        SYSMEMSET(offset, get_word (fptr));
         if (!feof (fptr))
         {
             offset     = offset + 1;
@@ -388,11 +388,8 @@ word_t *memory_get (uint32_t  address, uint8_t  sys_force)
                 break;
         }
 
-        if (sys_error             == ERROR_NONE)
-        {
-            dptr                   = (memory+page)  -> data;
-            wptr                   = &(dptr+offset) -> value;
-        }
+        dptr                       = (memory+page)  -> data;
+        wptr                       = &(dptr+offset) -> value;
     }
 
     return (wptr);
