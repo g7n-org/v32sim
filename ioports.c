@@ -373,10 +373,20 @@ uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  mode, uint8_t  sys_force)
     //
     // make sure the port being requested is a valid port within the category
     //
-    if (attr               >= pptr -> qty)
+    if (type               <  7)
     {
-        fprintf (verbose, "[ERROR] invalid %.3s port 0x%.3hX\n",
-                          pptr -> name, portaddr);
+        pptr                = *(ioports+type);
+        if (attr           >= (pptr+0) -> qty)
+        {
+            fprintf (verbose, "[ERROR] invalid %.3s port 0x%.3hX\n",
+                              (pptr+0) -> name, portaddr);
+            sys_error       = error;
+            result          = FALSE;
+        }
+    }
+    else
+    {
+        fprintf (verbose, "[ERROR] invalid port 0x%.3hX\n", portaddr);
         sys_error           = error;
         result              = FALSE;
     }
@@ -386,7 +396,7 @@ uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  mode, uint8_t  sys_force)
     // if we get here: valid port within category, valid access method, now check
     // to make sure it is valid for the read/write transaction requested
     //
-    else
+    if (result             != FALSE)
     {
         pptr                = *(ioports+type);
         flag                = (pptr+attr) -> flag;
