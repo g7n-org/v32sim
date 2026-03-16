@@ -1160,41 +1160,6 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     SYSPORTSET(count, value);
                 }
 
-                /*
-                if ((lval[0]              == 'I') ||
-                    (lval[0]              == 'i'))
-                {
-                    if ((lval[1]          == 'P') ||
-                        (lval[1]          == 'p'))
-                    {
-                        REG(IP)            = strtol (entry, NULL, 16);
-                        REG(IR)            = IMEMGET(REG(IP));
-                        if (0             <  (REG(IR) & IMMVAL_MASK))
-                        {
-                            REG(IV)        = IMEMGET(REG(IP)+1);
-                        }
-                    }
-                    else if ((lval[1]     == 'R') ||
-                             (lval[1]     == 'r'))
-                    {
-                        REG(IR)            = strtol (entry, NULL, 16);
-                        fprintf (debug, "[IR] setting to 0x%.8X\n", REG(IR));
-                    }
-                    else if ((lval[1]     == 'V') ||
-                             (lval[1]     == 'v'))
-                    {
-                        REG(IV)            = strtol (entry, NULL, 16);
-                        fprintf (debug, "[IV] setting to 0x%.8X\n", REG(IV));
-                    }
-                    else if ((lval[0]         == 'R') ||
-                             (lval[0]         == 'r'))
-                    {
-                        count                  = strtol ((lval+1), NULL, 10);
-                        REG(count)             = strtol (entry,    NULL, 16);
-                        fprintf (debug, "[set] setting R%u to %s\n", count, entry);
-                    }
-                }
-                */
                 else if ((lval[0]         == 'C') ||
                          (lval[0]         == 'c'))
                 {
@@ -1583,6 +1548,19 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             fprintf (stderr, "[ERROR] malformed display value\n");
                             break;
 
+                        case PARSE_MEMRANGE:
+                            pos                 = strtok (token, "-");
+                            value               = strtol (pos,   NULL, 16);
+                            pos                 = strtok (NULL,  "-");
+                            check               = strtol (pos,   NULL, 16);
+                            for (index          = value;
+                                 index         <= check;
+                                 index          = index + 1)
+                            {
+                                output_mem (index, fmt, *flag, NULL);
+                            }
+                            break;
+
                         case PARSE_MEMORY:
                             value               = strtol (token, NULL, 16);
                             fprintf (debug, "[input/print] token: '%s', value: 0x%.8X\n", token, value);
@@ -1858,6 +1836,8 @@ uint8_t  prompt (uint32_t  word)
             fprintf (stdout, "    I(P|R|V)            -   system register\n");
             fprintf (stdout, "    0xMEM_ADDR          -   4-byte memory address\n");
             fprintf (stdout, "    [0xMEM_ADDR]        -   dereferenced address\n");
+            fprintf (stdout, "    0xMEM-0xADDR        -   memory range\n");
+            fprintf (stdout, "    [0xMEM-0xADDR]      -   deref memory range\n");
             fprintf (stdout, "    0xIOP               -   IOPort address\n");
             fprintf (stdout, "  (l)abel 0xMEM LABEL   - add label list item\n");
             fprintf (stdout, "  (n)ext                - next (skip subroutines)\n");

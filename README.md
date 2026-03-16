@@ -170,8 +170,13 @@ stops for input, which supports:
     * register aliases supported: `CR`, `SR`, `DR`, `BP`, `SP`
     * all standard registers can be displayed with "regs"
     * system registers (`IP`, `IR`, and `IV`) are also supported
+    * can also be dereferenced
   * memory:
     * 0xAABBCCDD: any 4-byte address
+    * can also be dereferenced
+  * memory range:
+    * 0xAABBCCD0-0xAABBCCD3
+    * can also be dereferenced
   * ioport:
     * 0xABC: any valid IOPort address
 

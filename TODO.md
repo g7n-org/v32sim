@@ -30,12 +30,6 @@ Definitely want to implement MEMC.
 
 Currently does not handle leap years/days.
 
-## MEMORY RANGES
-
-For `print` and `display`
-
-A RegEx is in place, but no logic has been laid down as yet.
-
 ## VARIED DEBUG FILE LOCATION CHECK
 
 Currently  only   checks  current  directory,  should   also  check  obj/
