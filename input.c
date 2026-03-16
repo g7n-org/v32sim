@@ -1376,6 +1376,35 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             fprintf (stderr, "[ERROR] malformed display value\n");
                             break;
 
+                        case PARSE_MEMRANGE:
+                            pos                    = strtok (token, "-");
+                            value                  = strtol (pos,   NULL, 16);
+                            pos                    = strtok (NULL,  "-");
+                            check                  = strtol (pos,   NULL, 16);
+                            for (index             = value;
+                                 index            <= check;
+                                 index             = index + 1)
+                            {
+                                if (*flag         == TRUE)
+                                {
+                                    tmp            = listnode (LIST_MEM_DEREF, index);
+                                }
+                                else
+                                {
+                                    tmp            = listnode (LIST_MEM,       index);
+                                }
+
+                                if (token_label   != NULL)
+                                {
+                                    value          = sizeof (int8_t) * strlen (token_label) + 1;
+                                    tmp -> label   = (int8_t *) malloc (value);
+                                    strcpy (tmp -> label, token_label);
+                                }
+                                tmp -> fmt         = fmt;
+                                dpoint             = list_add (dpoint, tmp);
+                            }
+                            break;
+
                         case PARSE_MEMORY:
                             value              = strtol (token, NULL, 16);
                             if (*flag         == TRUE)
