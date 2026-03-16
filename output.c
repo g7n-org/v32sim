@@ -68,6 +68,11 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
     //
     fprintf (stdout, "%*s: ", dpoint -> space, entry);
 
+    if (colorflag                == TRUE)
+    {
+        fprintf (stdout, "\e[1;36m");
+    }
+
     if (check                    == FALSE)
     {
         fprintf (stdout, "<invalid address>");
@@ -243,6 +248,11 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
     //
     fprintf (stdout, "%*s: ", dpoint -> space, entry);
 
+    if (colorflag                == TRUE)
+    {
+        fprintf (stdout, "\e[1;36m");
+    }
+
     if (check                    == FALSE)
     {
         fprintf (stdout, "<invalid address>");
@@ -408,6 +418,11 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
     // Display the display list header
     //
     fprintf (stdout, "%*s: ", dpoint -> space, entry);
+
+    if (colorflag                == TRUE)
+    {
+        fprintf (stdout, "\e[1;36m");
+    }
 
     if (check                    == FALSE)
     {

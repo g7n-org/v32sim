@@ -59,7 +59,7 @@ void  show_sysregs (void)
         {
             fprintf (stdout, "\e[0;36m");
         }
-        fprintf (stdout, "%*s: ", (dpoint -> space + 6), REGNAME(index));
+        fprintf (stdout, "%*s: ", (dpoint -> space + 5), REGNAME(index));
         if (colorflag     == TRUE)
         {
             fprintf (stdout, "\e[m");
