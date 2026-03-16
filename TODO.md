@@ -22,7 +22,6 @@ could be helpful when watchpoints are implemented.
 
   * `GPU_` functionality
   * `SPU_`?
-  * `INP_`
   * `MEM_`
 
 Definitely want to implement MEMC.
