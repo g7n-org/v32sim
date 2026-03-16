@@ -1342,10 +1342,29 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_MEMRANGE:
+                            ////////////////////////////////////////////////////////////
+                            //
+                            // obtain the two range extents
+                            //
                             pos                    = strtok (token, "-");
                             value                  = strtol (pos,   NULL, 16);
                             pos                    = strtok (NULL,  "-");
                             check                  = strtol (pos,   NULL, 16);
+
+                            ////////////////////////////////////////////////////////////
+                            //
+                            // check that we have a valid range, within reason
+                            //
+                            if ((value            >  check) ||
+                                ((check - value)  >  16))
+                            {
+                                break;
+                            }
+
+                            ////////////////////////////////////////////////////////////
+                            //
+                            // add each address in the range to the displaylist
+                            //
                             for (index             = value;
                                  index            <= check;
                                  index             = index + 1)
@@ -1553,6 +1572,17 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             value               = strtol (pos,   NULL, 16);
                             pos                 = strtok (NULL,  "-");
                             check               = strtol (pos,   NULL, 16);
+
+                            ////////////////////////////////////////////////////////////
+                            //
+                            // check that we have a valid range, within reason
+                            //
+                            if ((value            >  check) ||
+                                ((check - value)  >  16))
+                            {
+                                break;
+                            }
+
                             for (index          = value;
                                  index         <= check;
                                  index          = index + 1)
