@@ -292,6 +292,7 @@ void  init_ioports  (void)
         switch (CAR_Connected | index)
         {
             case CAR_Connected:
+                (pptr+index) -> value.i32  = 1;
                 sprintf (nptr, "CAR_Connected");
                 break;
 
@@ -543,7 +544,7 @@ void  update_ioports (void)
     int32_t   type  = 0;     // type of port (category)
     int32_t   attr  = 0;     // specific port in the category
     data_t   *pptr  = NULL;  // pointer to port
-    int32_t  *dptr  = NULL;  // pointer to port data
+    int32_t   dptr  = 0;     // port data
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -557,13 +558,13 @@ void  update_ioports (void)
          attr       = attr + 1)
     {
         dptr        = (pptr+attr) -> value.i32;  // pointer to port data
-        if (*dptr  <  0) // if the button is NOT currently pressed
+        if (dptr   <  0) // if the button is NOT currently pressed
         {
-            *dptr   = *dptr - 1;
+            dptr    = dptr - 1;
         }
         else             // the button IS currently pressed
         {
-            *dptr   = *dptr + 1;
+            dptr    = dptr + 1;
         }
     }        
 }
