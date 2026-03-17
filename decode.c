@@ -202,6 +202,8 @@ void  decode_display (uint32_t  instruction,
         case FMUL:
         case FDIV:
         case FMOD:
+        case FMIN:
+        case FMAX:
             sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
             {
@@ -341,11 +343,13 @@ void  decode_display (uint32_t  instruction,
         case CFI:
         case CIB:
         case CFB:
-        case ISGN:
         case NOT:
         case BNOT:
         case CMPS:
+        case ISGN:
         case IABS:
+        case FSGN:
+        case FABS:
             sprintf (destination, "R%u",    dst);
             fprintf (display,     "%-5s %-16s\n",
                                   lookup[opcode].name, destination);
@@ -781,6 +785,24 @@ void  decode_process (uint32_t  instruction,
         case FMOD:
             fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
             FDSTREG         = fmodf (DSTREG, fvalue);
+            break;
+
+        case FSGN:
+            FDSTREG         = -FDSTREG;
+            break;
+
+        case FMIN:
+            fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
+            FDSTREG         = fminf (DSTREG, fvalue);
+            break;
+
+        case FMAX:
+            fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
+            FDSTREG         = fmaxf (DSTREG, fvalue);
+            break;
+
+        case FABS:
+            FDSTREG         = fabsf (FDSTREG);
             break;
 
         default:

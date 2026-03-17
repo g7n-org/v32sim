@@ -255,5 +255,9 @@
 #define  FMUL                    0x31
 #define  FDIV                    0x32
 #define  FMOD                    0x33
+#define  FSGN                    0x34
+#define  FMIN                    0x35
+#define  FMAX                    0x36
+#define  FABS                    0x37
 
 #endif
