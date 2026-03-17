@@ -10,12 +10,26 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
 
     if (flag                     == TRUE)
     {
-        sprintf (addr, "[%s(0x%.8X)]", REGNAME(id), REG(id));
+        if (REGALIAS(id)         != NULL)
+        {
+            sprintf (addr, "[%s(%s)>0x%.8X]", REGNAME(id), REGALIAS(id), REG(id));
+        }
+        else
+        {
+            sprintf (addr, "[%s>0x%.8X]", REGNAME(id), REG(id));
+        }
         check                     = memory_chk (REG(id), TRUE);
     }
     else
     {
-        sprintf (addr, "%s", REGNAME(id));
+        if (REGALIAS(id)         != NULL)
+        {
+            sprintf (addr, "%s(%s)", REGNAME(id), REGALIAS(id));
+        }
+        else
+        {
+            sprintf (addr, "%s", REGNAME(id));
+        }
     }
 
     switch (fmt)

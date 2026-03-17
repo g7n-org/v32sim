@@ -36,6 +36,7 @@ struct data_type
     uint8_t  qty;
     uint8_t  fmt;
     int8_t  *name;
+    int8_t  *alias;
 };
 typedef struct data_type data_t;
 

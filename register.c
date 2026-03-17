@@ -31,6 +31,7 @@ void  init_registers (void)
     {
         len                            = sizeof (int8_t) * 4;
         REGNAME(index)                 = (int8_t *) malloc (len);
+        REGALIAS(index)                = NULL;
         sprintf (REGNAME(index), "R%u", index);
         REG(index)                     = 0x00000000;
         REGMODE(index)                 = REG_INT;
@@ -40,16 +41,21 @@ void  init_registers (void)
     //
     // set up aliases for string registers
     //
-    sprintf (REGNAME(CR), "CR");
-    sprintf (REGNAME(SR), "SR");
-    sprintf (REGNAME(DR), "DR");
+    REGALIAS(CR)                       = (int8_t *) malloc (len);
+    REGALIAS(SR)                       = (int8_t *) malloc (len);
+    REGALIAS(DR)                       = (int8_t *) malloc (len);
+    sprintf (REGALIAS(CR), "CR");
+    sprintf (REGALIAS(SR), "SR");
+    sprintf (REGALIAS(DR), "DR");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // set up aliases for stack registers
     //
-    sprintf (REGNAME(BP), "BP");
-    sprintf (REGNAME(SP), "SP");
+    REGALIAS(BP)                       = (int8_t *) malloc (len);
+    REGALIAS(SP)                       = (int8_t *) malloc (len);
+    sprintf (REGALIAS(BP), "BP");
+    sprintf (REGALIAS(SP), "SP");
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
