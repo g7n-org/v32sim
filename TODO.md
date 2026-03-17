@@ -40,16 +40,11 @@ directory:
   * `../obj/` - should also check
   * implement a command-line argument to specify
 
-## ASSEMBLY CODE OVERLAY
+## IOPORTS DISPLAY BASED ON SYMBOLIC NAME
 
-With the  offsets, line numbers, and  labels loaded from the  debug file,
-look up the actual line of assembly and display it instead of our decoded
-output.
-
-## C CODE OVERLAY
-
-Access the .asm.debug to also get the  lines from the C file, and display
-the corresponding line of C code.
+Like breakpoints,  rig up  logic that allows  for the  `display` (perhaps
+even `print`) of  IOPorts by specifying them by their  symbolic name, not
+just their hex value.
 
 ## WATCHPOINTS
 
@@ -66,6 +61,17 @@ Idea for watchpoints:
 The  various  `_get` and  `_set`  functions  for registers,  memory,  and
 ioports need  to perform  a sweep through  the watchlist,  performing any
 checks for the entries that pertain to them.
+
+## ASSEMBLY CODE OVERLAY
+
+With the  offsets, line numbers, and  labels loaded from the  debug file,
+look up the actual line of assembly and display it instead of our decoded
+output.
+
+## C CODE OVERLAY
+
+Access the .asm.debug to also get the  lines from the C file, and display
+the corresponding line of C code.
 
 ## LIVE ASSEMBLY INJECTION
 
