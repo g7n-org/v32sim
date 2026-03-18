@@ -420,6 +420,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             fmt        = FORMAT_BINARY;
                         }
+                        else if (*pos == 'B')
+                        {
+                            fmt        = FORMAT_BOOLEAN;
+                        }
                         else if (*pos == 'd')
                         {
                             fmt        = FORMAT_SIGNED;
@@ -671,6 +675,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         if (*(pos+0)      == 'b')
                         {
                             fmt            = FORMAT_BINARY;
+                        }
+                        else if (*pos     == 'B')
+                        {
+                            fmt            = FORMAT_BOOLEAN;
                         }
                         else if (*pos     == 'd')
                         {
