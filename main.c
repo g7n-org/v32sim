@@ -13,6 +13,7 @@ uint8_t  *destination;
 uint8_t  *source;
 int8_t   *biosfile;
 int8_t   *cartfile;
+int8_t   *memcfile;
 int8_t   *commandfile;
 data_t   *reg;
 int8_t   *token_label;
@@ -57,6 +58,7 @@ int32_t   main (int32_t  argc, char **argv)
     linked_l *btmp                  = NULL;
     linked_l *tmp                   = NULL;
     size_t    len                   = 0;
+    uint8_t   chk                   = FALSE;
     uint8_t   decodeflags           = FLAG_NONE;
     uint8_t   processflag           = FALSE;
     uint32_t  vbinoffset            = 0x00000000;
@@ -70,6 +72,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     biosfile                        = NULL;
     cartfile                        = NULL;
+    memcfile                        = NULL;
     commandfile                     = NULL;
     rom_offset                      = BIOS_START_OFFSET;
     branchflag                      = FALSE;
@@ -128,8 +131,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     if (cartfile                   == NULL)
     {
-        fprintf (stderr, "[ERROR] Must specify Vircon32 cartridge file!\n");
-        exit (NO_CART_ERROR);
+        fprintf (verbose, "[v32sim] started without specifying V32 cartridge file!\n");
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -179,6 +181,40 @@ int32_t   main (int32_t  argc, char **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // Initialize BIOS (load contents into memory), optionally loading any debug data
+    //
+    chk                             = load_memory (V32_PAGE_BIOS, biosfile);
+    if ((debugflag                 == TRUE) &&
+        (chk                       == TRUE))
+    {
+        load_labels (biosfile);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Initialize CART (load contents into memory), optionally loading any debug data
+    //
+    chk                             = load_memory (V32_PAGE_CART, cartfile);
+    if ((debugflag                 == TRUE) &&
+        (chk                       == TRUE))
+    {
+        load_labels (cartfile);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Initialize MEMC (load contents into memory)
+    //
+    chk                             = load_memory (V32_PAGE_MEMC, memcfile);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Our registers will be in a data_t array
+    //
+    init_registers ();
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // Allocate Vircon32 IOPorts (a 2D array of ports)
     //
     init_ioports ();
@@ -188,38 +224,6 @@ int32_t   main (int32_t  argc, char **argv)
     // Allocate Vircon32 memory regions (RAM, BIOS, CART, MEMC)
     //
     init_memory ();
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Initialize BIOS, optionally loading any debug file data
-    //
-    load_memory (V32_PAGE_BIOS, biosfile); // load BIOS file contents into memory
-    if (debugflag                  == TRUE)
-    {
-        load_labels (biosfile);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Initialize CART, optionally loading any debug file data
-    //
-    load_memory (V32_PAGE_CART, cartfile); // load CART file contents into memory
-    if (debugflag                  == TRUE)
-    {
-        load_labels (cartfile);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Initialize MEMC
-    //
-    //load_memory (V32_PAGE_MEMC, memcfile); // load MEMC file contents into memory
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Our registers will be in a data_t array
-    //
-    init_registers ();
 
     ////////////////////////////////////////////////////////////////////////////////////
     //

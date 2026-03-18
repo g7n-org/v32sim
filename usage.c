@@ -2,7 +2,7 @@
 
 void  usage (int8_t *program)
 {
-    fprintf (stdout, "Usage: %s [OPTION]... CARTFILE.v32\n", program);
+    fprintf (stdout, "Usage: %s [OPTION]... [CARTFILE.v32]\n", program);
     fprintf (stdout, "Debugger/Simulator for Vircon32 Fantasy Console\n\n");
     fprintf (stdout, "Mandatory arguments to long options are mandatory ");
     fprintf (stdout, "for short options too.\n\n");

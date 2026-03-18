@@ -190,6 +190,7 @@
 #define  PORTSET(addr, word)     ioports_set (addr, word, 0.0, FALSE)
 #define  FPORTSET(addr, word)    ioports_set (addr, 0, word, FALSE)
 #define  SYSPORTSET(addr, word)  ioports_set (addr, word, 0.0, TRUE)
+#define  FSYSPORTSET(addr, word) ioports_set (addr, 0, word, TRUE)
 
 #define  REG_RAW                 0
 #define  REG_INT                 1

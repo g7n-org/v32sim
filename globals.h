@@ -58,6 +58,7 @@ extern uint8_t   *destination;
 extern uint8_t   *source;
 extern int8_t    *biosfile;
 extern int8_t    *cartfile;
+extern int8_t    *memcfile;
 extern int8_t    *commandfile;
 extern int8_t     sys_error;
 extern mem_t     *memory;
@@ -109,7 +110,7 @@ void      update_ioports (void);
 void      init_memory    (void);                              // initialize memory
 void      load_command   (void);
 uint32_t  load_labels    (uint8_t *);
-void      load_memory    (uint32_t,    int8_t *);             // load file into memory
+uint8_t   load_memory    (uint32_t,    int8_t *);             // load file into memory
 uint8_t   memory_chk     (uint32_t,    uint8_t);
 word_t   *memory_get     (uint32_t,    uint8_t);              // get value from memory
 void      memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory

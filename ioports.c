@@ -292,7 +292,7 @@ void  init_ioports  (void)
         switch (CAR_Connected | index)
         {
             case CAR_Connected:
-                (pptr+index) -> value.i32  = 1;
+                //(pptr+index) -> value.i32  = 1;
                 sprintf (nptr, "CAR_Connected");
                 break;
 
@@ -416,8 +416,8 @@ uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  mode, uint8_t  sys_force)
                                      (pptr+attr) -> name);
                 }
                 sys_error   = error;
+                result      = FALSE;
             }
-            result          = FALSE;
         }
     }
 
@@ -500,7 +500,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
     uint8_t   check          = FALSE;
     data_t   *pptr           = *(ioports+type);             // pointer for sanity
 
-    check                    = ioports_chk (portaddr, FLAG_WRITE, TRUE);
+    check                    = ioports_chk (portaddr, FLAG_WRITE, sys_force);
     if (check               == TRUE)
     {
         switch (portaddr)
