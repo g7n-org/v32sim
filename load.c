@@ -68,25 +68,25 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
     //
     // Declare and initialize variables
     //
-    FILE     *fptr             = NULL;
-    uint32_t  offset           = 0x00000000;
-    uint8_t   chk              = FALSE;
-    uint8_t   result           = FALSE;
+    FILE     *fptr                  = NULL;
+    uint32_t  offset                = 0x00000000;
+    uint8_t   chk                   = FALSE;
+    uint8_t   result                = FALSE;
 
-    if (filename              != NULL)
+    if (filename                   != NULL)
     {
         ////////////////////////////////////////////////////////////////////////////////
         //
         // Adjust offset to be at the start of the indicated page
         //
-        offset                 = offset | (page << 28);
+        offset                      = offset | (page << 28);
 
         ////////////////////////////////////////////////////////////////////////////////
         //
         // Open indicated filename for reading
         //
-        fptr                   = fopen (filename, "rb");
-        if (fptr              == NULL)
+        fptr                        = fopen (filename, "rb");
+        if (fptr                   == NULL)
         {
             fprintf (stderr, "[ERROR] Could not open '%s' for reading\n", filename);
             exit    (FILE_OPEN_ERROR);
@@ -96,9 +96,10 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
         //
         // Adjust size of region of memory
         //
-        (memory+page) -> size  = get_filesize (biosfile);
-        chk                    = alloc_memory (page);
-        if (chk               == TRUE)
+        (memory+page) -> size       = get_filesize (biosfile);
+        (memory+page) -> last_addr  = (memory+page) -> firstaddr + (memory+page) -> size;
+        chk                         = alloc_memory (page);
+        if (chk                    == TRUE)
         {
             ////////////////////////////////////////////////////////////////////////////
             //
@@ -132,7 +133,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                 SYSMEMSET(offset, get_word (fptr));
                 if (!feof (fptr))
                 {
-                    offset     = offset + 1;
+                    offset          = offset + 1;
                 }
             }
 
@@ -142,7 +143,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             //
             // Operation deemed successful
             //
-            result             = TRUE;
+            result                  = TRUE;
         }
     }
 
