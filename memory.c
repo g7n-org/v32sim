@@ -6,13 +6,14 @@ void    init_memory (void)
     int32_t  page                           = 0;
     data_t  *dptr                           = NULL;
     size_t   len                            = 0;
+    uint8_t  chk                            = FALSE;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Allocate the memory device
     //
-    len                                     = sizeof (mem_t) * NUM_MEMORY_PAGES;
-    memory                                  = (mem_t *) malloc (len);
+    len                                     = NUM_MEMORY_PAGES;
+    memory                                  = (mem_t *) calloc (sizeof (mem_t), len);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -24,6 +25,10 @@ void    init_memory (void)
         exit (MEMORY_ALLOC_FAIL);
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Initialize each page
+    //
     for (page                               = 0;
          page                              <  NUM_MEMORY_PAGES;
          page                               = page  + 1)
@@ -32,211 +37,97 @@ void    init_memory (void)
         {
             case V32_PAGE_RAM:  // Vircon32 RAM is 16MB / 4MW
                 (memory+page) -> type       = V32_PAGE_RAM;
-                (memory+page) -> firstaddr  = 0x00000000;
-                (memory+page) -> last_addr  = 0x003FFFFF;
+                (memory+page) -> firstaddr  = RAM_FIRST_ADDR;
+                (memory+page) -> last_addr  = RAM_FINAL_ADDR;
                 (memory+page) -> size       = 1024 * 1024 * wordsize;
+                (memory+page) -> flag       = FLAG_READ | FLAG_WRITE;
+                (memory+page) -> data       = NULL;
                 break;
 
             case V32_PAGE_BIOS:
                 (memory+page) -> type       = V32_PAGE_BIOS;
-                (memory+page) -> firstaddr  = 0x10000000;
-                (memory+page) -> last_addr  = 0x100FFFFF;
+                (memory+page) -> firstaddr  = BIOS_FIRST_ADDR;
+                (memory+page) -> last_addr  = BIOS_FINAL_ADDR;
                 (memory+page) -> size       = get_filesize (biosfile);
+                (memory+page) -> flag       = FLAG_READ;
+                (memory+page) -> data       = NULL;
                 break;
 
             case V32_PAGE_CART:
                 (memory+page) -> type       = V32_PAGE_CART;
-                (memory+page) -> firstaddr  = 0x20000000;
-                (memory+page) -> last_addr  = 0x27FFFFFF;
+                (memory+page) -> firstaddr  = CART_FIRST_ADDR;
+                (memory+page) -> last_addr  = CART_FINAL_ADDR;
                 (memory+page) -> size       = get_filesize (cartfile);
+                (memory+page) -> flag       = FLAG_READ;
+                (memory+page) -> data       = NULL;
                 break;
 
             case V32_PAGE_MEMC:
                 (memory+page) -> type       = V32_PAGE_MEMC;
-                (memory+page) -> firstaddr  = 0x30000000;
-                (memory+page) -> last_addr  = 0x3003FFFF;
+                (memory+page) -> firstaddr  = MEMC_FIRST_ADDR;
+                (memory+page) -> last_addr  = MEMC_FINAL_ADDR;
                 (memory+page) -> size       = 1024 * 256;
+                (memory+page) -> flag       = FLAG_READ | FLAG_WRITE;
+                (memory+page) -> data       = NULL;
                 break;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // allocate memory for the page
+        // Check that memory has been allocated for the page
         //
-        len                                 = sizeof (data_t) * (memory+page) -> size;
-        (memory+page)     -> data           = (data_t *) malloc (len);
-        if ((memory+page) -> data          == NULL)
+        chk                                 = alloc_memory (page);
+        if (chk                            == FALSE)
         {
-            fprintf (stderr, "[error] failed to allocate for memory page\n");
-            exit (MEMORY_ALLOC_FAIL);
+            continue;
         }
-
-        dptr                                = (memory+page) -> data;
-        for (offset                         = 0;
-             offset                        <  (memory+page) -> size;
-             offset                         = offset + 1)
-        {
-            switch (page)
-            {
-                case V32_PAGE_RAM:
-                case V32_PAGE_MEMC:
-                    (dptr+offset) -> flag   = FLAG_READ | FLAG_WRITE;
-                    break;
-
-                case V32_PAGE_BIOS:
-                case V32_PAGE_CART:
-                    (dptr+offset) -> flag   = FLAG_READ;
-                    break;
-            }
-            (dptr+offset) -> value.i32      = 0x00000000;
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // Mark unused BIOS page words as neither read nor write
-        //
-        if (page                           == V32_PAGE_BIOS)
-        {
-            for (offset                     = (memory+page) -> size;
-                 offset                    <  (memory+page) -> last_addr - (memory+page) -> firstaddr;
-                 offset                     = offset + 1)
-            {
-                (dptr+offset) -> flag       = FLAG_NONE;
-            }
-        }            
     }
 }
 
-size_t    get_filesize (int8_t *filename)
+uint8_t  alloc_memory (int32_t  page)
 {
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Declare and initialize variables
-    //
-    int32_t  offset   = 0;
-    size_t   size     = 0;
-    FILE    *fptr     = NULL;
+    data_t  *dptr                           = NULL;
+    size_t   len                            = 0;
+    uint8_t  result                         = FALSE;
 
-    if (filename     != NULL)
+    if ((page                              >= V32_PAGE_RAM) &&
+        (page                              <= V32_PAGE_MEMC))
     {
-        fptr          = fopen (filename, "rb"); // open in (binary) read mode
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // determine size of page
+        //
+        len                                 = (memory+page) -> size;
 
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // open indicated file for reading (in binary mode, if pertinent)
+        // if pagesize is 0, skip
         //
-        if (fptr     == NULL)
-        {
-            fprintf (stderr, "[ERROR] Unable to open '%s' for reading\n", filename);
-            exit    (FILE_OPEN_ERROR);
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // adjust FILE pointer to end of file
-        //
-        offset        = fseek (fptr, 0, SEEK_END);
-        if (offset   == 0)
+        if (len                            >  0)
         {
             ////////////////////////////////////////////////////////////////////////////
             //
-            // Get the current position (file size in bytes)
+            // dallocate memory for the page, if it exists
             //
-            size      = ftell (fptr);
-            if (size == -1)
+            if ((memory+page) -> data      != NULL)
             {
-                fprintf (stderr, "[ERROR] Unable to obtain file position\n");
-                exit    (FILE_POSITION_ERROR);
+                free ((memory+page) -> data);
+                (memory+page) -> data       = NULL;
             }
-        }
-        else
-        {
-            fprintf (stderr, "[ERROR] Unable to seek to end of file\n");
-            exit    (FILE_POSITION_ERROR);
-        }
 
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // Close the file
-        //
-        fclose (fptr);
-    }
-
-    return (size);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
-//
-// load_memory(): load data files from disk into page-appropriate location in memory
-//
-uint8_t  load_memory (uint32_t  page, int8_t *filename)
-{
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Declare and initialize variables
-    //
-    FILE     *fptr      = NULL;
-    uint32_t  offset    = 0x00000000;
-    uint8_t   result    = FALSE;
-
-    if (filename       != NULL)
-    {
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // Adjust offset to be at the start of the indicated page
-        //
-        offset          = offset | (page << 28);
-
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // Open indicated filename for reading
-        //
-        fptr            = fopen (filename, "rb");
-        if (fptr       == NULL)
-        {
-            fprintf (stderr, "[ERROR] Could not open '%s' for reading\n", filename);
-            exit    (FILE_OPEN_ERROR);
-        }
-
-        result          = TRUE;
-
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // Adjust position in file to move beyond header data, based on page
-        //
-        switch (page)
-        {
-            case V32_PAGE_CART:
-                fseek (fptr, (22 * wordsize), SEEK_SET);
-                SYSPORTSET(CAR_NumberOfTextures, get_word (fptr));
-                SYSPORTSET(CAR_NumberOfSounds,   get_word (fptr));
-                get_word (fptr);
-                SYSPORTSET(CAR_ProgramROMSize,   get_word (fptr));
-                SYSPORTSET(CAR_Connected,        TRUE);
-            case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (BIOS and CART)
-                fseek (fptr, (35 * wordsize), SEEK_SET);
-                break;
-
-            case V32_PAGE_MEMC: // we need to skip ahead to word ?? (check for value)
-                SYSPORTSET(MEM_Connected,        TRUE);
-                break;
-        }
-    
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // Continually read in words from the file until we reach EOF, placing each
-        // read word in memory at the appropriate offset.
-        //
-        while (!feof (fptr))
-        {
-            SYSMEMSET(offset, get_word (fptr));
-            if (!feof (fptr))
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // allocate memory for the page
+            //
+            (memory+page)     -> data       = (data_t *) calloc (len, sizeof (data_t));
+            if ((memory+page) -> data      == NULL)
             {
-                offset  = offset + 1;
+                fprintf (stderr, "[error] failed to allocate for memory page\n");
+                exit (MEMORY_ALLOC_FAIL);
             }
-        }
 
-        fclose (fptr);
+            result                          = TRUE;
+        }
     }
 
     return (result);
@@ -256,7 +147,7 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  sys_force)
     switch (page)
     {
         case V32_PAGE_RAM:
-            if (address       >  RAM_LAST_ADDR)
+            if (address       >  RAM_FINAL_ADDR)
             {
                 if (sys_force == FALSE)
                 {
@@ -268,7 +159,7 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  sys_force)
             break;
 
         case V32_PAGE_BIOS:
-            if (address       >  BIOS_LAST_ADDR)
+            if (address       >  (memory+page) -> last_addr)
             {
                 if (sys_force == FALSE)
                 {
@@ -280,7 +171,7 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  sys_force)
             break;
 
         case V32_PAGE_CART:
-            if (address       >  CART_LAST_ADDR)
+            if (address       >  (memory+page) -> last_addr)
             {
                 if (sys_force == FALSE)
                 {
@@ -292,7 +183,7 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  sys_force)
             break;
 
         case V32_PAGE_MEMC:
-            if (address       >  MEMC_LAST_ADDR)
+            if (address       >  MEMC_FINAL_ADDR)
             {
                 if (sys_force == FALSE)
                 {
@@ -334,11 +225,10 @@ word_t *memory_get (uint32_t  address, uint8_t  sys_force)
     check                          = memory_chk (address, sys_force);
     if (check                     == TRUE)
     {
+        flag                       = ((memory+page) -> flag) & FLAG_READ;
         switch (page)
         {
             case V32_PAGE_RAM:
-                dptr               = (memory+page)  -> data;
-                flag               = ((dptr+offset) -> flag) & FLAG_READ;
                 if (flag          != FLAG_READ)
                 {
                     if (sys_force == FALSE)
@@ -351,8 +241,6 @@ word_t *memory_get (uint32_t  address, uint8_t  sys_force)
                 break;
 
             case V32_PAGE_BIOS:
-                dptr               = (memory+page)  -> data;
-                flag               = ((dptr+offset) -> flag) & FLAG_READ;
                 if (flag          != FLAG_READ)
                 {
                     if (sys_force == FALSE)
@@ -365,8 +253,6 @@ word_t *memory_get (uint32_t  address, uint8_t  sys_force)
                 break;
 
             case V32_PAGE_CART:
-                dptr               = (memory+page)  -> data;
-                flag               = ((dptr+offset) -> flag) & FLAG_READ;
                 if (flag          != FLAG_READ)
                 {
                     if (sys_force == FALSE)
@@ -379,8 +265,6 @@ word_t *memory_get (uint32_t  address, uint8_t  sys_force)
                 break;
 
             case V32_PAGE_MEMC:
-                dptr               = (memory+page)  -> data;
-                flag               = ((dptr+offset) -> flag) & FLAG_READ;
                 if (flag          != FLAG_READ)
                 {
                     if (sys_force == FALSE)
@@ -416,17 +300,16 @@ void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
     uint32_t  offset            = (address & 0x0FFFFFFF);
     uint8_t   flag              = FLAG_NONE;
 
+    flag                        = ((memory+page) -> flag) & FLAG_WRITE;
     switch (page)
     {
         case V32_PAGE_RAM:
-            if (address        >  RAM_LAST_ADDR)
+            if (address        >  RAM_FINAL_ADDR)
             {
                 fprintf (stderr, "[ERROR] invalid RAM access at 0x%.3hX\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr                = (memory+page)  -> data;
-            flag                = ((dptr+offset) -> flag) & FLAG_WRITE;
             if (flag           != FLAG_WRITE)
             {
                 if (sys_force  == FALSE)
@@ -438,14 +321,12 @@ void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
             break;
 
         case V32_PAGE_BIOS:
-            if (address        >  BIOS_LAST_ADDR)
+            if (address        >  (memory+page) -> last_addr)
             {
                 fprintf (stderr, "[ERROR] invalid BIOS access at 0x%.3hX\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr                = (memory+page)  -> data;
-            flag                = ((dptr+offset) -> flag) & FLAG_WRITE;
             if (flag           != FLAG_WRITE)
             {
                 if (sys_force  == FALSE)
@@ -457,14 +338,12 @@ void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
             break;
 
         case V32_PAGE_CART:
-            if (address        >  CART_LAST_ADDR)
+            if (address        >  (memory+page) -> last_addr)
             {
                 fprintf (stderr, "[ERROR] invalid CART access at 0x%.3hX\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr                = (memory+page)  -> data;
-            flag                = ((dptr+offset) -> flag) & FLAG_WRITE;
             if (flag           != FLAG_WRITE)
             {
                 if (sys_force  == FALSE)
@@ -476,14 +355,12 @@ void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
             break;
 
         case V32_PAGE_MEMC:
-            if (address        >  MEMC_LAST_ADDR)
+            if (address        >  MEMC_FINAL_ADDR)
             {
                 fprintf (stderr, "[ERROR] invalid MEMC access at 0x%.3hX\n", address);
                 exit (MEMORY_BAD_ACCESS);
             }
 
-            dptr                = (memory+page)  -> data;
-            flag                = ((dptr+offset) -> flag) & FLAG_WRITE;
             if (flag           != FLAG_WRITE)
             {
                 if (sys_force  == FALSE)
@@ -491,6 +368,14 @@ void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
                     fprintf (stderr, "[ERROR] MEMC address 0x%.8X not writable!\n", address);
                     exit (MEMORY_WRITE_ERROR);
                 }
+            }
+            break;
+
+        default:
+            if (sys_force      == FALSE)
+            {
+                fprintf (stderr, "[ERROR] invalid address 0x%.8X!\n", address);
+                exit (MEMORY_BAD_ACCESS);
             }
             break;
     }

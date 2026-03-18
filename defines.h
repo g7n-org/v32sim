@@ -20,10 +20,15 @@
 #define  V32_PAGE_CART           2
 #define  V32_PAGE_MEMC           3
 
-#define  RAM_LAST_ADDR           0x003FFFFF
-#define  BIOS_LAST_ADDR          0x100FFFFF
-#define  CART_LAST_ADDR          0x27FFFFFF
-#define  MEMC_LAST_ADDR          0x3003FFFF
+#define  RAM_FIRST_ADDR          0x00000000
+#define  BIOS_FIRST_ADDR         0x10000000
+#define  CART_FIRST_ADDR         0x20000000
+#define  MEMC_FIRST_ADDR         0x30000000
+
+#define  RAM_FINAL_ADDR          0x003FFFFF
+#define  BIOS_FINAL_ADDR         0x100FFFFF
+#define  CART_FINAL_ADDR         0x27FFFFFF
+#define  MEMC_FINAL_ADDR         0x3003FFFF
 
 #define  NO_CART_ERROR           1
 #define  REGEX_COMPILE_ERROR     2

@@ -44,6 +44,7 @@ struct memory_type
 {
     uint8_t   type;
     data_t   *data;
+    uint8_t   flag;
     uint32_t  firstaddr;
     uint32_t  last_addr;
     uint32_t  size;
@@ -108,6 +109,7 @@ word_t   *ioports_get    (uint16_t,    uint8_t);              // get value from 
 uint8_t   ioports_set    (uint16_t,    int32_t,     float,    uint8_t); // set value to port
 void      update_ioports (void);
 void      init_memory    (void);                              // initialize memory
+uint8_t   alloc_memory   (int32_t);
 void      load_command   (void);
 uint32_t  load_labels    (uint8_t *);
 uint8_t   load_memory    (uint32_t,    int8_t *);             // load file into memory
