@@ -194,21 +194,32 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
 
 void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
 {
-    int32_t   check          = TRUE;
+    int32_t   check          = FALSE;
     int32_t   index          = 0;
     uint32_t  data           = 0;
     uint8_t   addr[26];
     uint8_t   entry[33];
 
+    check                    = memory_chk (value, TRUE);
+    if (check               == TRUE)
+    {
+        data                 = ISYSMEMGET(value);
+        check                = memory_chk (data, TRUE);
+    }
+
     if (flag                == TRUE)
     {
-        check                = memory_chk (value, TRUE) & memory_chk (data, TRUE);
-        data                 = ISYSMEMGET(value);
-        sprintf (addr, "[0x%.8X(0x%.8X)]", value, data);
+        if (check           == TRUE)
+        {
+            sprintf (addr, "[0x%.8X(0x%.8X)]", value, data);
+        }
+        else
+        {
+            sprintf (addr, "[0x%.8X(invalid)]", value);
+        }
     }
     else
     {
-        check                = memory_chk (value, TRUE);
         sprintf (addr, "0x%.8X", value);
     }
 

@@ -2,9 +2,7 @@
 
 void    init_memory (void)
 {
-    int32_t  offset                         = 0;
     int32_t  page                           = 0;
-    data_t  *dptr                           = NULL;
     size_t   len                            = 0;
     uint8_t  chk                            = FALSE;
 
@@ -47,8 +45,8 @@ void    init_memory (void)
             case V32_PAGE_BIOS:
                 (memory+page) -> type       = V32_PAGE_BIOS;
                 (memory+page) -> firstaddr  = BIOS_FIRST_ADDR;
-                (memory+page) -> last_addr  = BIOS_FINAL_ADDR;
                 (memory+page) -> size       = get_filesize (biosfile);
+                (memory+page) -> last_addr  = (memory+page) -> firstaddr + (memory+page) -> size;
                 (memory+page) -> flag       = FLAG_READ;
                 (memory+page) -> data       = NULL;
                 break;
@@ -56,8 +54,8 @@ void    init_memory (void)
             case V32_PAGE_CART:
                 (memory+page) -> type       = V32_PAGE_CART;
                 (memory+page) -> firstaddr  = CART_FIRST_ADDR;
-                (memory+page) -> last_addr  = CART_FINAL_ADDR;
                 (memory+page) -> size       = get_filesize (cartfile);
+                (memory+page) -> last_addr  = (memory+page) -> firstaddr + (memory+page) -> size;
                 (memory+page) -> flag       = FLAG_READ;
                 (memory+page) -> data       = NULL;
                 break;
@@ -65,8 +63,9 @@ void    init_memory (void)
             case V32_PAGE_MEMC:
                 (memory+page) -> type       = V32_PAGE_MEMC;
                 (memory+page) -> firstaddr  = MEMC_FIRST_ADDR;
-                (memory+page) -> last_addr  = MEMC_FINAL_ADDR;
                 (memory+page) -> size       = 1024 * 256;
+                (memory+page) -> size       = get_filesize (memcfile);
+                (memory+page) -> last_addr  = (memory+page) -> firstaddr + (memory+page) -> size;
                 (memory+page) -> flag       = FLAG_READ | FLAG_WRITE;
                 (memory+page) -> data       = NULL;
                 break;
@@ -86,7 +85,6 @@ void    init_memory (void)
 
 uint8_t  alloc_memory (int32_t  page)
 {
-    data_t  *dptr                           = NULL;
     size_t   len                            = 0;
     uint8_t  result                         = FALSE;
 
@@ -202,6 +200,11 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  sys_force)
             }
             result             = FALSE;
             break;
+    }
+
+    if ((memory+page) -> data == NULL)
+    {
+        result                 = FALSE;
     }
 
     return (result);
