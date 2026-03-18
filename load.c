@@ -70,6 +70,8 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
     //
     FILE     *fptr                  = NULL;
     uint32_t  offset                = 0x00000000;
+    uint32_t  data                  = 0x00000000;
+    uint32_t *checksum              = NULL;
     uint8_t   chk                   = FALSE;
     uint8_t   result                = FALSE;
 
@@ -128,11 +130,14 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             // Continually read in words from the file until we reach EOF, placing
             // each read word in memory at the appropriate offset.
             //
+            checksum                = &(memory+page) -> checksum;
             while (!feof (fptr))
             {
-                SYSMEMSET(offset, get_word (fptr));
+                data                = get_word (fptr);
+                SYSMEMSET(offset, data);
                 if (!feof (fptr))
                 {
+                    *checksum       = *checksum + data;
                     offset          = offset + 1;
                 }
             }

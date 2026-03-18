@@ -48,6 +48,7 @@ struct memory_type
     uint32_t  firstaddr;
     uint32_t  last_addr;
     uint32_t  size;
+    uint32_t  checksum;
 };
 typedef struct memory_type mem_t;
 
