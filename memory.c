@@ -1,6 +1,6 @@
 #include "defines.h"
 
-void    init_memory (void)
+void  init_memory (void)
 {
     int32_t  page                           = 0;
     size_t   len                            = 0;

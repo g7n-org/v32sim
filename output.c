@@ -204,11 +204,11 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
     if (check               == TRUE)
     {
         data                 = ISYSMEMGET(value);
-        check                = memory_chk (data, TRUE);
     }
 
     if (flag                == TRUE)
     {
+        check                = memory_chk (data, TRUE);
         if (check           == TRUE)
         {
             sprintf (addr, "[0x%.8X(0x%.8X)]", value, data);

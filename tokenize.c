@@ -616,18 +616,42 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 }
                 else if (byte         == 'l') // label
                 {
-                    action             = INPUT_LABEL;
-                    token              = strtok ((string + match[2].rm_so), " ");
-                    result             = parse_token (token, *(pattern+2), PARSE_MEMORY);
-                    fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
-                    value              = strtol (token, NULL, 16);
-                    ltmp               = listnode (LIST_MEM, value);
-                    token_label        = strtok ((string + match[3].rm_so), " ");
-                    fprintf (debug, "[label] token_label: '%s'\n", token_label);
-                    value              = sizeof (int8_t) * strlen (token_label) + 1;
-                    ltmp -> label      = (int8_t *) malloc (value);
-                    strcpy (ltmp -> label, token_label);
-                    lpoint             = list_add (lpoint, ltmp);
+                    if (0             == strncasecmp ((string+match[1].rm_so), "la", 2))
+                    {
+                        action         = INPUT_LABEL;
+                        token          = strtok ((string + match[2].rm_so), " ");
+                        result         = parse_token (token, *(pattern+2), PARSE_MEMORY);
+                        fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
+                        value          = strtol (token, NULL, 16);
+                        ltmp           = listnode (LIST_MEM, value);
+                        token_label    = strtok ((string + match[3].rm_so), " ");
+                        fprintf (debug, "[label] token_label: '%s'\n", token_label);
+                        value          = sizeof (int8_t) * strlen (token_label) + 1;
+                        ltmp -> label  = (int8_t *) malloc (value);
+                        strcpy (ltmp -> label, token_label);
+                        lpoint         = list_add (lpoint, ltmp);
+                    }
+                    else if (0        == strncasecmp ((string+match[1].rm_so), "lo", 2))
+                    {
+                        action         = INPUT_LOAD;
+                        token          = strtok ((string + match[2].rm_so), ":");
+                        fprintf (debug, "[load] page token: '%s'\n", token);
+                        if (0         == strncasecmp (token, "bios", 4))
+                        {
+                            token      = strtok (NULL, ":");
+                            fprintf (debug, "[load] filename: '%s'\n", token);
+                        }
+                        else if (0    == strncasecmp (token, "cart", 4))
+                        {
+                            token      = strtok (NULL, ":");
+                            fprintf (debug, "[load] filename: '%s'\n", token);
+                            load_memory (V32_PAGE_CART, token);
+                        }
+						else
+						{
+							fprintf (debug, "[load] OTHER: '%s'\n", token);
+						}
+                    }
                 }
                 else if (byte         == 'p') // print
                 {
