@@ -112,6 +112,7 @@
 #define  FORMAT_UNSIGNED         5
 #define  FORMAT_LOWERHEX         6
 #define  FORMAT_HEX              7
+#define  FORMAT_BOOLEAN          8
 
 #define  NUM_PORT_CATEGORIES     7
 #define  NUM_TIM_PORTS           4

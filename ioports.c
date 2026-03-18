@@ -285,14 +285,14 @@ void  init_ioports  (void)
     {
         (pptr+index) -> value.i32          = 0x00000000;
         (pptr+index) -> flag               = FLAG_READ;
-        (pptr+index) -> fmt                = FORMAT_DEFAULT;
+        (pptr+index) -> fmt                = FORMAT_UNSIGNED;
         (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
         nptr                               = (pptr+index) -> name;
 
         switch (CAR_Connected | index)
         {
             case CAR_Connected:
-                //(pptr+index) -> value.i32  = 1;
+                (pptr+index) -> fmt        = FORMAT_BOOLEAN;
                 sprintf (nptr, "CAR_Connected");
                 break;
 

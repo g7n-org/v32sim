@@ -62,6 +62,10 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
             sprintf (entry, "%s/b", addr);
             break;
 
+        case FORMAT_BOOLEAN:
+            sprintf (entry, "%s/B", addr);
+            break;
+
         default:
             sprintf (entry, "%s",   addr);
             break;
@@ -162,6 +166,31 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
                 }
                 break;
 
+            case FORMAT_BOOLEAN:
+                if (flag         == TRUE)
+                {
+                    if (0        == IMEMGET(REG(id)))
+                    {
+                        fprintf (stdout, "FALSE");
+                    }
+                    else
+                    {
+                        fprintf (stdout, "TRUE");
+                    }
+                }
+                else
+                {
+                    if (0        == REG(id))
+                    {
+                        fprintf (stdout, "FALSE");
+                    }
+                    else
+                    {
+                        fprintf (stdout, "TRUE");
+                    }
+                }
+                break;
+
             case FORMAT_BINARY:
                 if (flag         == TRUE)
                 {
@@ -247,6 +276,10 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
 
         case FORMAT_SIGNED:
             sprintf (entry, "%s/d", addr);
+            break;
+
+        case FORMAT_BOOLEAN:
+            sprintf (entry, "%s/B", addr);
             break;
 
         case FORMAT_BINARY:
@@ -353,6 +386,31 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 }
                 break;
 
+            case FORMAT_BOOLEAN:
+                if (flag         == TRUE)
+                {
+                    if (0        == IMEMGET(IMEMGET(value)))
+                    {
+                        fprintf (stdout, "FALSE");
+                    }
+                    else
+                    {
+                        fprintf (stdout, "TRUE");
+                    }
+                }
+                else
+                {
+                    if (0        == IMEMGET(value))
+                    {
+                        fprintf (stdout, "FALSE");
+                    }
+                    else
+                    {
+                        fprintf (stdout, "TRUE");
+                    }
+                }
+                break;
+
             case FORMAT_BINARY:
                 if (flag         == TRUE)
                 {
@@ -424,6 +482,10 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
             sprintf (entry, "%s/b", addr);
             break;
 
+        case FORMAT_BOOLEAN:
+            sprintf (entry, "%s/B", addr);
+            break;
+
         default:
             sprintf (entry, "%s",   addr);
             break;
@@ -480,6 +542,17 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
 
             case FORMAT_SIGNED:
                 fprintf (stdout, "%d",     ISYSPORTGET(value));
+                break;
+
+            case FORMAT_BOOLEAN:
+                if (0            == ISYSPORTGET(value))
+                {
+                    fprintf (stdout, "FALSE");
+                }
+                else
+                {
+                    fprintf (stdout, "TRUE");
+                }
                 break;
 
             case FORMAT_BINARY:

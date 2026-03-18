@@ -68,7 +68,6 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
     //
     // Declare and initialize variables
     //
-	data_t   *dptr                  = NULL;
     FILE     *fptr                  = NULL;
     uint32_t  offset                = 0x00000000;
     uint32_t  data                  = 0x00000000;
@@ -132,21 +131,10 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             // each read word in memory at the appropriate offset.
             //
             checksum                = &(memory+page) -> checksum;
-			dptr                    = (memory+page)  -> data;
             while (!feof (fptr))
             {
                 data                = get_word (fptr);
-				/*
-				if ((page          == V32_PAGE_CART) && (offset <  0x20000007))
-				{
-					fprintf (debug, "[load_memory] CART@0x%.8X: loading 0x%.8X\n", offset, data);
-					(dptr+(offset&0x0FFFFFFF)) -> value.i32  = data;
-				}	
-				else
-				{
-				*/
-					SYSMEMSET(offset, data);
-				//}
+                SYSMEMSET(offset, data);
                 if (!feof (fptr))
                 {
                     *checksum       = *checksum + data;
