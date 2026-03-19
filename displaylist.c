@@ -97,28 +97,28 @@ uint8_t *show_size (uint32_t  page)
     {
         size           = (memory+page) -> size;
         result         = (uint8_t *) malloc (sizeof (uint8_t) * 12);
-		if (size      >= 1073741824)
-		{
-            sprintf (result, "%4uGiW",
-					(((size / 1024) / 1024) / 1024));
+        if (size      >= 1073741824)
+        {
+            sprintf (result, "%4luGiW",
+                    (((size / 1024) / 1024) / 1024));
         }
         if (size      >= 1572864)
         {
-            sprintf (result, "%4uMiW",
-					((size  / 1024) / 1024));
+            sprintf (result, "%4luMiW",
+                    ((size  / 1024) / 1024));
         }
         else if (size >= 1024)
         {
-            sprintf (result, "%4ukiW",
-					(size   / 1024));
+            sprintf (result, "%4lukiW",
+                    (size   / 1024));
         }
         else if (size >  0)
         {
-            sprintf (result, "%4uW",   size);
+            sprintf (result, "%4luW", size);
         }
         else
         {
-            sprintf (result, "NOT LOADED",   size);
+            sprintf (result, "NOT LOADED");
         }
     }
 
