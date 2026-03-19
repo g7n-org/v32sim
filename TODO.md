@@ -8,29 +8,10 @@ Should default entry point be at `CART` start of `0x20000000`?
 
 Trap SIGINT (breaks when in runmode)
 
-## IMPLEMENT REMAINING INSTRUCTIONS
-
-  * remaining floating point arithmetic
-  * all the floating point math
-
 ## TRANSITION REGISTERS TO USE ACCESS FUNCTIONS
 
 Like memory  and ioports, have  registers also  use a `_get`  and `_set`;
 could be helpful when watchpoints are implemented.
-
-## LOAD COMMAND IN PROMPT
-
-The simulator  can now  be started  without specifying  a CART  at launch
-time, making it behave like the Vircon32 emulator (since part of the BIOS
-check is to look for a CART).
-
-This then creates an issue of needing to load a CART after launch, so the
-need for some sort of `load` command is in order.
-
-Basically would instigate the needed  allocation and loading of data from
-a CART  into memory. Logic  is largely  already present elsewhere  in the
-emulator,  just would  need  duplication  under the  logic  for a  `load`
-command.
 
 ## SAVE / RESTORE COMMANDS IN PROMPT
 
@@ -41,12 +22,6 @@ ioports. Probably also  tie in some check against CART  and MEMC state so
 that you cannot restore a save state for an entirely different cartridge.
 
 Perhaps some simple checksum of the CART? Could do that in load_memory()!
-
-## INVENTORY COMMAND IN PROMPT
-
-A  thought  to have  some  way  of  displaying current  system  inventory
-(showing  what BIOS/CART  is loaded,  MEMC status,  etc. maybe  also show
-IP/IR/IV).
 
 ## IMPLEMENT OTHER IOPORTS
 
