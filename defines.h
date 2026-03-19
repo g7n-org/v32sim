@@ -271,5 +271,9 @@
 #define  FMIN                    0x35
 #define  FMAX                    0x36
 #define  FABS                    0x37
+#define  FLR                     0x38
+#define  CEIL                    0x39
+#define  ROUND                   0x3A
+#define  POW                     0x3F
 
 #endif

@@ -223,6 +223,7 @@ void  decode_display (uint32_t  instruction,
         case FMOD:
         case FMIN:
         case FMAX:
+        case POW:
             sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
             {
@@ -378,6 +379,9 @@ void  decode_display (uint32_t  instruction,
         case IABS:
         case FSGN:
         case FABS:
+        case FLR:
+        case CEIL:
+        case ROUND:
             sprintf (destination, "R%u",    dst);
             fprintf (display,     "%*s %*s",
                                   space,   lookup[opcode].name,
@@ -822,7 +826,7 @@ void  decode_process (uint32_t  instruction,
 
         case FMOD:
             fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
-            FDSTREG         = fmodf (DSTREG, fvalue);
+            FDSTREG         = fmodf (FDSTREG, fvalue);
             break;
 
         case FSGN:
@@ -831,16 +835,32 @@ void  decode_process (uint32_t  instruction,
 
         case FMIN:
             fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
-            FDSTREG         = fminf (DSTREG, fvalue);
+            FDSTREG         = fminf (FDSTREG, fvalue);
             break;
 
         case FMAX:
             fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
-            FDSTREG         = fmaxf (DSTREG, fvalue);
+            FDSTREG         = fmaxf (FDSTREG, fvalue);
             break;
 
         case FABS:
             FDSTREG         = fabsf (FDSTREG);
+            break;
+
+        case FLR:
+            FDSTREG         = floorf (FDSTREG);
+            break;
+
+        case CEIL:
+            FDSTREG         = ceilf (FDSTREG);
+            break;
+
+        case ROUND:
+            FDSTREG         = roundf (FDSTREG);
+            break;
+
+        case POW:
+            FDSTREG         = powf (FDSTREG, FSRCREG);
             break;
 
         default:
