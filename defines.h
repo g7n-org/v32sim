@@ -274,6 +274,10 @@
 #define  FLR                     0x38
 #define  CEIL                    0x39
 #define  ROUND                   0x3A
+#define  SIN                     0x3B
+#define  ACOS                    0x3C
+#define  ATAN2                   0x3D
+#define  LOG                     0x3E
 #define  POW                     0x3F
 
 #endif

@@ -223,6 +223,7 @@ void  decode_display (uint32_t  instruction,
         case FMOD:
         case FMIN:
         case FMAX:
+        case ATAN2:
         case POW:
             sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
@@ -382,6 +383,9 @@ void  decode_display (uint32_t  instruction,
         case FLR:
         case CEIL:
         case ROUND:
+        case SIN:
+        case ACOS:
+        case LOG:
             sprintf (destination, "R%u",    dst);
             fprintf (display,     "%*s %*s",
                                   space,   lookup[opcode].name,
@@ -857,6 +861,22 @@ void  decode_process (uint32_t  instruction,
 
         case ROUND:
             FDSTREG         = roundf (FDSTREG);
+            break;
+
+        case SIN:
+            FDSTREG         = sinf (FDSTREG);
+            break;
+
+        case ACOS:
+            FDSTREG         = acosf (FDSTREG);
+            break;
+
+        case ATAN2:
+            FDSTREG         = atan2f (FDSTREG, FSRCREG);
+            break;
+
+        case LOG:
+            FDSTREG         = logf (FDSTREG);
             break;
 
         case POW:
