@@ -129,7 +129,15 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 }
                 else if (byte             == 'i')   // ignore
                 {
-                    action                 = INPUT_IGNORE;
+                    if (0                 == strncasecmp ((string+match[1].rm_so), "in", 2))
+                    {
+                        action             = INPUT_INVENTORY;
+                        display_config ();
+                    }
+                    else
+                    {
+                        action             = INPUT_IGNORE;
+                    }
                 }
                 else if (byte             == 'l')   // labels
                 {
@@ -647,13 +655,19 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         if (0         == strncasecmp (token, "bios", 4))
                         {
                             token      = strtok (NULL, ":");
-                            fprintf (debug, "[load] filename: '%s'\n", token);
+                            fprintf (debug, "[load] BIOS filename: '%s'\n", token);
                         }
                         else if (0    == strncasecmp (token, "cart", 4))
                         {
                             token      = strtok (NULL, ":");
-                            fprintf (debug, "[load] filename: '%s'\n", token);
+                            fprintf (debug, "[load] CART filename: '%s'\n", token);
                             load_memory (V32_PAGE_CART, token);
+                        }
+                        else if (0    == strncasecmp (token, "memc", 4))
+                        {
+                            token      = strtok (NULL, ":");
+                            fprintf (debug, "[load] MEMC filename: '%s'\n", token);
+                            load_memory (V32_PAGE_MEMC, token);
                         }
                         else
                         {
@@ -798,43 +812,71 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
                     }
                 }
-                else if (byte      == 'u') // un-something
+                else if (byte         == 'u') // un-something
                 {
-                    action          = INPUT_UNDO;
-                    token           = strtok ((string + match[2].rm_so), " ");
-
-                    value           = strtol (token, NULL, 10);
-                    byte            = *(string + match[1].rm_so + 2);
-                    if (byte       == 'b')
+                    if (0             == strncasecmp ((string+match[1].rm_so), "unlo", 4))
                     {
-                        list        = &bpoint;
-                    }
-                    else if (byte  == 'd')
-                    {
-                        list        = &dpoint;
-                    }
-                    else if (byte  == 'l')
-                    {
-                        list        = &lpoint;
-                    }
-
-                    count           = 0;
-                    tmp             = *list;
-                    while (tmp     != NULL)
-                    {
-                        if (count  == value)
+                        action         = INPUT_UNLOAD;
+                        token          = (string + match[2].rm_so);
+                        fprintf (debug, "[unload] token: '%s'\n", token);
+                        if (0         == strncasecmp (token, "bios", 4))
                         {
-                            break;
+                            fprintf (verbose, "[unload] UNLOADING BIOS\n");
+                            unload_memory (V32_PAGE_BIOS);
                         }
-                        count       = count + 1;
-                        tmp         = tmp -> next;
+                        else if (0    == strncasecmp (token, "cart", 4))
+                        {
+                            fprintf (verbose, "[unload] UNLOADING CART\n");
+                            unload_memory (V32_PAGE_CART);
+                        }
+                        else if (0    == strncasecmp (token, "memc", 4))
+                        {
+                            fprintf (verbose, "[unload] UNLOADING MEMCARD\n");
+                            unload_memory (V32_PAGE_MEMC);
+                        }
+                        else
+                        {
+                            fprintf (debug, "[unload] OTHER: '%s'\n", token);
+                        }
                     }
-
-                    tmp             = list_grab (list, tmp);
-                    if (tmp        != NULL)
+                    else
                     {
-                        free (tmp);
-                        tmp         = NULL;
+                        action         = INPUT_UNDO;
+                        token          = strtok ((string + match[2].rm_so), " ");
+
+                        value          = strtol (token, NULL, 10);
+                        byte           = *(string + match[1].rm_so + 2);
+                        if (byte      == 'b')
+                        {
+                            list       = &bpoint;
+                        }
+                        else if (byte == 'd')
+                        {
+                            list       = &dpoint;
+                        }
+                        else if (byte == 'l')
+                        {
+                            list       = &lpoint;
+                        }
+
+                        count          = 0;
+                        tmp            = *list;
+                        while (tmp    != NULL)
+                        {
+                            if (count == value)
+                            {
+                                break;
+                            }
+                            count      = count + 1;
+                            tmp        = tmp -> next;
+                        }
+
+                        tmp            = list_grab (list, tmp);
+                        if (tmp       != NULL)
+                        {
+                            free (tmp);
+                            tmp        = NULL;
+                        }
                     }
                 }
             }

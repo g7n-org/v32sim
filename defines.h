@@ -95,6 +95,8 @@
 #define  INPUT_SET               18
 #define  INPUT_UNDO              19
 #define  INPUT_LOAD              20
+#define  INPUT_UNLOAD            21
+#define  INPUT_INVENTORY         22
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A

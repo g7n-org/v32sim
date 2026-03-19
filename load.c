@@ -60,6 +60,51 @@ size_t    get_filesize (int8_t *filename)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
+// unload_memory(): unload data files from memory
+//
+uint8_t  unload_memory (uint32_t  page)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize variables
+    //
+    uint8_t   result                = TRUE;
+
+    switch (page)
+    {
+        case V32_PAGE_BIOS:
+            break;
+
+        case V32_PAGE_CART:
+            SYSPORTSET(CAR_Connected,        FALSE);
+            SYSPORTSET(CAR_NumberOfTextures, 0);
+            SYSPORTSET(CAR_NumberOfSounds,   0);
+            SYSPORTSET(CAR_ProgramROMSize,   0);
+            break;
+
+        case V32_PAGE_MEMC:
+            SYSPORTSET(MEM_Connected,        FALSE);
+            break;
+
+        default:
+            fprintf (verbose, "[unload_memory] invalid page %u specified\n", page);
+            result                  = FALSE;
+            break;
+    }
+
+    if (result                     == TRUE)
+    {
+        free ((memory+page) -> data);
+        (memory+page) -> data       = NULL;
+        (memory+page) -> size       = 0;
+        (memory+page) -> last_addr  = (memory+page) -> firstaddr;
+    }
+
+    return (result);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
 // load_memory(): load data files from disk into page-appropriate location in memory
 //
 uint8_t  load_memory (uint32_t  page, int8_t *filename)
@@ -116,6 +161,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     get_word (fptr);
                     SYSPORTSET(CAR_ProgramROMSize,   get_word (fptr));
                     SYSPORTSET(CAR_Connected,        TRUE);
+					fprintf (stdout, "[load_memory] CART size: %u\n", (memory+page) -> size);
                 case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (BIOS and CART)
                     fseek (fptr, (35 * wordsize), SEEK_SET);
                     break;

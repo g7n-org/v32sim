@@ -114,6 +114,7 @@ uint8_t   alloc_memory   (int32_t);
 void      load_command   (void);
 uint32_t  load_labels    (uint8_t *);
 uint8_t   load_memory    (uint32_t,    int8_t *);             // load file into memory
+uint8_t   unload_memory  (uint32_t);
 uint8_t   memory_chk     (uint32_t,    uint8_t);
 word_t   *memory_get     (uint32_t,    uint8_t);              // get value from memory
 void      memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory
@@ -136,6 +137,8 @@ linked_l *list_add       (linked_l *,  linked_l *);
 linked_l *list_grab      (linked_l **, linked_l *);
 void      displayshow    (linked_l *,  uint8_t);
 void      show_sysregs   (void);
+void      display_config (void);
+uint8_t  *show_size      (uint32_t);
 void      process_args   (int32_t,     int8_t **);
 void      usage          (int8_t  *);
 uint8_t  *parse_deref    (uint8_t *,   uint8_t *);
