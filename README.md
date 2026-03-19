@@ -12,21 +12,17 @@ At this  point, many/most? instructions have  been implemented; registers
 and memory are present  and should behave in a manner  similar to how the
 system operates.
 
-All but the floating point math instructions have now been implemented; a
-few of the  simple floating point math instructions are  in place, mainly
-the basic arithmetic ones of `FADD`, `FSUB`, `FMUL`, `FDIV`, and `FMOD`.
-
 Many  IOPorts  are  present,  if  only  for  simple  reporting  or  basic
 operability.  The `TIM_`,  `RNG_`, `INP_`,  and  `CAR_` ports  should  be
 fully functional.
 
-At  this  point  zero  work   has  gone  into  implementing  ANY  MEMCARD
-functionality.
+Initial MEMCARD support has been implemented (it should be able to load a
+MEMCARD when specified), but nothing has been tested.
 
 ## USAGE
 
 ```
-Usage: v32sim [OPTION]... CARTFILE.v32
+Usage: v32sim [OPTION]... [CARTFILE.v32]
 Debugger/Simulator for Vircon32 Fantasy Console
 
 Mandatory arguments to long options are mandatory for short options too.
@@ -198,7 +194,9 @@ in the desired formatting:
   * `/u` - unsigned int (decimal)
   * `/o` - octal
   * `/f` - floating point (decimal)
+  * `/D` - decode as instruction
   * `/d` - signed int (decimal)
+  * `/B` - boolean
   * `/b` - binary
 
 NOTE: if you provide no label to a displayed IOPort, it will display  the
@@ -268,7 +266,7 @@ Same with memory addresses:
 
 Or with IOPorts:
 
-`set 0x205=-1`
+`set 0x205=1`
 
 Then, combined with a `print` or `display`, see the results of your work.
 
