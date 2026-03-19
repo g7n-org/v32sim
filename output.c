@@ -5,6 +5,8 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
     int32_t   check               = TRUE;
     int32_t   index               = 0;
     uint32_t  data                = 0;
+    uint32_t  immv                = 0;
+    uint8_t   dflags              = FLAG_DATA | FLAG_DISPLAY;
     uint8_t   addr[19];
     uint8_t   entry[33];
 
@@ -56,6 +58,10 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
 
         case FORMAT_SIGNED:
             sprintf (entry, "%s/d", addr);
+            break;
+
+        case FORMAT_DECODE:
+            sprintf (entry, "%s/D", addr);
             break;
 
         case FORMAT_BINARY:
@@ -166,6 +172,29 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
                 }
                 break;
 
+            case FORMAT_DECODE:
+                if (flag         == TRUE)
+                {
+                    data          = IMEMGET(REG(id));
+                }
+                else
+                {
+                    data          = REG(id);
+                }
+
+                immv              = 0;
+                if (IMMVAL_MASK  == (data & IMMVAL_MASK))
+                {
+                    if (flag     == TRUE)
+                    {
+                        immv      = IMEMGET((REG(id)+1));
+                        dflags    = dflags | FLAG_IMMEDIATE;
+                    }
+                }
+
+                decode  (data, immv, (float) immv, dflags);
+                break;
+
             case FORMAT_BOOLEAN:
                 if (flag         == TRUE)
                 {
@@ -226,6 +255,8 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
     int32_t   check          = FALSE;
     int32_t   index          = 0;
     uint32_t  data           = 0;
+    uint32_t  immv           = 0;
+    uint8_t   dflags         = FLAG_DATA | FLAG_DISPLAY;
     uint8_t   addr[26];
     uint8_t   entry[33];
 
@@ -276,6 +307,10 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
 
         case FORMAT_SIGNED:
             sprintf (entry, "%s/d", addr);
+            break;
+
+        case FORMAT_DECODE:
+            sprintf (entry, "%s/D", addr);
             break;
 
         case FORMAT_BOOLEAN:
@@ -384,6 +419,33 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 {
                     fprintf (stdout, "%d",     IMEMGET(value));
                 }
+                break;
+
+            case FORMAT_DECODE:
+                if (flag         == TRUE)
+                {
+                    data          = IMEMGET(IMEMGET(value));
+                }
+                else
+                {
+                    data          = IMEMGET(value);
+                }
+
+                immv              = 0;
+                if (IMMVAL_MASK  == (data & IMMVAL_MASK))
+                {
+                    dflags        = dflags | FLAG_IMMEDIATE;
+                    if (flag     == TRUE)
+                    {
+                        immv      = IMEMGET(IMEMGET(value+1));
+                    }
+                    else
+                    {
+                        immv      = IMEMGET(value+1);
+                    }
+                }
+
+                decode  (data, immv, (float) immv, dflags);
                 break;
 
             case FORMAT_BOOLEAN:

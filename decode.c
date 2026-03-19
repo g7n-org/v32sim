@@ -44,8 +44,11 @@ void  decode_display (uint32_t  instruction,
     //
     linked_l *ltmp                 = NULL;
     int8_t    sign                 = '+';
+    int8_t    space                = -5;
+    int8_t    spacing              = -16;
     uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
     uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
+    uint8_t   dataflag             = (flags & FLAG_DATA)      ? TRUE : FALSE;
     uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
     uint32_t  dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
     uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
@@ -87,9 +90,20 @@ void  decode_display (uint32_t  instruction,
     //
     // If colors are enabled, highlight the decoded instruction
     //
-    if (colorflag                 == TRUE)
+    if ((colorflag                == TRUE) &&
+        (dataflag                 == FALSE))
     {
         fprintf (stdout, "\e[1;33m");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
+    // If decoding is in secondary form, eliminate pretty spacing
+    //
+    if (dataflag                  == TRUE)
+    {
+        space                        = 1;
+        spacing                      = 1;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -101,8 +115,8 @@ void  decode_display (uint32_t  instruction,
         case HLT: // special case for HLT to try and distinguish from data
             if (instruction         == 0x00000000)
             {
-                fprintf (display,     "%-5s\n",
-                                      lookup[opcode].name);
+                fprintf (display,     "%*s",
+                                      space, lookup[opcode].name);
             }
             break;
 
@@ -110,8 +124,8 @@ void  decode_display (uint32_t  instruction,
         case RET:
         case MOVS:
         case SETS:
-            fprintf (display,         "%-5s\n",
-                                      lookup[opcode].name);
+            fprintf (display,         "%*s",
+                                      space, lookup[opcode].name);
             break;
 
         case JMP:
@@ -133,8 +147,9 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (destination, "R%u",    dst);
             }
-            fprintf (display,         "%-5s %-16s\n",
-                                      lookup[opcode].name, destination);
+            fprintf (display,         "%*s %*s",
+                                      space,   lookup[opcode].name,
+                                      spacing, destination);
             break;
 
         case JT:
@@ -157,8 +172,10 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source, "R%u",        src);
             }
-            fprintf (display,    "%-5s %-16s %-16s\n",
-                                 lookup[opcode].name, destination, source);
+            fprintf (display,    "%*s %*s %*s",
+                                 space,   lookup[opcode].name,
+                                 spacing, destination,
+                                 spacing, source);
             break;
 
         case IEQ:
@@ -187,8 +204,10 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source, "R%u",    src);
             }
-            fprintf (display,    "%-5s %-16s %-16s\n",
-                                 lookup[opcode].name, destination, source);
+            fprintf (display,    "%*s %*s %*s",
+                                 space,   lookup[opcode].name,
+                                 spacing, destination,
+                                 spacing, source);
             break;
 
         case FEQ:
@@ -213,8 +232,10 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source, "R%u",    src);
             }
-            fprintf (display,      "%-5s %-16s %-16s\n",
-                                   lookup[opcode].name, destination, source);
+            fprintf (display,      "%*s %*s %*s",
+                                   space,   lookup[opcode].name,
+                                   spacing, destination,
+                                   spacing, source);
             break;
 
         case LEA:
@@ -231,15 +252,18 @@ void  decode_display (uint32_t  instruction,
                 {
                     value              = REG(src) - abs ((signed) immediate);
                 }
-                fprintf (display,      "%-5s %-16s %-16s (deref address: 0x%.8X)\n",
-                                       lookup[opcode].name,
-                                       destination, source, value);
+                fprintf (display,      "%*s %*s %*s (deref address: 0x%.8X)",
+                                       space,   lookup[opcode].name,
+                                       spacing, destination,
+                                       spacing, source, value);
             }
             else
             {
                 sprintf (source,       "[R%u]",         src);
-                fprintf (display,      "%-5s %-16s %-16s\n",
-                                       lookup[opcode].name, destination, source);
+                fprintf (display,      "%*s %*s %*s",
+                                       space,   lookup[opcode].name,
+                                       spacing, destination,
+                                       spacing, source);
             }
             break;
 
@@ -318,13 +342,15 @@ void  decode_display (uint32_t  instruction,
             if ((derefaddr            == TRUE) && 
                 (value                != 0))
             {
-                fprintf (display,     "%-5s %-16s %-16s ",
-                                      lookup[opcode].name, destination, source);
+                fprintf (display,     "%*s %*s %*s ",
+                                      space,   lookup[opcode].name,
+                                      spacing, destination,
+                                      spacing, source);
                 if (colorflag                 == TRUE)
                 {
                     fprintf (stdout, "\e[1;35m");
                 }
-                fprintf (display,     "(deref addr: 0x%.8X)\n", value);
+                fprintf (display,     "(deref addr: 0x%.8X)", value);
                 if (colorflag                 == TRUE)
                 {
                     fprintf (stdout, "\e[m");
@@ -332,8 +358,10 @@ void  decode_display (uint32_t  instruction,
             }
             else
             {
-                fprintf (display,     "%-5s %-16s %-16s\n",
-                                      lookup[opcode].name, destination, source);
+                fprintf (display,     "%*s %*s %*s",
+                                      space,   lookup[opcode].name,
+                                      spacing, destination,
+                                      spacing, source);
             }
             break;
 
@@ -351,15 +379,18 @@ void  decode_display (uint32_t  instruction,
         case FSGN:
         case FABS:
             sprintf (destination, "R%u",    dst);
-            fprintf (display,     "%-5s %-16s\n",
-                                  lookup[opcode].name, destination);
+            fprintf (display,     "%*s %*s",
+                                  space,   lookup[opcode].name,
+                                  spacing, destination);
             break;
 
         case IN:
             sprintf (destination, "R%u,",    dst);
             sprintf (source,      "0x%.3X",  port);
-            fprintf (display,     "%-5s %-16s %-16s\n",
-                                  lookup[opcode].name, destination, source);
+            fprintf (display,     "%*s %*s %*s",
+                                  space,   lookup[opcode].name,
+                                  spacing, destination,
+                                  spacing, source);
             break;
 
         case OUT:
@@ -372,13 +403,20 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source,  "R%u",     dst);
             }
-            fprintf (display,     "%-5s %-16s %-16s\n",
-                                  lookup[opcode].name, destination, source);
+            fprintf (display,     "%*s %*s %*s",
+                                  space,   lookup[opcode].name,
+                                  spacing, destination,
+                                  spacing, source);
             break;
 
         default:
             fprintf (stderr, "[decode_display] unimplemented instruction! (0x%hhX)\n", opcode);
             break;
+    }
+
+    if (dataflag                  == FALSE)
+    {
+        fprintf (display, "\n");
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -387,7 +425,7 @@ void  decode_display (uint32_t  instruction,
     //
     if (colorflag                 == TRUE)
     {
-        fprintf (stdout, "\e[m");
+        fprintf (display, "\e[m");
     }
 }
 

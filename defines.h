@@ -113,6 +113,7 @@
 #define  FORMAT_LOWERHEX         6
 #define  FORMAT_HEX              7
 #define  FORMAT_BOOLEAN          8
+#define  FORMAT_DECODE           9
 
 #define  NUM_PORT_CATEGORIES     7
 #define  NUM_TIM_PORTS           4
@@ -207,6 +208,7 @@
 #define  FLAG_DISPLAY            1
 #define  FLAG_PROCESS            2 
 #define  FLAG_IMMEDIATE          4
+#define  FLAG_DATA               8
 
 #define  FLAG_READ               4
 #define  FLAG_WRITE              2

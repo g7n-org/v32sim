@@ -428,6 +428,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             fmt        = FORMAT_SIGNED;
                         }
+                        else if (*pos == 'D')
+                        {
+                            fmt        = FORMAT_DECODE;
+                        }
                         else if (*pos == 'f')
                         {
                             fmt        = FORMAT_FLOAT;
@@ -651,10 +655,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             fprintf (debug, "[load] filename: '%s'\n", token);
                             load_memory (V32_PAGE_CART, token);
                         }
-						else
-						{
-							fprintf (debug, "[load] OTHER: '%s'\n", token);
-						}
+                        else
+                        {
+                            fprintf (debug, "[load] OTHER: '%s'\n", token);
+                        }
                     }
                 }
                 else if (byte         == 'p') // print
@@ -683,6 +687,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         else if (*pos     == 'd')
                         {
                             fmt            = FORMAT_SIGNED;
+                        }
+                        else if (*pos     == 'D')
+                        {
+                            fmt            = FORMAT_DECODE;
                         }
                         else if (*pos     == 'f')
                         {
