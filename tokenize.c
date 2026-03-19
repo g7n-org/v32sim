@@ -630,6 +630,40 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
                     }
                 }
+                else if (byte         == 'h') // help
+                {
+                    token              = strtok ((string + match[2].rm_so), " ");
+                    if (0             == strncasecmp (token, "b", 1))
+                    {
+                        help (INPUT_BREAK);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "c", 1))
+                    {
+                        help (INPUT_CONTINUE);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "d", 1))
+                    {
+                        help (INPUT_DISPLAY);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "ig", 2))
+                    {
+                        help (INPUT_IGNORE);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "n", 1))
+                    {
+                        help (INPUT_NEXT);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "st", 2))
+                    {
+                        help (INPUT_STEP);
+                        action         = INPUT_INIT;
+                    }
+                }
                 else if (byte         == 'l') // label
                 {
                     if (0             == strncasecmp ((string+match[1].rm_so), "la", 2))

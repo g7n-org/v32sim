@@ -141,6 +141,7 @@ void      display_config (void);
 uint8_t  *show_size      (uint32_t);
 void      process_args   (int32_t,     int8_t **);
 void      usage          (int8_t  *);
+void      help           (uint8_t);
 uint8_t  *parse_deref    (uint8_t *,   uint8_t *);
 uint8_t   parse_token    (uint8_t *,   uint8_t *,   uint8_t);
 uint8_t   parse_memrange (uint8_t *);

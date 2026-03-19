@@ -163,39 +163,7 @@ uint8_t  prompt (uint32_t  word)
             break;
 
         case INPUT_HELP:
-            fprintf (stdout, "  (b)reak 0xMEM|LABEL   - set breakpoint\n");
-            fprintf (stdout, "  (c)ontinue            - resume execution\n");
-            fprintf (stdout, "  (p)rint XYZ           - one-time display of XYZ\n");
-            fprintf (stdout, "  (d)isplay XYZ LABEL   - add displaylist item:\n");
-            fprintf (stdout, "    R#                  -   general register\n");
-            fprintf (stdout, "    [R#]                -   dereferenced register\n");
-            fprintf (stdout, "    I(P|R|V)            -   system register\n");
-            fprintf (stdout, "    0xMEM_ADDR          -   4-byte memory address\n");
-            fprintf (stdout, "    [0xMEM_ADDR]        -   dereferenced address\n");
-            fprintf (stdout, "    0xMEM-0xADDR        -   memory range\n");
-            fprintf (stdout, "    [0xMEM-0xADDR]      -   deref memory range\n");
-            fprintf (stdout, "    0xIOP               -   IOPort address\n");
-            fprintf (stdout, "  (l)abel 0xMEM LABEL   - add label list item\n");
-            fprintf (stdout, "  (n)ext                - next (skip subroutines)\n");
-            fprintf (stdout, "  (s)tep                - step to next instruction\n");
-            fprintf (stdout, "  (i)gnore              - ignore this instruction\n");
-            fprintf (stdout, "  (r)eplace X Y Z       - replace:\n");
-            fprintf (stdout, "    IP:0xMEM_ADDR       -   with this IP value\n");
-            fprintf (stdout, "    IR:0xINSTRUCT       -   with this IR value\n");
-            fprintf (stdout, "    IV:0xIMMEDIAT       -   with this IV value\n");
-            fprintf (stdout, "  set NAME = VALUE      - set system feature\n");
-            fprintf (stdout, "    color:  true/false  -   set color output\n");
-            fprintf (stdout, "    deref:  true/false  -   set deref addr\n");
-            fprintf (stdout, "    I[PRV]: 0x0ADDRESS  -   set system register\n");
-            fprintf (stdout, "    R#:     0xTHEVALUE  -   set register to value\n");
-            fprintf (stdout, "    0xMEM:  0xTHEVALUE  -   set memory to value\n");
-            fprintf (stdout, "    0xIOP:  0xTHEVALUE  -   set ioport to value\n");
-            fprintf (stdout, "  (u)nXYZ               - remove item from list\n");
-            fprintf (stdout, "    break               -   remove breakpoint #\n");
-            fprintf (stdout, "    display             -   remove displaypoint #\n");
-            fprintf (stdout, "    label               -   remove label #\n");
-            fprintf (stdout, "  (h)elp/(?)            - display this help\n");
-            fprintf (stdout, "  (q)uit                - exit the simulator\n");
+            help (INPUT_HELP);
             action                     = INPUT_INIT;
             break;
     }
