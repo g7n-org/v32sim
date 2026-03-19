@@ -653,6 +653,16 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         help (INPUT_IGNORE);
                         action         = INPUT_INIT;
                     }
+                    else if (0        == strncasecmp (token, "in", 2))
+                    {
+                        help (INPUT_INVENTORY);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "lo", 2))
+                    {
+                        help (INPUT_LOAD);
+                        action         = INPUT_INIT;
+                    }
                     else if (0        == strncasecmp (token, "n", 1))
                     {
                         help (INPUT_NEXT);
@@ -661,6 +671,16 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     else if (0        == strncasecmp (token, "st", 2))
                     {
                         help (INPUT_STEP);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "unlo", 4))
+                    {
+                        help (INPUT_UNLOAD);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "un", 2))
+                    {
+                        help (INPUT_UNDO);
                         action         = INPUT_INIT;
                     }
                 }

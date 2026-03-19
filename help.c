@@ -29,23 +29,26 @@ void  help  (uint8_t  item)
     switch (item)
     {
         case INPUT_HELP:
-            fprintf (stdout, "  (b)reak 0xMEM|LABEL   - set breakpoint\n");
-            fprintf (stdout, "  (c)ontinue        - resume execution\n");
-            fprintf (stdout, "  (p)rint XYZ       - one-time display of XYZ\n");
-            fprintf (stdout, "  (d)isplay XYZ LABEL   - add displaylist item:\n");
-            fprintf (stdout, "    R#          -   general register\n");
-            fprintf (stdout, "    [R#]        -   dereferenced register\n");
-            fprintf (stdout, "    I(P|R|V)        -   system register\n");
-            fprintf (stdout, "    0xMEM_ADDR      -   4-byte memory address\n");
-            fprintf (stdout, "    [0xMEM_ADDR]    -   dereferenced address\n");
-            fprintf (stdout, "    0xMEM-0xADDR    -   memory range\n");
+            fprintf (stdout, "  break 0xMEM|LABEL     - set breakpoint\n");
+            fprintf (stdout, "  continue              - resume execution\n");
+            fprintf (stdout, "  print XYZ             - one-time display of XYZ\n");
+            fprintf (stdout, "  display XYZ LABEL     - add displaylist item:\n");
+            fprintf (stdout, "    R#                  -   general register\n");
+            fprintf (stdout, "    [R#]                -   dereferenced register\n");
+            fprintf (stdout, "    I(P|R|V)            -   system register\n");
+            fprintf (stdout, "    0xMEM_ADDR          -   4-byte memory address\n");
+            fprintf (stdout, "    [0xMEM_ADDR]        -   dereferenced address\n");
+            fprintf (stdout, "    0xMEM-0xADDR        -   memory range\n");
             fprintf (stdout, "    [0xMEM-0xADDR]      -   deref memory range\n");
-            fprintf (stdout, "    0xIOP           -   IOPort address\n");
-            fprintf (stdout, "  (l)abel 0xMEM LABEL   - add label list item\n");
-            fprintf (stdout, "  (n)ext        - next (skip subroutines)\n");
-            fprintf (stdout, "  (s)tep        - step to next instruction\n");
-            fprintf (stdout, "  (i)gnore          - ignore this instruction\n");
-            fprintf (stdout, "  (r)eplace X Y Z       - replace:\n");
+            fprintf (stdout, "    0xIOP               -   IOPort address\n");
+            fprintf (stdout, "  label 0xMEM LABEL     - add label list item\n");
+            fprintf (stdout, "  load memory:file      - load component into memory\n");
+            fprintf (stdout, "  unload memory         - unload component from memory\n");
+            fprintf (stdout, "  next                  - next (skip subroutines)\n");
+            fprintf (stdout, "  step                  - step to next instruction\n");
+            fprintf (stdout, "  inventory             - system resource inventory\n");
+            fprintf (stdout, "  ignore                - ignore this instruction\n");
+            fprintf (stdout, "  replace X Y Z         - replace:\n");
             fprintf (stdout, "    IP:0xMEM_ADDR       -   with this IP value\n");
             fprintf (stdout, "    IR:0xINSTRUCT       -   with this IR value\n");
             fprintf (stdout, "    IV:0xIMMEDIAT       -   with this IV value\n");
@@ -56,12 +59,10 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    R#:     0xTHEVALUE  -   set register to value\n");
             fprintf (stdout, "    0xMEM:  0xTHEVALUE  -   set memory to value\n");
             fprintf (stdout, "    0xIOP:  0xTHEVALUE  -   set ioport to value\n");
-            fprintf (stdout, "  (u)nXYZ           - remove item from list\n");
-            fprintf (stdout, "    break           -   remove breakpoint #\n");
-            fprintf (stdout, "    display         -   remove displaypoint #\n");
-            fprintf (stdout, "    label           -   remove label #\n");
-            fprintf (stdout, "  (h)elp/(?)        - display this help\n");
-            fprintf (stdout, "  (q)uit        - exit the simulator\n");
+            fprintf (stdout, "  unbreak #/undisplay # - remove item from list\n");
+            fprintf (stdout, "  unlabel #             -   remove label #\n");
+            fprintf (stdout, "  help/?                - display this help\n");
+            fprintf (stdout, "  quit                  - exit the simulator\n");
             break;
 
         case INPUT_BREAK:
@@ -71,7 +72,10 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    break LABEL\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
             fprintf (stdout, "    List or set a breakpoint for the indicated value. A breakpoint\n");
-            fprintf (stdout, "    is a trigger to stop execution and present the prompt for input.\n\n");
+            fprintf (stdout, "    is a trigger to stop execution and present the prompt for input.\n");
+            fprintf (stdout, "    This is typically some BIOS or CART offset that would align with\n");
+            fprintf (stdout, "    an instruction to process. It can also be used to break when a\n");
+            fprintf (stdout, "    subroutine is called (based on its label, which exists at an offset\n\n");
             break;
 
         case INPUT_CONTINUE:
@@ -99,9 +103,21 @@ void  help  (uint8_t  item)
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    ignore\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
-            fprintf (stdout, "    Skip execution of current instruction\n\n");
+            fprintf (stdout, "    Skip execution of current instruction; cycle and frame counters\n");
+            fprintf (stdout, "    are not adjusted, although IP/IR/IV proceed to next instruction\n");
+            fprintf (stdout, "    in sequence. Used to avoid an error-causing instruction but not\n");
+            fprintf (stdout, "    stop execution.\n\n");
             fprintf (stdout, "NOTE:\n");
             fprintf (stdout, "    Could cause runtime problems depending on what is ignored.\n\n");
+            break;
+
+        case INPUT_INVENTORY:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    inventory\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Display a system resources overview, meant to reveal the current\n");
+            fprintf (stdout, "    operational state of the system (CARTs/MEMCARDs loaded, space in\n");
+            fprintf (stdout, "    use, etc.)\n\n");
             break;
 
         case INPUT_LOAD:
@@ -134,6 +150,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    display[/fmt] REGISTER [LABEL]\n");
             fprintf (stdout, "    display[/fmt] 0xMEM_ADDR [LABEL]\n");
+            fprintf (stdout, "    display[/fmt] 0xMEMADDR1-0xMEMADDR2\n");
             fprintf (stdout, "    display[/fmt] 0xIOP [LABEL]\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
             fprintf (stdout, "    Add a displaylist item (displayed at each showing of the prompt).\n");
@@ -153,10 +170,20 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    /X    display as uppercase hexadecimal (default)\n\n");
             fprintf (stdout, "NOTE:\n");
             fprintf (stdout, "    If no label is provided to an IOPort, its symbolic port name will\n");
-            fprintf (stdout, "    instead be displayed\n\n");
+            fprintf (stdout, "    instead be displayed. System registers (IP, IR, IV) are also valid.\n\n");
             fprintf (stdout, "EXAMPLE:\n");
             fprintf (stdout, "    display/o R4            display R4's contents as octal\n");
             fprintf (stdout, "    display   [0x003FFFFE]  dereference address, show contents\n\n");
+            break;
+
+        case INPUT_UNDO:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    unbreak #\n");
+            fprintf (stdout, "    undisplay #\n");
+            fprintf (stdout, "    unlabel #\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Remove indicated list item (by index number). Remaining list items\n");
+            fprintf (stdout, "    will be re-indexed\n\n");
             break;
     }
 }
