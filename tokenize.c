@@ -658,6 +658,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         help (INPUT_INVENTORY);
                         action         = INPUT_INIT;
                     }
+                    else if (0        == strncasecmp (token, "la", 2))
+                    {
+                        help (INPUT_LABEL);
+                        action         = INPUT_INIT;
+                    }
                     else if (0        == strncasecmp (token, "lo", 2))
                     {
                         help (INPUT_LOAD);
@@ -666,6 +671,21 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     else if (0        == strncasecmp (token, "n", 1))
                     {
                         help (INPUT_NEXT);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "p", 1))
+                    {
+                        help (INPUT_PRINT);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "r", 1))
+                    {
+                        help (INPUT_REPLACE);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "se", 2))
+                    {
+                        help (INPUT_SET);
                         action         = INPUT_INIT;
                     }
                     else if (0        == strncasecmp (token, "st", 2))
