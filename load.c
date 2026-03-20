@@ -161,7 +161,6 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     get_word (fptr);
                     SYSPORTSET(CAR_ProgramROMSize,   get_word (fptr));
                     SYSPORTSET(CAR_Connected,        TRUE);
-					fprintf (stdout, "[load_memory] CART size: %u\n", (memory+page) -> size);
                 case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (BIOS and CART)
                     fseek (fptr, (35 * wordsize), SEEK_SET);
                     break;
