@@ -101,7 +101,7 @@ linked_l *find_value (linked_l *list, uint32_t  value)
 
     while (tmp                 != NULL)
     {
-        if (tmp -> data.raw == value)
+        if (tmp -> data.raw    == value)
         {
             break;
         }

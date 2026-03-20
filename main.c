@@ -250,7 +250,7 @@ int32_t   main (int32_t  argc, char **argv)
                 btmp                = find_value (bpoint, value);
                 if (btmp           == NULL) // not an existing breakpoint
                 {
-                    btmp            = list_grab (&tpoint, btmp);
+                    btmp            = list_grab (&tpoint, tmp);
                     fprintf (debug, "[main] BREAKing at offset 0x%.8X\n", value);
                     bpoint          = list_add (bpoint, btmp);
                 }
