@@ -211,6 +211,8 @@
 #define  FLAG_PROCESS            2 
 #define  FLAG_IMMEDIATE          4
 #define  FLAG_DATA               8
+#define  FLAG_ERROR              16
+#define  FLAG_DEMO               32
 
 #define  FLAG_READ               4
 #define  FLAG_WRITE              2

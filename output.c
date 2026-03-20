@@ -20,7 +20,7 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
         {
             sprintf (addr, "[%s>0x%.8X]", REGNAME(id), REG(id));
         }
-        check                     = memory_chk (REG(id), TRUE);
+        check                     = memory_chk (REG(id), FLAG_READ, TRUE);
     }
     else
     {
@@ -260,7 +260,7 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
     uint8_t   addr[26];
     uint8_t   entry[33];
 
-    check                    = memory_chk (value, TRUE);
+    check                    = memory_chk (value, FLAG_READ, TRUE);
     if (check               == TRUE)
     {
         data                 = ISYSMEMGET(value);
@@ -268,7 +268,7 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
 
     if (flag                == TRUE)
     {
-        check                = memory_chk (data, TRUE);
+        check                = memory_chk (data, FLAG_READ, TRUE);
         if (check           == TRUE)
         {
             sprintf (addr, "[0x%.8X(0x%.8X)]", value, data);

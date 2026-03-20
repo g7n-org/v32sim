@@ -1,23 +1,24 @@
 #include "defines.h"
 
-void  decode (uint32_t  instruction,
-              uint32_t  immediate,
-              float     fimmediate,
-              uint8_t   flags)
+uint8_t  decode (uint32_t  instruction,
+                 uint32_t  immediate,
+                 float     fimmediate,
+                 uint8_t   flags)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Declare and initialize variables
     //
-    uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
-    uint8_t   processflag          = (flags & FLAG_PROCESS)   ? TRUE : FALSE;
+    uint8_t   displayflag  = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
+    uint8_t   processflag  = (flags & FLAG_PROCESS)   ? TRUE : FALSE;
+    uint8_t   result       = TRUE;
 
     ////////////////////////////////////////////////////////////////////////////////
     //
     // If we are only concerned with displaying the assembly, call the
     // decode_display() function
     //
-    if (displayflag               == TRUE)
+    if (displayflag       == TRUE)
     {
         decode_display (instruction, immediate, fimmediate, flags);
     }
@@ -27,10 +28,15 @@ void  decode (uint32_t  instruction,
     // If we are only concerned with processing the assembly, call the
     // decode_process() function
     //
-    else if (processflag          == TRUE)
+    else if (processflag  == TRUE)
     {
-        decode_process (instruction, immediate, fimmediate, flags);
+        result             = decode_process (instruction,
+                                             immediate,
+                                             fimmediate,
+                                             flags);
     }
+
+    return (result);
 }
 
 void  decode_display (uint32_t  instruction,
@@ -49,6 +55,7 @@ void  decode_display (uint32_t  instruction,
     uint8_t   displayflag          = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
     uint8_t   immflag              = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
     uint8_t   dataflag             = (flags & FLAG_DATA)      ? TRUE : FALSE;
+    uint8_t   errorflag            = (flags & FLAG_ERROR)     ? TRUE : FALSE;
     uint8_t   opcode               = (instruction & OPCODE_MASK) >> OPCODESHIFT;
     uint32_t  dst                  = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
     uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
@@ -93,7 +100,23 @@ void  decode_display (uint32_t  instruction,
     if ((colorflag                == TRUE) &&
         (dataflag                 == FALSE))
     {
-        fprintf (stdout, "\e[1;33m");
+        if (errorflag             == FALSE)
+        {
+            fprintf (stdout, "\e[1;33m");
+        }
+        else
+        {
+            fprintf (stdout, "\e[1;31m");
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
+    // If errorflag is tripped, display visual warning indicator
+    //
+    if (errorflag                 == TRUE)
+    {
+        fprintf (stdout, "[!]");
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -422,25 +445,38 @@ void  decode_display (uint32_t  instruction,
             break;
     }
 
-    if (dataflag                  == FALSE)
+    ////////////////////////////////////////////////////////////////////////////////
+    //
+    // If errorflag is tripped, display visual warning indicator
+    //
+    if (errorflag                 == TRUE)
     {
-        fprintf (display, "\n");
+        fprintf (stdout, "[!]");
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     //
-    // If colors are enabled, complete the highlight the decoded instruction
+    // If colors are enabled, complete the highlight of the decoded instruction
     //
     if (colorflag                 == TRUE)
     {
         fprintf (display, "\e[m");
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
+    // If this decode display is part of a print or displaylist, don't do newline
+    //
+    if (dataflag                  == FALSE)
+    {
+        fprintf (display, "\n");
+    }
 }
 
-void  decode_process (uint32_t  instruction,
-                      uint32_t  immediate,
-                      float     fimmediate,
-                      uint8_t   flags)
+uint8_t  decode_process (uint32_t  instruction,
+                         uint32_t  immediate,
+                         float     fimmediate,
+                         uint8_t   flags)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -454,6 +490,7 @@ void  decode_process (uint32_t  instruction,
     uint32_t  src           = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr          = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port          = (instruction & IOPORT_MASK);
+    uint8_t   result        = TRUE;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -466,8 +503,8 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case WAIT:
-            waitflag        = TRUE; // triggers TIM_CycleCounter to reset
-            update_frame ();        // update Frame Counter
+                waitflag    = TRUE; // triggers TIM_CycleCounter to reset
+                update_frame ();        // update Frame Counter
             break;
 
         case JMP:
@@ -486,7 +523,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case RET:
-            REG(IP)         = IMEMGET (REG(SP));
+            REG(IP)         = IMEMGET(REG(SP));
             rom_offset      = REG(IP);  // POP REG(IP) off stack
             REG(SP)         = REG(SP) + 1;
             branchflag      = TRUE;
@@ -597,37 +634,37 @@ void  decode_process (uint32_t  instruction,
                 case 02: // MOV DSTREG, [Immediate]
                     fprintf (debug, "[decode_process] MOV(2): memory_get (0x%.8X)\n",
                             immediate);
-                    DSTREG  = IMEMGET (immediate);
+                    DSTREG  = IMEMGET(immediate);
                     break;
 
                 case 03: // MOV DSTREG, [SRCREG]
                     fprintf (debug, "[decode_process] MOV(3): memory_get (0x%.8X)\n",
                             SRCREG);
-                    DSTREG  = IMEMGET (SRCREG);
+                    DSTREG  = IMEMGET(SRCREG);
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
                     fprintf (debug, "[decode_process] MOV(4): memory_get (0x%.8X)\n",
                             (SRCREG + immediate));
-                    DSTREG  = IMEMGET (SRCREG + immediate);
+                    DSTREG  = IMEMGET(SRCREG + immediate);
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
                     fprintf (debug, "[decode_process] MOV(5): memory_set (0x%.8X, 0x%.8X)\n",
                             immediate, SRCREG);
-                    MEMSET (immediate, SRCREG);
+                    MEMSET(immediate,  SRCREG);
                     break;
 
                 case 06: // MOV [DSTREG], SRCREG
                     fprintf (debug, "[decode_process] MOV(6): memory_set (0x%.8X, 0x%.8X)\n",
                             DSTREG,    SRCREG);
-                    MEMSET (DSTREG,    SRCREG);
+                    MEMSET(DSTREG,     SRCREG);
                     break;
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
                     fprintf (debug, "[decode_process] MOV(7): memory_set (0x%.8X, 0x%.8X)\n",
                             (DSTREG + immediate), SRCREG);
-                    MEMSET ((DSTREG + immediate), SRCREG);
+                    MEMSET((DSTREG + immediate),  SRCREG);
                     break;
             }
             break;
@@ -635,12 +672,12 @@ void  decode_process (uint32_t  instruction,
         case PUSH:
             fprintf (debug, "[decode_process] PUSH: memory_set (0x%.8X, 0x%.8X)\n", REG(SP), DSTREG);
             REG(SP)         = REG(SP) - 1; // adjust top of stack
-            MEMSET (REG(SP), DSTREG);      // place on top of stack
+            MEMSET(REG(SP), DSTREG);      // place on top of stack
             break;
 
         case POP:
             fprintf (debug, "[decode_process] POP: memory_get (0x%.8X)\n", REG(SP));
-            DSTREG          = IMEMGET (REG(SP));
+            DSTREG          = IMEMGET(REG(SP));
             REG(SP)         = REG(SP) + 1;
             break;
 
@@ -653,7 +690,7 @@ void  decode_process (uint32_t  instruction,
             value           = (immflag == TRUE)  ? immediate  : DSTREG;
             fprintf (debug, "[decode_process] OUT: ioports_set (0x%.3X, 0x%.8X)\n",
                             port, value);
-            PORTSET (port, value);
+            PORTSET(port, value);
             break;
 
         case MOVS:
@@ -681,7 +718,7 @@ void  decode_process (uint32_t  instruction,
         case CMPS:
             do
             {
-                DSTREG      = IMEMGET(REG(DR) - REG(SR));
+                DSTREG      = IMEMGET(REG(DR)) - IMEMGET(REG(SR));
                 if (DSTREG != 0)
                 {
                     break;
@@ -689,7 +726,6 @@ void  decode_process (uint32_t  instruction,
                 REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
                 REG(SR)     = REG(SR) + 1; // SR: Source Register (R12)
                 REG(CR)     = REG(CR) - 1; // CR: Count Register (R11)
-                //IP          = IP - 1; // IP: InstructionPointer internal register
             }
             while (REG(CR) >  0);
             break;
@@ -767,7 +803,15 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case IMOD:
-            DSTREG         %= (immflag == TRUE)  ? immediate  : SRCREG;
+            value           = (immflag == TRUE)  ? immediate  : SRCREG;
+            if (value      != 0)
+            {
+                DSTREG      = DSTREG % value;
+            }
+            else
+            {
+                sys_error   = ERROR_DIVISION;
+            }
             break;
 
         case ISGN:
@@ -825,12 +869,27 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case FDIV:
-            FDSTREG        /= (immflag == TRUE)  ? fimmediate : FSRCREG;
+            fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
+            if (fvalue     != 0)
+            {
+                FDSTREG     = FDSTREG / fvalue;
+            }
+            else
+            {
+                sys_error   = ERROR_DIVISION;
+            }
             break;
 
         case FMOD:
             fvalue          = (immflag == TRUE)  ? fimmediate : FSRCREG;
-            FDSTREG         = fmodf (FDSTREG, fvalue);
+            if (fvalue     != 0)
+            {
+                FDSTREG     = fmodf (FDSTREG, fvalue);
+            }
+            else
+            {
+                sys_error   = ERROR_DIVISION;
+            }
             break;
 
         case FSGN:
@@ -889,3 +948,262 @@ void  decode_process (uint32_t  instruction,
             break;
     }
 }
+
+uint8_t  decode_check (uint32_t  instruction,
+                       uint32_t  immediate,
+                       float     fimmediate,
+                       uint8_t   flags)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize variables
+    //
+    float     fvalue        = 0.0;
+    int32_t   value         = 0;
+    uint8_t   immflag       = (flags & FLAG_IMMEDIATE) ? TRUE : FALSE;
+    uint8_t   opcode        = (instruction & OPCODE_MASK) >> OPCODESHIFT;
+    uint32_t  dst           = (instruction & DSTREG_MASK) >> DSTREGSHIFT;
+    uint32_t  src           = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
+    uint8_t   addr          = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
+    uint16_t  port          = (instruction & IOPORT_MASK);
+    uint32_t  data          = 0;
+    uint8_t   result        = TRUE;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Determine opcode and perform needed processing, based on flags
+    //
+    switch (opcode)
+    {
+        case HLT:
+        case WAIT:
+        case IEQ:
+        case INE:
+        case IGT:
+        case IGE:
+        case ILT:
+        case ILE:
+        case FEQ:
+        case FNE:
+        case FGT:
+        case FGE:
+        case FLT:
+        case FLE:
+        case LEA:
+        case CIF:
+        case CFI:
+        case CIB:
+        case CFB:
+        case NOT:
+        case AND:
+        case OR:
+        case XOR:
+        case BNOT:
+        case SHL:
+        case IADD:
+        case ISUB:
+        case IMUL:
+        case ISGN:
+        case IMIN:
+        case IMAX:
+        case IABS:
+        case FADD:
+        case FSUB:
+        case FMUL:
+        case FSGN:
+        case FMIN:
+        case FMAX:
+        case FABS:
+        case FLR:
+        case CEIL:
+        case ROUND:
+        case SIN:
+            break;
+
+        case JMP:
+            data            = (immflag == TRUE)   ? immediate  : DSTREG;
+            result          = memory_chk  (data,               FLAG_READ,  TRUE);
+            break;
+
+        case CALL:
+            data            = (immflag == TRUE)   ? immediate  : DSTREG;
+            result          = memory_chk  (REG(SP)-1,          FLAG_WRITE, TRUE);
+            if (result     == TRUE)
+            {
+                result      = memory_chk  (data,               FLAG_READ,  TRUE);
+            }
+            break;
+
+        case RET:
+            result          = memory_chk  (REG(SP),            FLAG_READ,  TRUE);
+            break;
+
+        case JT:
+            if (DSTREG     == TRUE)
+            {
+                data        = (immflag == TRUE)   ? immediate  : SRCREG;
+                result      = memory_chk  (data,               FLAG_READ,  TRUE);
+            }
+            break;
+
+        case JF:
+            if (DSTREG     == FALSE)
+            {
+                data        = (immflag == TRUE)   ? immediate  : SRCREG;
+                result      = memory_chk  (data,               FLAG_READ,  TRUE);
+            }
+            break;
+
+        case MOV:
+            switch (addr)
+            {
+                case 00: // MOV DSTREG, Immediate
+                case 01: // MOV DSTREG, SRCREG
+                    break;
+
+                case 02: // MOV DSTREG, [Immediate]
+                    result  = memory_chk  (immediate,          FLAG_READ,  TRUE);
+                    break;
+
+                case 03: // MOV DSTREG, [SRCREG]
+                    result  = memory_chk  (SRCREG,             FLAG_READ,  TRUE);
+                    break;
+
+                case 04: // MOV DSTREG, [SRCREG+Immediate]
+                    result  = memory_chk  ((SRCREG+immediate), FLAG_READ,  TRUE);
+                    break;
+
+                case 05: // MOV [Immediate], SRCREG
+                    result  = memory_chk  (immediate,          FLAG_WRITE, TRUE);
+                    break;
+
+                case 06: // MOV [DSTREG], SRCREG
+                    result  = memory_chk  (DSTREG,             FLAG_WRITE, TRUE);
+                    break;
+
+                case 07: // MOV [DSTREG+Immediate], SRCREG
+                    result  = memory_chk  ((DSTREG+immediate), FLAG_WRITE, TRUE);
+                    break;
+            }
+            break;
+
+        case PUSH:
+            result          = memory_chk  ((REG(SP)-1),        FLAG_WRITE, TRUE);
+            break;
+
+        case POP:
+            result          = memory_chk  (REG(SP),            FLAG_READ,  TRUE);
+            break;
+
+        case IN:
+            result          = ioports_chk (port,               FLAG_READ,  TRUE);
+            break;
+
+        case OUT:
+            result          = ioports_chk (port,               FLAG_WRITE, TRUE);
+            break;
+
+        case MOVS:
+            for (value      = 0;
+                 value     <  REG(CR);
+                 value      = value + 1)
+            {
+                result      = memory_chk  ((REG(SR)+value),   FLAG_READ,  TRUE);
+                if (result == TRUE)
+                {
+                    result  = memory_chk  ((REG(DR)+value),   FLAG_WRITE, TRUE);
+                }
+            }
+            break;
+
+        case SETS:
+            for (value      = 0;
+                 value     <  REG(CR);
+                 value      = value + 1)
+            {
+                result      = memory_chk  ((REG(DR)+value),   FLAG_WRITE, TRUE);
+            }
+            break;
+
+        case CMPS:
+            for (value      = 0;
+                 value     <  REG(CR);
+                 value      = value + 1)
+            {
+                result      = memory_chk  ((REG(DR)+value),   FLAG_READ,  TRUE);
+                if (result == TRUE)
+                {
+                    result  = memory_chk  ((REG(SR)+value),   FLAG_READ,  TRUE);
+                }
+
+                /* btw: I think this is implemented wrong
+                DSTREG      = IMEMGET(REG(DR) - REG(SR));
+                if (DSTREG != 0)
+                {
+                    break;
+                }
+                */
+            }
+            break;
+
+        case IDIV:
+        case IMOD:
+        case FDIV:
+        case FMOD:
+            value           = (immflag == TRUE)  ? immediate  : SRCREG;
+            if (value      == 0)
+            {
+                result      = FALSE;
+                //sys_error   = ERROR_DIVISION;
+            }
+            break;
+
+        case ACOS:
+            // does SIN also fall under this error??
+            if ((FDSTREG   <  -1.0) ||
+                (FDSTREG   >  +1.0))
+            {
+                result      = FALSE;
+                //sys_error  == ERROR_ARC_COSINE;
+            }
+            break;
+
+        case ATAN2:
+            // need to find how to instigate ATAN2 error
+            //FDSTREG         = atan2f (FDSTREG, FSRCREG);
+            break;
+
+        case LOG:
+            if (FDSTREG    == 0)
+            {
+                result      = FALSE;
+                //sys_error  == ERROR_DIVISION;
+            }
+            
+            if ((result    == TRUE) &&
+                (FDSTREG   <  0.0))
+            {
+                result      = FALSE;
+                //sys_error  == ERROR_LOGARITHM;
+            }
+            break;
+
+        case POW:
+            if ((FDSTREG   == 0.0) &&
+                (FSRCREG   <  0.0))
+            {
+                result      = FALSE;
+                //sys_error  == ERROR_DIVISION;
+            }
+            // there may be another error state
+            break;
+
+        default:
+            fprintf (stderr, "[decode_process] unimplemented instruction (0x%hhX)\n", opcode);
+            sys_error       = ERROR_UNKNOWN;
+            break;
+    }
+
+    return (result);
+}
+

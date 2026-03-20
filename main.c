@@ -365,43 +365,15 @@ int32_t   main (int32_t  argc, char **argv)
                 put_word (REG(IV), FLAG_DISPLAY);
                 fprintf  (stdout, "\n");
             }
-            //displayshow  (dpoint, 0);
         }
 
         if (runflag                   == FALSE)
         {
-            if (sys_reg_show          == TRUE)
-            {
-                show_sysregs ();
-                switch ((REG(IP) & 0x30000000) >> 28)
-                {
-                    case V32_PAGE_RAM:
-                        fprintf (stdout, " [RAM]");
-                        break;
-                    case V32_PAGE_BIOS:
-                        fprintf (stdout, "[BIOS]");
-                        break;
-                    case V32_PAGE_CART:
-                        fprintf (stdout, "[CART]");
-                        break;
-                    case V32_PAGE_MEMC:
-                        fprintf (stdout, "[MEMC]");
-                        break;
-                }
-
-                fprintf (stdout, "[%.8X]: ", REG(IP));
-            }
-            else
-            {
-                put_word (REG(IR), FLAG_DISPLAY);
-            }
-
-            decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
-
-            if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
+            do
             {
                 if (sys_reg_show      == TRUE)
                 {
+                    show_sysregs ();
                     switch ((REG(IP) & 0x30000000) >> 28)
                     {
                         case V32_PAGE_RAM:
@@ -417,18 +389,46 @@ int32_t   main (int32_t  argc, char **argv)
                             fprintf (stdout, "[MEMC]");
                             break;
                     }
-                    fprintf  (stdout, "[%.8X]: 0x%.8X", (REG(IP) + 1), REG(IV));
+
+                    fprintf (stdout, "[%.8X]: ", REG(IP));
                 }
                 else
                 {
-                    put_word (REG(IV), FLAG_DISPLAY);
+                    put_word (REG(IR), FLAG_DISPLAY);
                 }
-                fprintf  (stdout, "\n");
-            }
 
-            processflag                = FALSE;
-            do
-            {
+                decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
+
+                if (FLAG_IMMEDIATE    == (decodeflags & FLAG_IMMEDIATE))
+                {
+                    if (sys_reg_show  == TRUE)
+                    {
+                        switch ((REG(IP) & 0x30000000) >> 28)
+                        {
+                            case V32_PAGE_RAM:
+                                fprintf (stdout, " [RAM]");
+                                break;
+                            case V32_PAGE_BIOS:
+                                fprintf (stdout, "[BIOS]");
+                                break;
+                            case V32_PAGE_CART:
+                                fprintf (stdout, "[CART]");
+                                break;
+                            case V32_PAGE_MEMC:
+                                fprintf (stdout, "[MEMC]");
+                                break;
+                        }
+                        fprintf  (stdout, "[%.8X]: 0x%.8X", (REG(IP) + 1), REG(IV));
+                    }
+                    else
+                    {
+                        put_word (REG(IV), FLAG_DISPLAY);
+                    }
+                    fprintf  (stdout, "\n");
+                }
+
+                processflag            = FALSE;
+
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Display the prompt and obtain input

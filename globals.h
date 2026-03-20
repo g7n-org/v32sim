@@ -100,9 +100,10 @@ extern linked_l *tpoint;
 size_t    get_filesize   (int8_t *);
 uint32_t  get_word       (FILE *);
 void      put_word       (uint32_t,    uint8_t);
-void      decode         (uint32_t,    uint32_t,    float,    uint8_t);
+uint8_t   decode         (uint32_t,    uint32_t,    float,    uint8_t);
 void      decode_display (uint32_t,    uint32_t,    float,    uint8_t);
-void      decode_process (uint32_t,    uint32_t,    float,    uint8_t);
+uint8_t   decode_check   (uint32_t,    uint32_t,    float,    uint8_t);
+uint8_t   decode_process (uint32_t,    uint32_t,    float,    uint8_t);
 void      init_ioports   (void);                              // initialize IOPorts
 uint8_t   ioports_chk    (uint16_t,    uint8_t,     uint8_t);
 data_t   *ioports_ptr    (uint16_t);
@@ -115,7 +116,7 @@ void      load_command   (void);
 uint32_t  load_labels    (uint8_t *);
 uint8_t   load_memory    (uint32_t,    int8_t *);             // load file into memory
 uint8_t   unload_memory  (uint32_t);
-uint8_t   memory_chk     (uint32_t,    uint8_t);
+uint8_t   memory_chk     (uint32_t,    uint8_t,     uint8_t);
 word_t   *memory_get     (uint32_t,    uint8_t);              // get value from memory
 void      memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory
 void      init_registers (void);
