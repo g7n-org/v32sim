@@ -12,7 +12,7 @@ uint8_t  parse_token (uint8_t *token, uint8_t *pattern, uint8_t  parse_success)
     regex_t     regex;
     regmatch_t  match[2];
 
-    fprintf (verbose, "[parse_token] passed token: '%s'\n", token);
+    fprintf (debug, "[parse_token] passed token: '%s'\n", token);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -32,7 +32,7 @@ uint8_t  parse_token (uint8_t *token, uint8_t *pattern, uint8_t  parse_success)
     check                    = regexec (&regex, token, 2, match, 0);
     if (check               == REG_NOMATCH)
     {
-        fprintf (verbose, "[parse_token] invalid token value\n");
+        fprintf (debug, "[parse_token] invalid token value\n");
         result               = PARSE_NONE;
     }
 
@@ -42,7 +42,7 @@ uint8_t  parse_token (uint8_t *token, uint8_t *pattern, uint8_t  parse_success)
     //
     else if (check          == 0)
     {
-        fprintf (verbose, "[parse_token] successful match for token\n");
+        fprintf (debug, "[parse_token] successful match for token\n");
         result               = parse_success;
     }
 
@@ -73,7 +73,7 @@ uint8_t  parse_memrange (uint8_t *token)
     regmatch_t  match[2];
     uint8_t    *pattern      = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$";
 
-    fprintf (verbose, "[parse_memrange] passed token: '%s'\n", token);
+    fprintf (debug, "[parse_memrange] passed token: '%s'\n", token);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -93,7 +93,7 @@ uint8_t  parse_memrange (uint8_t *token)
     check                    = regexec (&regex, token, 2, match, 0);
     if (check               == REG_NOMATCH)
     {
-        fprintf (verbose, "[parse_imm] invalid memory range\n");
+        fprintf (debug, "[parse_imm] invalid memory range\n");
         result               = PARSE_NONE;
     }
 
@@ -136,7 +136,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
     uint8_t    *form0        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *$";
     uint8_t    *form1        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *([^ ]+) *$";
 
-    fprintf (verbose, "[parse_deref] passed token: '%s'\n", input);
+    fprintf (debug, "[parse_deref] passed token: '%s'\n", input);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -170,7 +170,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
         check                = regexec (&regex, input, 4, match, 0);
         if (check           == REG_NOMATCH)
         {
-            fprintf (verbose, "[parse_deref] invalid deref value\n");
+            fprintf (debug, "[parse_deref] invalid deref value\n");
             *flag            = FALSE;
         }
 
@@ -180,7 +180,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
         //
         else if (check      == 0)
         {
-            fprintf (verbose, "[parse_deref] match on dereference\n");
+            fprintf (debug, "[parse_deref] match on dereference\n");
 
             ////////////////////////////////////////////////////////////////////////////
             //
@@ -243,7 +243,7 @@ uint8_t  parse_imm (uint8_t *token)
     uint8_t    *form8        = "^ *([0-9]|[1-9][0-9]*) *$";           // dec
     uint8_t    *form9        = "^ *[[] *([0-9]|[1-9][0-9]*) *[]] *$"; // dec ptr
 
-    fprintf (verbose, "[parse_imm] passed token: '%s'\n", token);
+    fprintf (debug, "[parse_imm] passed token: '%s'\n", token);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -285,7 +285,7 @@ uint8_t  parse_imm (uint8_t *token)
         check                = regexec (&regex, token, 2, match, 0);
         if (check           == REG_NOMATCH)
         {
-            fprintf (verbose, "[parse_imm] invalid immediate value\n");
+            fprintf (debug, "[parse_imm] invalid immediate value\n");
             result           = PARSE_NONE;
         }
 
@@ -298,32 +298,32 @@ uint8_t  parse_imm (uint8_t *token)
             if (index       <= 1) // hex
             {
                 result       = strtol (token, NULL, 16);
-                fprintf (verbose, "[parse_imm] imm type: hex (0x%.8X)\n", result);
+                fprintf (debug, "[parse_imm] imm type: hex (0x%.8X)\n", result);
             }
             else if ((index >= 2) && // hex
                      (index <= 3))
             {
                 //trim the suffixing H/h
                 result       = strtol (token, NULL, 16);
-                fprintf (verbose, "[parse_imm] imm type: hex (%.8XH)\n",  result);
+                fprintf (debug, "[parse_imm] imm type: hex (%.8XH)\n",  result);
             }
             else if ((index >= 4) &&
                      (index <= 5))   // bin
             {
                 //trim the prefixing 0b
                 result       = strtol (token, NULL, 2);
-                fprintf (verbose, "[parse_imm] imm type: binary\n");
+                fprintf (debug, "[parse_imm] imm type: binary\n");
             }
             else if ((index >= 6) &&
                      (index <= 7))   // oct
             {
                 result       = strtol (token, NULL, 8);
-                fprintf (verbose, "[parse_imm] imm type: octal (0%o)\n",  result);
+                fprintf (debug, "[parse_imm] imm type: octal (0%o)\n",  result);
             }
             else
             {
                 result       = strtol (token, NULL, 10);
-                fprintf (verbose, "[parse_imm] imm type: decimal (%u)\n", result);
+                fprintf (debug, "[parse_imm] imm type: decimal (%u)\n", result);
             }
 
             result           = PARSE_IMMEDIATE;
@@ -374,7 +374,7 @@ uint8_t   parse_reg (uint8_t *token)
     uint8_t    *form7           = "^ *[[] *(I[PRV]) *[]] *$";         // sys reg ptr
     uint8_t    *form8           = "^ *(reg|regs|registers) *$";       // register map
 
-    fprintf (verbose, "[parse_reg] passed token: '%s'\n", token);
+    fprintf (debug, "[parse_reg] passed token: '%s'\n", token);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -415,7 +415,7 @@ uint8_t   parse_reg (uint8_t *token)
         check                   = regexec (&regex, token, 2, match, 0);
         if (check              == REG_NOMATCH)
         {
-            fprintf (verbose, "[parse_reg] invalid register\n");
+            fprintf (debug, "[parse_reg] invalid register\n");
             result              = PARSE_NONE;
         }
 
@@ -432,7 +432,7 @@ uint8_t   parse_reg (uint8_t *token)
             {
                 value           = atoi ((source+1));
                 result          = value & 0x000000FF;
-                fprintf (verbose, "[parse_reg] identified: R%u\n", result);
+                fprintf (debug, "[parse_reg] identified: R%u\n", result);
             }
             else if ((index    >= 2) && // stack register
                      (index    <= 3))
@@ -451,7 +451,7 @@ uint8_t   parse_reg (uint8_t *token)
                         break;
 
                     default:
-                        fprintf (verbose, "[parse_reg] impossible situation\n");
+                        fprintf (debug, "[parse_reg] impossible situation\n");
                         break;
                 }
             }
@@ -477,7 +477,7 @@ uint8_t   parse_reg (uint8_t *token)
                         break;
 
                     default:
-                        fprintf (verbose, "[parse_reg] impossible situation\n");
+                        fprintf (debug, "[parse_reg] impossible situation\n");
                         break;
                 }
             }
@@ -503,7 +503,7 @@ uint8_t   parse_reg (uint8_t *token)
                         break;
 
                     default:
-                        fprintf (verbose, "[parse_reg] impossible situation\n");
+                        fprintf (debug, "[parse_reg] impossible situation\n");
                         break;
                 }
             }
@@ -513,7 +513,7 @@ uint8_t   parse_reg (uint8_t *token)
             }
             else
             {
-                fprintf (verbose, "[parse_reg] impossible situation\n");
+                fprintf (debug, "[parse_reg] impossible situation\n");
             }
 
             regfree (&regex);
@@ -533,7 +533,7 @@ uint8_t   parse_reg (uint8_t *token)
         regfree (&regex);
     }
 
-    fprintf (verbose, "[parse_reg] register numberic ID: %hhu\n", result);
+    fprintf (debug, "[parse_reg] register numberic ID: %hhu\n", result);
 
     return (result);
 }

@@ -355,7 +355,7 @@ int32_t   main (int32_t  argc, char **argv)
             decodeflags                = FLAG_NONE;
         }
 
-        if ((debug                    != NULL) &&
+        if ((verbose                  == stderr) &&
             (runflag                  == TRUE))
         {
             put_word (REG(IR), FLAG_DISPLAY);

@@ -42,11 +42,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     uint8_t    *pattern4           = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
     uint8_t     result             = 0;
 
-    fprintf (verbose, "[tokenize_input] passed string: '%s'\n", input);
+    fprintf (debug, "[tokenize_input] passed string: '%s'\n", input);
 
     string                         = parse_deref (input, flag);
 
-    fprintf (verbose, "[tokenize_input] processed string: '%s'\n", string);
+    fprintf (debug, "[tokenize_input] processed string: '%s'\n", string);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -103,7 +103,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         else if (check                    == 0)
         {
-            fprintf (verbose, "[tokenize_input] MATCH on form %u\n", index);
+            fprintf (debug, "[tokenize_input] MATCH on form %u\n", index);
             if (index                     == 0) // single-word command
             {
                 byte                       = *(string + match[1].rm_so);
@@ -182,7 +182,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 if (byte                  == 'r') // replace
                 {
                     action                 = INPUT_REPLACE;
-                    fprintf (verbose, "[tokenize_input] replacing ");
+                    fprintf (debug, "[tokenize_input] replacing ");
                     for (count             = 2;
                          count            <  5;
                          count             = count + 1)
@@ -201,27 +201,27 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         if (byte          == 'P')
                         {
                             offset         = strtol (token, NULL, 16);
-                            fprintf (verbose, "IP:0x%.8X ", REG(IP));
+                            fprintf (debug, "IP:0x%.8X ", REG(IP));
                         }
                         else if (byte     == 'R')
                         {
-                            fprintf (verbose, "IR:0x%.8X ", IMEMGET(offset));
+                            fprintf (debug, "IR:0x%.8X ", IMEMGET(offset));
                             word           = strtol (token, NULL, 16);
-                            fprintf (verbose, "with IR:0x%.8X ", word);
+                            fprintf (debug, "with IR:0x%.8X ", word);
                             SYSMEMSET(offset, word);
                         }
                         else if (byte     == 'V')
                         {
                             if (0         <  (word & IMMVAL_MASK))
                             {
-                                fprintf (verbose, "IV:0x%.8X ", IMEMGET(offset+1));
+                                fprintf (debug, "IV:0x%.8X ", IMEMGET(offset+1));
                                 immv       = strtol (token, NULL, 16);
-                                fprintf (verbose, "with IV:0x%.8X ", immv);
+                                fprintf (debug, "with IV:0x%.8X ", immv);
                                 SYSMEMSET(offset+1, immv);
                             }
                         }
                     }
-                    fprintf (verbose, "\n");
+                    fprintf (debug, "\n");
                 }
             }
             else if (index                == 2) // assign-style command
@@ -362,11 +362,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         if (check         == 0)
                         {    
                             verbose        = stderr;
-                            fprintf (debug, "[set] verbosity ENABLED!\n");
+                            fprintf (verbose, "verbosity ENABLED!\n");
                         }
                         else
                         {
-                            fprintf (debug, "[set] disabling verbosity!\n");
+                            fprintf (verbose, "disabling verbosity!\n");
                             debug          = devnull;
                         }
                     }
@@ -466,7 +466,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                          count        <= PARSE_IOPORT;
                          count         = count + 1)
                     {
-                        fprintf (verbose,  "[tokenize_input] count: 0x%.2X, pattern: 0x%.2X\n",
+                        fprintf (debug,  "[tokenize_input] count: 0x%.2X, pattern: 0x%.2X\n",
                                 count, (count-0x7B));
 
                         ////////////////////////////////////////////////////////////////

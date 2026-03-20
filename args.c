@@ -1,6 +1,6 @@
 #include "defines.h"
 
-void       process_args (int32_t  argc, int8_t **argv)
+void  process_args (int32_t  argc, int8_t **argv)
 {
     int32_t    opt                 = 0;
     int32_t    option_index        = 0;
@@ -68,7 +68,7 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
 
             case 'D':
-				debug              = stderr;
+                debug              = stderr;
                 break;
 
             case 'd':
@@ -93,7 +93,7 @@ void       process_args (int32_t  argc, int8_t **argv)
                 break;
 
             case 'v':
-				verbose            = stderr;
+                verbose            = stderr;
                 break;
 
             case 'h':
