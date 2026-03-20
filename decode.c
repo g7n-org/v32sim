@@ -30,10 +30,7 @@ uint8_t  decode (uint32_t  instruction,
     //
     else if (processflag  == TRUE)
     {
-        result             = decode_process (instruction,
-                                             immediate,
-                                             fimmediate,
-                                             flags);
+        decode_process (instruction, immediate, fimmediate, flags);
     }
 
     return (result);
@@ -473,10 +470,10 @@ void  decode_display (uint32_t  instruction,
     }
 }
 
-uint8_t  decode_process (uint32_t  instruction,
-                         uint32_t  immediate,
-                         float     fimmediate,
-                         uint8_t   flags)
+void  decode_process (uint32_t  instruction,
+                      uint32_t  immediate,
+                      float     fimmediate,
+                      uint8_t   flags)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -490,7 +487,6 @@ uint8_t  decode_process (uint32_t  instruction,
     uint32_t  src           = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr          = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port          = (instruction & IOPORT_MASK);
-    uint8_t   result        = TRUE;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1148,10 +1144,18 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case IDIV:
         case IMOD:
-        case FDIV:
-        case FMOD:
             value           = (immflag == TRUE)  ? immediate  : SRCREG;
             if (value      == 0)
+            {
+                result      = FALSE;
+                //sys_error   = ERROR_DIVISION;
+            }
+            break;
+
+        case FDIV:
+        case FMOD:
+            fvalue          = (immflag == TRUE)  ? fimmediate  : FSRCREG;
+            if (fvalue     == 0.0)
             {
                 result      = FALSE;
                 //sys_error   = ERROR_DIVISION;
