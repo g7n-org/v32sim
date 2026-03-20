@@ -1142,10 +1142,18 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case PUSH:
             result          = memory_chk  ((REG(SP)-1),        FLAG_WRITE, FALSE);
+            if (result     == FALSE)
+            {
+                sys_error   = ERROR_STACK_OVERFLOW;
+            }
             break;
 
         case POP:
             result          = memory_chk  (REG(SP),            FLAG_READ,  FALSE);
+            if (result     == FALSE)
+            {
+                sys_error   = ERROR_STACK_UNDERFLOW;
+            }
             break;
 
         case IN:
