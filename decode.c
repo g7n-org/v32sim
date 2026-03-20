@@ -10,6 +10,7 @@ uint8_t  decode (uint32_t  instruction,
     // Declare and initialize variables
     //
     uint8_t   displayflag  = (flags & FLAG_DISPLAY)   ? TRUE : FALSE;
+    uint8_t   errorflag    = (flags & FLAG_ERROR)     ? TRUE : FALSE;
     uint8_t   processflag  = (flags & FLAG_PROCESS)   ? TRUE : FALSE;
     uint8_t   result       = TRUE;
 
@@ -31,6 +32,18 @@ uint8_t  decode (uint32_t  instruction,
     else if (processflag  == TRUE)
     {
         decode_process (instruction, immediate, fimmediate, flags);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
+    // Not displaying, not processing, but sampling for potential errors
+    //
+    else if (errorflag    == TRUE)
+    {
+        result             = decode_check (instruction,
+                                           immediate,
+                                           fimmediate,
+                                           flags);
     }
 
     return (result);
@@ -109,15 +122,6 @@ void  decode_display (uint32_t  instruction,
 
     ////////////////////////////////////////////////////////////////////////////////
     //
-    // If errorflag is tripped, display visual warning indicator
-    //
-    if (errorflag                 == TRUE)
-    {
-        fprintf (stdout, "[!]");
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    //
     // If decoding is in secondary form, eliminate pretty spacing
     //
     if (dataflag                  == TRUE)
@@ -192,10 +196,10 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source, "R%u",        src);
             }
-            fprintf (display,    "%*s %*s %*s",
+            fprintf (display,    "%*s %*s %s",
                                  space,   lookup[opcode].name,
                                  spacing, destination,
-                                 spacing, source);
+                                 source);
             break;
 
         case IEQ:
@@ -224,10 +228,10 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source, "R%u",    src);
             }
-            fprintf (display,    "%*s %*s %*s",
+            fprintf (display,    "%*s %*s %s",
                                  space,   lookup[opcode].name,
                                  spacing, destination,
-                                 spacing, source);
+                                 source);
             break;
 
         case FEQ:
@@ -254,10 +258,10 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source, "R%u",    src);
             }
-            fprintf (display,      "%*s %*s %*s",
+            fprintf (display,      "%*s %*s %s",
                                    space,   lookup[opcode].name,
                                    spacing, destination,
-                                   spacing, source);
+                                   source);
             break;
 
         case LEA:
@@ -274,18 +278,18 @@ void  decode_display (uint32_t  instruction,
                 {
                     value              = REG(src) - abs ((signed) immediate);
                 }
-                fprintf (display,      "%*s %*s %*s (deref address: 0x%.8X)",
+                fprintf (display,      "%*s %*s %s (deref addr: 0x%.8X)",
                                        space,   lookup[opcode].name,
                                        spacing, destination,
-                                       spacing, source, value);
+                                       source, value);
             }
             else
             {
                 sprintf (source,       "[R%u]",         src);
-                fprintf (display,      "%*s %*s %*s",
+                fprintf (display,      "%*s %*s %s",
                                        space,   lookup[opcode].name,
                                        spacing, destination,
-                                       spacing, source);
+                                       source);
             }
             break;
 
@@ -364,10 +368,10 @@ void  decode_display (uint32_t  instruction,
             if ((derefaddr            == TRUE) && 
                 (value                != 0))
             {
-                fprintf (display,     "%*s %*s %*s ",
+                fprintf (display,     "%*s %*s %s ",
                                       space,   lookup[opcode].name,
                                       spacing, destination,
-                                      spacing, source);
+                                      source);
                 if (colorflag                 == TRUE)
                 {
                     fprintf (stdout, "\e[1;35m");
@@ -380,10 +384,10 @@ void  decode_display (uint32_t  instruction,
             }
             else
             {
-                fprintf (display,     "%*s %*s %*s",
+                fprintf (display,     "%*s %*s %s",
                                       space,   lookup[opcode].name,
                                       spacing, destination,
-                                      spacing, source);
+                                      source);
             }
             break;
 
@@ -415,10 +419,10 @@ void  decode_display (uint32_t  instruction,
         case IN:
             sprintf (destination, "R%u,",    dst);
             sprintf (source,      "0x%.3X",  port);
-            fprintf (display,     "%*s %*s %*s",
+            fprintf (display,     "%*s %*s %s",
                                   space,   lookup[opcode].name,
                                   spacing, destination,
-                                  spacing, source);
+                                  source);
             break;
 
         case OUT:
@@ -431,10 +435,10 @@ void  decode_display (uint32_t  instruction,
             {
                 sprintf (source,  "R%u",     dst);
             }
-            fprintf (display,     "%*s %*s %*s",
+            fprintf (display,     "%*s %*s %s",
                                   space,   lookup[opcode].name,
                                   spacing, destination,
-                                  spacing, source);
+                                  source);
             break;
 
         default:
@@ -448,7 +452,60 @@ void  decode_display (uint32_t  instruction,
     //
     if (errorflag                 == TRUE)
     {
-        fprintf (stdout, "[!]");
+        if (colorflag             == TRUE)
+        {
+            fprintf (stdout, "\e[1;31m");
+        }
+        switch (sys_error)
+        {
+            case ERROR_MEMORY_READ:
+                fprintf (stdout, " [!]MEMORY READ[!]");
+                break;
+
+            case ERROR_MEMORY_WRITE:
+                fprintf (stdout, " [!]MEMORY WRITE[!]");
+                break;
+
+            case ERROR_PORT_READ:
+                fprintf (stdout, " [!]PORT READ[!]");
+                break;
+
+            case ERROR_PORT_WRITE:
+                fprintf (stdout, " [!]PORT WRITE[!]");
+                break;
+
+            case ERROR_STACK_OVERFLOW:
+                fprintf (stdout, " [!]STACK OVERFLOW[!]");
+                break;
+
+            case ERROR_STACK_UNDERFLOW:
+                fprintf (stdout, " [!]STACK UNDERFLOW[!]");
+                break;
+
+            case ERROR_DIVISION:
+                fprintf (stdout, " [!]DIVISION[!]");
+                break;
+
+            case ERROR_ARC_COSINE:
+                fprintf (stdout, " [!]ARC COSINE[!]");
+                break;
+
+            case ERROR_ARC_TANGENT_2:
+                fprintf (stdout, " [!]ARCTAN2[!]");
+                break;
+
+            case ERROR_LOGARITHM:
+                fprintf (stdout, " [!]LOGARITHM[!]");
+                break;
+
+            case ERROR_POWER:
+                fprintf (stdout, " [!]POWER[!]");
+                break;
+
+            default:
+                fprintf (stdout, " [!]UNKNOWN[!]");
+                break;
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1018,27 +1075,27 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case JMP:
             data            = (immflag == TRUE)   ? immediate  : DSTREG;
-            result          = memory_chk  (data,               FLAG_READ,  TRUE);
+            result          = memory_chk  (data,               FLAG_READ,  FALSE);
             break;
 
         case CALL:
             data            = (immflag == TRUE)   ? immediate  : DSTREG;
-            result          = memory_chk  (REG(SP)-1,          FLAG_WRITE, TRUE);
+            result          = memory_chk  (REG(SP)-1,          FLAG_WRITE, FALSE);
             if (result     == TRUE)
             {
-                result      = memory_chk  (data,               FLAG_READ,  TRUE);
+                result      = memory_chk  (data,               FLAG_READ,  FALSE);
             }
             break;
 
         case RET:
-            result          = memory_chk  (REG(SP),            FLAG_READ,  TRUE);
+            result          = memory_chk  (REG(SP),            FLAG_READ,  FALSE);
             break;
 
         case JT:
             if (DSTREG     == TRUE)
             {
                 data        = (immflag == TRUE)   ? immediate  : SRCREG;
-                result      = memory_chk  (data,               FLAG_READ,  TRUE);
+                result      = memory_chk  (data,               FLAG_READ,  FALSE);
             }
             break;
 
@@ -1046,7 +1103,7 @@ uint8_t  decode_check (uint32_t  instruction,
             if (DSTREG     == FALSE)
             {
                 data        = (immflag == TRUE)   ? immediate  : SRCREG;
-                result      = memory_chk  (data,               FLAG_READ,  TRUE);
+                result      = memory_chk  (data,               FLAG_READ,  FALSE);
             }
             break;
 
@@ -1058,45 +1115,45 @@ uint8_t  decode_check (uint32_t  instruction,
                     break;
 
                 case 02: // MOV DSTREG, [Immediate]
-                    result  = memory_chk  (immediate,          FLAG_READ,  TRUE);
+                    result  = memory_chk  (immediate,          FLAG_READ,  FALSE);
                     break;
 
                 case 03: // MOV DSTREG, [SRCREG]
-                    result  = memory_chk  (SRCREG,             FLAG_READ,  TRUE);
+                    result  = memory_chk  (SRCREG,             FLAG_READ,  FALSE);
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
-                    result  = memory_chk  ((SRCREG+immediate), FLAG_READ,  TRUE);
+                    result  = memory_chk  ((SRCREG+immediate), FLAG_READ,  FALSE);
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
-                    result  = memory_chk  (immediate,          FLAG_WRITE, TRUE);
+                    result  = memory_chk  (immediate,          FLAG_WRITE, FALSE);
                     break;
 
                 case 06: // MOV [DSTREG], SRCREG
-                    result  = memory_chk  (DSTREG,             FLAG_WRITE, TRUE);
+                    result  = memory_chk  (DSTREG,             FLAG_WRITE, FALSE);
                     break;
 
                 case 07: // MOV [DSTREG+Immediate], SRCREG
-                    result  = memory_chk  ((DSTREG+immediate), FLAG_WRITE, TRUE);
+                    result  = memory_chk  ((DSTREG+immediate), FLAG_WRITE, FALSE);
                     break;
             }
             break;
 
         case PUSH:
-            result          = memory_chk  ((REG(SP)-1),        FLAG_WRITE, TRUE);
+            result          = memory_chk  ((REG(SP)-1),        FLAG_WRITE, FALSE);
             break;
 
         case POP:
-            result          = memory_chk  (REG(SP),            FLAG_READ,  TRUE);
+            result          = memory_chk  (REG(SP),            FLAG_READ,  FALSE);
             break;
 
         case IN:
-            result          = ioports_chk (port,               FLAG_READ,  TRUE);
+            result          = ioports_chk (port,               FLAG_READ,  FALSE);
             break;
 
         case OUT:
-            result          = ioports_chk (port,               FLAG_WRITE, TRUE);
+            result          = ioports_chk (port,               FLAG_WRITE, FALSE);
             break;
 
         case MOVS:
@@ -1104,10 +1161,10 @@ uint8_t  decode_check (uint32_t  instruction,
                  value     <  REG(CR);
                  value      = value + 1)
             {
-                result      = memory_chk  ((REG(SR)+value),   FLAG_READ,  TRUE);
+                result      = memory_chk  ((REG(SR)+value),   FLAG_READ,  FALSE);
                 if (result == TRUE)
                 {
-                    result  = memory_chk  ((REG(DR)+value),   FLAG_WRITE, TRUE);
+                    result  = memory_chk  ((REG(DR)+value),   FLAG_WRITE, FALSE);
                 }
             }
             break;
@@ -1117,7 +1174,7 @@ uint8_t  decode_check (uint32_t  instruction,
                  value     <  REG(CR);
                  value      = value + 1)
             {
-                result      = memory_chk  ((REG(DR)+value),   FLAG_WRITE, TRUE);
+                result      = memory_chk  ((REG(DR)+value),   FLAG_WRITE, FALSE);
             }
             break;
 
@@ -1126,19 +1183,11 @@ uint8_t  decode_check (uint32_t  instruction,
                  value     <  REG(CR);
                  value      = value + 1)
             {
-                result      = memory_chk  ((REG(DR)+value),   FLAG_READ,  TRUE);
+                result      = memory_chk  ((REG(DR)+value),   FLAG_READ,  FALSE);
                 if (result == TRUE)
                 {
-                    result  = memory_chk  ((REG(SR)+value),   FLAG_READ,  TRUE);
+                    result  = memory_chk  ((REG(SR)+value),   FLAG_READ,  FALSE);
                 }
-
-                /* btw: I think this is implemented wrong
-                DSTREG      = IMEMGET(REG(DR) - REG(SR));
-                if (DSTREG != 0)
-                {
-                    break;
-                }
-                */
             }
             break;
 
@@ -1148,7 +1197,7 @@ uint8_t  decode_check (uint32_t  instruction,
             if (value      == 0)
             {
                 result      = FALSE;
-                //sys_error   = ERROR_DIVISION;
+                sys_error   = ERROR_DIVISION;
             }
             break;
 
@@ -1158,7 +1207,7 @@ uint8_t  decode_check (uint32_t  instruction,
             if (fvalue     == 0.0)
             {
                 result      = FALSE;
-                //sys_error   = ERROR_DIVISION;
+                sys_error   = ERROR_DIVISION;
             }
             break;
 
@@ -1168,7 +1217,7 @@ uint8_t  decode_check (uint32_t  instruction,
                 (FDSTREG   >  +1.0))
             {
                 result      = FALSE;
-                //sys_error  == ERROR_ARC_COSINE;
+                sys_error   = ERROR_ARC_COSINE;
             }
             break;
 
@@ -1181,14 +1230,14 @@ uint8_t  decode_check (uint32_t  instruction,
             if (FDSTREG    == 0)
             {
                 result      = FALSE;
-                //sys_error  == ERROR_DIVISION;
+                sys_error   = ERROR_DIVISION;
             }
             
             if ((result    == TRUE) &&
                 (FDSTREG   <  0.0))
             {
                 result      = FALSE;
-                //sys_error  == ERROR_LOGARITHM;
+                sys_error   = ERROR_LOGARITHM;
             }
             break;
 
@@ -1197,7 +1246,7 @@ uint8_t  decode_check (uint32_t  instruction,
                 (FSRCREG   <  0.0))
             {
                 result      = FALSE;
-                //sys_error  == ERROR_DIVISION;
+                sys_error   = ERROR_DIVISION;
             }
             // there may be another error state
             break;

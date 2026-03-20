@@ -82,6 +82,7 @@ extern uint8_t    colorflag;
 extern uint8_t    branchflag;
 extern uint8_t    ignoreflag;
 extern uint8_t    derefaddr;
+extern uint8_t    errorcheck;
 extern uint8_t    haltflag;
 extern uint8_t    waitflag;
 extern uint8_t    wordsize;

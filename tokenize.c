@@ -317,6 +317,21 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         colorflag          = FALSE;
                     }
                 }
+                else if ((lval[0]         == 'E') ||
+                         (lval[0]         == 'e'))
+                {
+                    check                  = strncasecmp (entry, "true", 4);
+                    if (check             == 0)
+                    {    
+                        errorcheck         = TRUE;
+                        fprintf (verbose, "errorchk ENABLED!\n");
+                    }
+                    else
+                    {
+                        errorcheck         = FALSE;
+                        fprintf (verbose, "errorchk DISABLED!\n");
+                    }
+                }
                 else if ((lval[0]         == 'D') ||
                          (lval[0]         == 'd'))
                 {

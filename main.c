@@ -38,6 +38,7 @@ uint8_t   colorflag;
 uint8_t   branchflag;
 uint8_t   ignoreflag;
 uint8_t   derefaddr;
+uint8_t   errorcheck;
 uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
@@ -60,6 +61,7 @@ int32_t   main (int32_t  argc, char **argv)
     size_t    len                   = 0;
     uint8_t   chk                   = FALSE;
     uint8_t   decodeflags           = FLAG_NONE;
+    uint8_t   errorflag             = FLAG_NONE;
     uint8_t   processflag           = FALSE;
     uint32_t  vbinoffset            = 0x00000000;
     uint32_t  vtexoffset            = 0x00000000;
@@ -85,6 +87,7 @@ int32_t   main (int32_t  argc, char **argv)
     derefaddr                       = FALSE;
     haltflag                        = FALSE;
     waitflag                        = FALSE;
+    errorcheck                      = FALSE;
     sys_error                       = ERROR_NONE;
     sys_reg_show                    = FALSE;
     action                          = INPUT_INIT;
@@ -359,6 +362,19 @@ int32_t   main (int32_t  argc, char **argv)
             (runflag                  == TRUE))
         {
             put_word (REG(IR), FLAG_DISPLAY);
+
+            if (errorcheck            == TRUE)
+            {
+                errorflag              = decode (REG(IR), REG(IV), FREG(IV),
+                                                 decodeflags    | FLAG_ERROR);
+            }
+
+            if (errorflag             == FALSE)
+            {
+                runflag                = FALSE;
+                decodeflags            = decodeflags            | FLAG_ERROR;
+            }
+
             decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
             if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
             {
@@ -397,7 +413,17 @@ int32_t   main (int32_t  argc, char **argv)
                     put_word (REG(IR), FLAG_DISPLAY);
                 }
 
-                decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
+                if (errorcheck        == TRUE)
+                {
+                    errorflag          = decode (REG(IR), REG(IV), FREG(IV),
+                                                 decodeflags    | FLAG_ERROR);
+                }
+
+                if (errorflag         == FALSE)
+                {
+                    decodeflags        = decodeflags            | FLAG_ERROR;
+                }
+                decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
 
                 if (FLAG_IMMEDIATE    == (decodeflags & FLAG_IMMEDIATE))
                 {
@@ -445,6 +471,7 @@ int32_t   main (int32_t  argc, char **argv)
         //
         if (ignoreflag                == FALSE)
         {
+            sys_error                  = ERROR_NONE;
             decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_PROCESS);
         }
 

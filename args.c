@@ -19,6 +19,7 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "deref-addr",     no_argument,       0, 'd' },
        { "debug",          no_argument,       0, 'D' },
        { "entry-point",    required_argument, 0, 'E' },
+       { "errorcheck",     no_argument,       0, 'e' },
        { "no-debug",       no_argument,       0, 'n' },
        { "run",            no_argument,       0, 'r' },
        { "watch-for",      required_argument, 0, 'w' },
@@ -32,7 +33,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDE:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:nrw:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -75,6 +76,10 @@ void  process_args (int32_t  argc, int8_t **argv)
                 derefaddr          = TRUE;
                 break;
 
+            case 'e':
+                errorcheck         = TRUE;
+                break;
+
             case 'E':
                 rom_offset         = strtol (optarg, NULL, 16);
                 break;
@@ -101,7 +106,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDE:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:nrw:vh", long_options,
                                                   &option_index);
     }
 
