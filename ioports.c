@@ -118,6 +118,7 @@ void  init_ioports  (void)
         {
             case GPU_Command:
                 (pptr+index) -> flag       = FLAG_WRITE;
+                (pptr+index) -> fmt        = FORMAT_HEX;
                 sprintf (nptr, "GPU_Command");
                 break;
 
@@ -128,6 +129,7 @@ void  init_ioports  (void)
 
             case GPU_ClearColor:
                 sprintf (nptr, "GPU_ClearColor");
+                (pptr+index) -> fmt        = FORMAT_HEX;
                 break;
 
             case GPU_MultiplyColor:
