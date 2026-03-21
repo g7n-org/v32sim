@@ -19,6 +19,7 @@
 #define  V32_PAGE_BIOS           1
 #define  V32_PAGE_CART           2
 #define  V32_PAGE_MEMC           3
+#define  V32_PAGE_MASK           0x30000000
 
 #define  RAM_FIRST_ADDR          0x00000000
 #define  BIOS_FIRST_ADDR         0x10000000

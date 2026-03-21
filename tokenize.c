@@ -161,7 +161,15 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 }
                 else if (byte             == 's')   // step
                 {
-                    action                 = INPUT_STEP;
+                    token                  = (string + match[1].rm_so);
+                    if (0                 == strncasecmp (token, "se", 2))
+                    {
+                        action             = INPUT_SET;
+                    }
+                    else if (0            == strncasecmp (token, "s",  1))
+                    {
+                        action             = INPUT_STEP;
+                    }
                 }
                 else if (byte             == 'h')   // help
                 {

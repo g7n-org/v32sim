@@ -367,12 +367,12 @@ int32_t   main (int32_t  argc, char **argv)
             {
                 errorflag              = decode (REG(IR), REG(IV), FREG(IV),
                                                  decodeflags    | FLAG_ERROR);
-            }
 
-            if (errorflag             == FALSE)
-            {
-                runflag                = FALSE;
-                decodeflags            = decodeflags            | FLAG_ERROR;
+                if (errorflag         == FALSE)
+                {
+                    runflag            = FALSE;
+                    decodeflags        = decodeflags            | FLAG_ERROR;
+                }
             }
 
             decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
@@ -417,11 +417,11 @@ int32_t   main (int32_t  argc, char **argv)
                 {
                     errorflag          = decode (REG(IR), REG(IV), FREG(IV),
                                                  decodeflags    | FLAG_ERROR);
-                }
 
-                if (errorflag         == FALSE)
-                {
-                    decodeflags        = decodeflags            | FLAG_ERROR;
+                    if (errorflag     == FALSE)
+                    {
+                        decodeflags    = decodeflags            | FLAG_ERROR;
+                    }
                 }
                 decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
 
@@ -429,7 +429,7 @@ int32_t   main (int32_t  argc, char **argv)
                 {
                     if (sys_reg_show  == TRUE)
                     {
-                        switch ((REG(IP) & 0x30000000) >> 28)
+                        switch ((REG(IP) & V32_PAGE_MASK) >> 28)
                         {
                             case V32_PAGE_RAM:
                                 fprintf (stdout, " [RAM]");

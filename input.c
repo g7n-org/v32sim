@@ -114,8 +114,19 @@ uint8_t  prompt (uint32_t  word)
         case INPUT_BREAK:
         case INPUT_LABEL:
         case INPUT_REPLACE:
-        case INPUT_SET:
         case INPUT_UNDO:
+            processflag                 = FALSE;
+            action                      = INPUT_INIT;
+            break;
+
+        case INPUT_SET:
+            fprintf (stdout, "v32sim settings\n");
+            fprintf (stdout, "===============\n");
+            fprintf (stdout, "color:   %s\n", (colorflag  == TRUE)   ? "TRUE" : "FALSE");
+            fprintf (stdout, "deref:   %s\n", (derefaddr  == TRUE)   ? "TRUE" : "FALSE");
+            fprintf (stdout, "error:   %s\n", (errorcheck == TRUE)   ? "TRUE" : "FALSE");
+            fprintf (stdout, "debug:   %s\n", (debug      == stderr) ? "TRUE" : "FALSE");
+            fprintf (stdout, "verbose: %s\n", (verbose    == stderr) ? "TRUE" : "FALSE");
             processflag                 = FALSE;
             action                      = INPUT_INIT;
             break;
