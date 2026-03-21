@@ -8,13 +8,14 @@ code execution can be studied. Obviously, lacking an actual screen output
 (or any of the other devices, like audio), it is not meant as any sort of
 replacement.
 
-At this  point, many/most? instructions have  been implemented; registers
-and memory are present  and should behave in a manner  similar to how the
-system operates.
+At this  point, all  instructions have been  implemented (but  many still
+need testing);  registers and memory are  present and should behave  in a
+manner similar to how the system operates.
 
 Many  IOPorts  are  present,  if  only  for  simple  reporting  or  basic
-operability.  The `TIM_`,  `RNG_`, `INP_`,  and  `CAR_` ports  should  be
-fully functional.
+operability. The `TIM_`, `RNG_`, `INP_`, and `CAR_` ports should be fully
+functional. For various transactions (`set`, `display`, or `print` at the
+prompt), the IOPort hex value OR the symbolic name can be specified.
 
 Initial MEMCARD support has been implemented (it should be able to load a
 MEMCARD when specified), but nothing has been tested.
@@ -33,6 +34,7 @@ Mandatory arguments to long options are mandatory for short options too.
  -c, --colors              enable colorized output
  -d, --deref-addr          output address of dereference
  -E, --entry-point=OFFSET  set simulator entry point
+ -e, --errorcheck          enable runtime error checking
  -n, --no-debug            do not process any debug files
  -r, --run                 do not enable single-step mode
  -w, --watch-for=OPCODE    run until OPCODE is encountered
@@ -116,6 +118,15 @@ the system default BIOS entry point of `0x10000004`.
 Intended to  be used to force  start from the `CART`  at `0x20000000`, it
 should be used carefully.
 
+### ERRORCHECK
+
+Enabling  `errorcheck` will  cause  the simulator  to  a test  evaluation
+before  each instruction  execution, validating  whether or  not it  is a
+resource-legitimate transaction. If it detects a problem, it will provide
+notification on instruction rendering (if  colors are enabled, it will be
+in red vs the normal yellow),  and between exclamation points the type of
+system error that is about to occur (if you execute the instruction).
+
 ### RUN
 
 Do not provide the debugger prompt: just simulate the indicated CART.
@@ -166,15 +177,16 @@ stops for input, which supports:
     * register aliases supported: `CR`, `SR`, `DR`, `BP`, `SP`
     * all standard registers can be displayed with "regs"
     * system registers (`IP`, `IR`, and `IV`) are also supported
-    * can also be dereferenced
+    * can also be dereferenced by wrapping in square brackets
   * memory:
-    * 0xAABBCCDD: any 4-byte address
-    * can also be dereferenced
+    * `0xAABBCCDD`: any 4-byte address
+    * can also be dereferenced by wrapping in square brackets
   * memory range:
-    * 0xAABBCCD0-0xAABBCCD3
-    * can also be dereferenced
+    * `0xAABBCCD0-0xAABBCCD3`
+    * can also be dereferenced by wrapping in square brackets
   * ioport:
-    * 0xABC: any valid IOPort address
+    * `0xABC`: any valid IOPort address
+    * `CAT_PortDescription`: any symbolic IOPort name
 
 An optional **label** can also be provided, which will be suffixed to the
 display of that particular display point information.
@@ -254,7 +266,9 @@ during simulator runtime:
 
   * color: set color output (true or false)
   * debug: set debug output (true or false)
+  * verbose: set debug output (true or false)
   * deref: set deref_addr (true or false)
+  * errorchk: set errorcheck (true or false)
 
 You can set registers to desired content:
 
@@ -266,12 +280,16 @@ Same with memory addresses:
 
 Or with IOPorts:
 
-`set 0x205=1`
+`set 0x205=7`
+`set GPU_SelectedTexture=-1`
 
 Then, combined with a `print` or `display`, see the results of your work.
 
 This will impact instructions running on the simulator, since you are  in
 fact changing the values on the v32 system itself.
+
+Running `set`  with no  arguments will display  the current  settings and
+their status.
 
 ### STEP
 
