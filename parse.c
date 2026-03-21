@@ -93,7 +93,7 @@ uint8_t  parse_memrange (uint8_t *token)
     check                    = regexec (&regex, token, 2, match, 0);
     if (check               == REG_NOMATCH)
     {
-        fprintf (debug, "[parse_imm] invalid memory range\n");
+        fprintf (debug, "[parse_memrange] invalid memory range\n");
         result               = PARSE_NONE;
     }
 
@@ -133,8 +133,9 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
     regmatch_t  match[4];
     uint8_t    *string       = NULL;
     uint8_t   **pattern      = NULL;
-    uint8_t    *form0        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *$";
-    uint8_t    *form1        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *([^ ]+) *$";
+    uint8_t    *form0        = "^ *[[] *([^ ]+) *[]] *$";
+    uint8_t    *form1        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *$";
+    uint8_t    *form2        = "^ *([^ ]+) *[[] *([^ ]+) *[]] *([^ ]+) *$";
 
     fprintf (debug, "[parse_deref] passed token: '%s'\n", input);
 
@@ -142,12 +143,13 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
     //
     // allocate and populate pattern array
     //
-    pattern                  = (uint8_t **) malloc (sizeof (uint8_t *) * 2);
+    pattern                  = (uint8_t **) malloc (sizeof (uint8_t *) * 3);
     *(pattern+0)             = form0;
     *(pattern+1)             = form1;
+    *(pattern+2)             = form2;
 
     for (index               = 0;
-         index              <  2;
+         index              <  3;
          index               = index + 1)
     {
         ////////////////////////////////////////////////////////////////////////////////
@@ -195,6 +197,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
                       (int) (match[3].rm_eo - match[3].rm_so),
                       (input + match[3].rm_so));
             *flag            = TRUE;
+            fprintf (debug, "[parse_deref] resulting string: '%s'\n", string);
             break;
         }
 
@@ -204,7 +207,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
         //
         else
         {
-            fprintf (stderr, "[parse_token] ERROR: RegEx execution failed\n");
+            fprintf (stderr, "[parse_deref] ERROR: RegEx execution failed\n");
             exit    (REGEX_EXECUTE_ERROR);
         }
     }
@@ -220,28 +223,25 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
     return  (string);
 }
 
-uint8_t  parse_imm (uint8_t *token)
+uint8_t  parse_imm (uint8_t *token, uint32_t *value, float *fvalue)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // declare and initialize variables
     //
-    uint8_t     result       = 0;
-    int32_t     check        = 0;
-    int32_t     index        = 0;
+    uint8_t     result        = 0;
+    int32_t     check         = 0;
+    int32_t     index         = 0;
     regex_t     regex;
     regmatch_t  match[2];
-    uint8_t   **pattern      = NULL;
-    uint8_t    *form0        = "^ *(0x[0-9A-F]{1,8}) *$";             // hex
-    uint8_t    *form1        = "^ *[[] *(0x[0-9A-F]{1,8}) *[]] *$";   // hex ptr
-    uint8_t    *form2        = "^ *([0-9A-F]{1,8}[hH]) *$";           // hex
-    uint8_t    *form3        = "^ *[[] *([0-9A-F]{1,8}[hH]) *[]] *$"; // hex ptr
-    uint8_t    *form4        = "^ *(0b[01]{1,32}) *$";                // bin
-    uint8_t    *form5        = "^ *[[] *(0b[01]{1,32}) *[]] *$";      // bin ptr
-    uint8_t    *form6        = "^ *(0[0-7]{1,10}) *$";                // oct
-    uint8_t    *form7        = "^ *[[] *(0[0-7]{1,10}) *[]] *$";      // oct ptr
-    uint8_t    *form8        = "^ *([0-9]|[1-9][0-9]*) *$";           // dec
-    uint8_t    *form9        = "^ *[[] *([0-9]|[1-9][0-9]*) *[]] *$"; // dec ptr
+    uint8_t   **pattern       = NULL;
+    uint8_t    *form0         = "^ *0b([01]{1,32}) *$";                // bin
+    uint8_t    *form1         = "^ *(0[0-7]{1,10}) *$";                // oct
+    uint8_t    *form2         = "^ *([0-9]|[1-9][0-9]*) *$";           // unsigned dec
+    uint8_t    *form3         = "^ *([+-]?[0-9]|[+-]?[1-9][0-9]*) *$"; // signed dec
+    uint8_t    *form4         = "^ *([+-]?[0-9]*[.][0-9]*) *$";        // float
+    uint8_t    *form5         = "^ *(0x[0-9A-F]{1,8})[hH]? *$";        // hex
+    //uint8_t    *form1        = "^ *[[] *(0x[0-9A-F]{1,8}) *[]] *$";   // hex ptr
 
     fprintf (debug, "[parse_imm] passed token: '%s'\n", token);
 
@@ -249,30 +249,26 @@ uint8_t  parse_imm (uint8_t *token)
     //
     // allocate and populate pattern array
     //
-    pattern                  = (uint8_t **) malloc (sizeof (uint8_t *) * 10);
-    *(pattern+0)             = form0;
-    *(pattern+1)             = form1;
-    *(pattern+2)             = form2;
-    *(pattern+3)             = form3;
-    *(pattern+4)             = form4;
-    *(pattern+5)             = form5;
-    *(pattern+6)             = form6;
-    *(pattern+7)             = form7;
-    *(pattern+8)             = form8;
-    *(pattern+9)             = form9;
+    pattern                   = (uint8_t **) malloc (sizeof (uint8_t *) * 6);
+    *(pattern+0)              = form0;
+    *(pattern+1)              = form1;
+    *(pattern+2)              = form2;
+    *(pattern+3)              = form3;
+    *(pattern+4)              = form4;
+    *(pattern+5)              = form5;
 
-    for (index               = 0;
-         index              <  10;
-         index               = index + 1)
+    for (index                = 0;
+         index               <  6;
+         index                = index + 1)
     {
         ////////////////////////////////////////////////////////////////////////////////
         //
         // RegEx compilation: compile current pattern into our regex for processing
         //
-        check                = regcomp (&regex,
-                                        *(pattern+index),
-                                        REG_EXTENDED | REG_ICASE);
-        if (check           != 0)
+        check                 = regcomp (&regex,
+                                         *(pattern+index),
+                                         REG_EXTENDED | REG_ICASE);
+        if (check            != 0)
         {
             fprintf (stderr, "[ERROR] RegEx compilation failed\n");
             exit    (REGEX_COMPILE_ERROR);
@@ -282,51 +278,50 @@ uint8_t  parse_imm (uint8_t *token)
         //
         // RegEx execution: make sure input conforms to provided pattern
         //
-        check                = regexec (&regex, token, 2, match, 0);
-        if (check           == REG_NOMATCH)
+        check                 = regexec (&regex, token, 2, match, 0);
+        if (check            == REG_NOMATCH)
         {
             fprintf (debug, "[parse_imm] invalid immediate value\n");
-            result           = PARSE_NONE;
+            result            = PARSE_NONE;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
         //
         // RegEx execution success: obtain the value.
         //
-        else if (check      == 0)
+        else if (check       == 0)
         {
-            if (index       <= 1) // hex
+            fprintf (debug, "[parse_imm] imm type: ");
+            switch (index)
             {
-                result       = strtol (token, NULL, 16);
-                fprintf (debug, "[parse_imm] imm type: hex (0x%.8X)\n", result);
-            }
-            else if ((index >= 2) && // hex
-                     (index <= 3))
-            {
-                //trim the suffixing H/h
-                result       = strtol (token, NULL, 16);
-                fprintf (debug, "[parse_imm] imm type: hex (%.8XH)\n",  result);
-            }
-            else if ((index >= 4) &&
-                     (index <= 5))   // bin
-            {
-                //trim the prefixing 0b
-                result       = strtol (token, NULL, 2);
-                fprintf (debug, "[parse_imm] imm type: binary\n");
-            }
-            else if ((index >= 6) &&
-                     (index <= 7))   // oct
-            {
-                result       = strtol (token, NULL, 8);
-                fprintf (debug, "[parse_imm] imm type: octal (0%o)\n",  result);
-            }
-            else
-            {
-                result       = strtol (token, NULL, 10);
-                fprintf (debug, "[parse_imm] imm type: decimal (%u)\n", result);
+                case FORMAT_BINARY:
+                    *value    = strtol (token, NULL, 2);
+                    fprintf (debug, "binary\n");
+                    break;
+
+                case FORMAT_OCTAL:
+                    *value    = strtol (token, NULL, 8);
+                    fprintf (debug, "octal (0%o)\n", (*value));
+                    break;
+
+                case FORMAT_UNSIGNED:
+                case FORMAT_SIGNED:
+                    *value    = strtol (token, NULL, 10);
+                    fprintf (debug, "decimal (%d)\n", (*value));
+                    break;
+
+                case FORMAT_FLOAT:
+                    (*fvalue)  = strtof (token, NULL);
+                    fprintf (debug, "float (%.2f)\n", (*fvalue));
+                    break;
+
+                case FORMAT_HEX:
+                    *value    = strtol (token, NULL, 16);
+                    fprintf (debug, "hex (0x%.8X)\n", (*value));
+                    break;
             }
 
-            result           = PARSE_IMMEDIATE;
+            result             = PARSE_IMMEDIATE;
 
             regfree (&regex);
             break;

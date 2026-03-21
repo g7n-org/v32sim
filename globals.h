@@ -147,7 +147,7 @@ void      help           (uint8_t);
 uint8_t  *parse_deref    (uint8_t *,   uint8_t *);
 uint8_t   parse_token    (uint8_t *,   uint8_t *,   uint8_t);
 uint8_t   parse_memrange (uint8_t *);
-uint8_t   parse_imm      (uint8_t *);
+uint8_t   parse_imm      (uint8_t *,   uint32_t *,  float *);
 uint8_t   parse_reg      (uint8_t *);
 uint32_t  tokenize_asm   (uint8_t *);
 uint8_t   tokenize_input (uint8_t *,   uint8_t *);

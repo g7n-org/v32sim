@@ -8,6 +8,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     // declare and initialize variables
     //
     data_t     *dtmp               = NULL;
+    float       fvalue             = 0.0;
     linked_l  **list               = NULL;
     linked_l   *ltmp               = NULL;
     linked_l   *tmp                = NULL;
@@ -256,7 +257,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 if (result                == PARSE_REGISTER)
                 {
                     result                 = parse_reg (lval);
-                    value                  = strtol (entry, NULL, 16);
+                    parse_imm (entry, &value, &fvalue);
+                    //value                  = strtol (entry, NULL, 16);
                     fprintf (debug, "[%s] setting to 0x%.8X\n",
                                     REGNAME(result), value);
                     REG(result)            = value;

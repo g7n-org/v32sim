@@ -107,16 +107,16 @@
 #define  PARSE_IOPORT            0x7E
 #define  PARSE_NONE              0x7F
 
-#define  FORMAT_DEFAULT          0
-#define  FORMAT_BINARY           1
-#define  FORMAT_SIGNED           2
-#define  FORMAT_FLOAT            3
-#define  FORMAT_OCTAL            4
-#define  FORMAT_UNSIGNED         5
-#define  FORMAT_LOWERHEX         6
-#define  FORMAT_HEX              7
-#define  FORMAT_BOOLEAN          8
-#define  FORMAT_DECODE           9
+#define  FORMAT_BINARY           0
+#define  FORMAT_OCTAL            1
+#define  FORMAT_UNSIGNED         2
+#define  FORMAT_SIGNED           3
+#define  FORMAT_FLOAT            4
+#define  FORMAT_HEX              5
+#define  FORMAT_BOOLEAN          6
+#define  FORMAT_DECODE           7
+#define  FORMAT_LOWERHEX         8
+#define  FORMAT_DEFAULT          9
 
 #define  NUM_PORT_CATEGORIES     7
 #define  NUM_TIM_PORTS           4
