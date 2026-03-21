@@ -8,7 +8,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     // declare and initialize variables
     //
     data_t     *dtmp               = NULL;
-    float       fvalue             = 0.0;
+    data_t      dval;
     linked_l  **list               = NULL;
     linked_l   *ltmp               = NULL;
     linked_l   *tmp                = NULL;
@@ -247,6 +247,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 fprintf (debug, "[entry] '%s'\n", entry);
                 fprintf (debug, "[token] '%s'\n", token);
 
+                parse_imm (entry, &dval); // maybe check if it is legit immediate data?
+
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Check if we are setting a register of any sort
@@ -257,11 +259,18 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 if (result                == PARSE_REGISTER)
                 {
                     result                 = parse_reg (lval);
-                    parse_imm (entry, &value, &fvalue);
-                    //value                  = strtol (entry, NULL, 16);
-                    fprintf (debug, "[%s] setting to 0x%.8X\n",
-                                    REGNAME(result), value);
-                    REG(result)            = value;
+                    if (dval.fmt          == FORMAT_FLOAT)
+                    {
+                        FREG(result)       = dval.value.f32;
+                        fprintf (debug, "[%s] setting to %.2f\n",
+                                        REGNAME(result), FREG(result));
+                    }
+                    else
+                    {
+                        REG(result)        = dval.value.i32;
+                        fprintf (debug, "[%s] setting to 0x%.8X\n",
+                                        REGNAME(result), REG(result));
+                    }
 
                     ////////////////////////////////////////////////////////////////////
                     //
@@ -291,10 +300,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 if (result                == PARSE_MEMORY)
                 {
                     count                  = strtol (lval,  NULL, 16);
-                    value                  = strtol (entry, NULL, 16);
-                    fprintf (debug, "[0x%.8X] setting memory to 0x%.8X\n",
-                                    count , value);
-                    SYSMEMSET(count, value);
+                    SYSMEMSET(count, dval.value.raw);
                 }
 
                 ////////////////////////////////////////////////////////////////////////
@@ -307,10 +313,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 if (result                == PARSE_IOPORT)
                 {
                     count                  = strtol (lval,  NULL, 16);
-                    value                  = strtol (entry, NULL, 16);
-                    fprintf (debug, "[0x%.3X] setting ioport to 0x%.8X\n",
-                                    count, value);
-                    SYSPORTSET(count, value);
+                    SYSPORTSET(count, dval.value.raw);
                 }
 
                 else if ((lval[0]         == 'C') ||

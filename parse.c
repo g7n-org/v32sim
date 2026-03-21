@@ -223,7 +223,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
     return  (string);
 }
 
-uint8_t  parse_imm (uint8_t *token, uint32_t *value, float *fvalue)
+uint8_t  parse_imm (uint8_t *token, data_t *data)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -231,9 +231,10 @@ uint8_t  parse_imm (uint8_t *token, uint32_t *value, float *fvalue)
     //
     uint8_t     result        = 0;
     int32_t     check         = 0;
+    int32_t     count         = 0;
     int32_t     index         = 0;
     regex_t     regex;
-    regmatch_t  match[2];
+    regmatch_t  match[4];
     uint8_t   **pattern       = NULL;
     uint8_t    *form0         = "^ *0b([01]{1,32}) *$";                // bin
     uint8_t    *form1         = "^ *(0[0-7]{1,10}) *$";                // oct
@@ -278,7 +279,7 @@ uint8_t  parse_imm (uint8_t *token, uint32_t *value, float *fvalue)
         //
         // RegEx execution: make sure input conforms to provided pattern
         //
-        check                 = regexec (&regex, token, 2, match, 0);
+        check                 = regexec (&regex, token, 4, match, 0);
         if (check            == REG_NOMATCH)
         {
             fprintf (debug, "[parse_imm] invalid immediate value\n");
@@ -291,33 +292,42 @@ uint8_t  parse_imm (uint8_t *token, uint32_t *value, float *fvalue)
         //
         else if (check       == 0)
         {
+            for (count        = 0;
+                 count       <  4;
+                 count        = count + 1)
+            {
+                fprintf (debug, "[parse_imm] match[%d]: '%s'\n",
+                                count, (token+match[count].rm_so));
+            }
+
             fprintf (debug, "[parse_imm] imm type: ");
+            data -> fmt        = index;
             switch (index)
             {
                 case FORMAT_BINARY:
-                    *value    = strtol (token, NULL, 2);
-                    fprintf (debug, "binary\n");
+                    data -> value.i32  = strtol ((token+match[1].rm_so), NULL, 2);
+                    fprintf (debug, "binary (0x%.8X)\n", data -> value.i32);
                     break;
 
                 case FORMAT_OCTAL:
-                    *value    = strtol (token, NULL, 8);
-                    fprintf (debug, "octal (0%o)\n", (*value));
+                    data -> value.i32  = strtol ((token+match[1].rm_so), NULL, 8);
+                    fprintf (debug, "octal (0%o)\n", data -> value.i32);
                     break;
 
                 case FORMAT_UNSIGNED:
                 case FORMAT_SIGNED:
-                    *value    = strtol (token, NULL, 10);
-                    fprintf (debug, "decimal (%d)\n", (*value));
+                    data -> value.i32  = strtol ((token+match[1].rm_so), NULL, 10);
+                    fprintf (debug, "decimal (%d)\n", data -> value.i32);
                     break;
 
                 case FORMAT_FLOAT:
-                    (*fvalue)  = strtof (token, NULL);
-                    fprintf (debug, "float (%.2f)\n", (*fvalue));
+                    data -> value.f32  = strtof ((token+match[1].rm_so), NULL);
+                    fprintf (debug, "float (%.2f)\n", data -> value.f32);
                     break;
 
                 case FORMAT_HEX:
-                    *value    = strtol (token, NULL, 16);
-                    fprintf (debug, "hex (0x%.8X)\n", (*value));
+                    data -> value.i32  = strtol ((token+match[1].rm_so), NULL, 16);
+                    fprintf (debug, "hex (0x%.8X)\n", data -> value.i32);
                     break;
             }
 

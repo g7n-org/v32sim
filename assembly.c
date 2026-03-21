@@ -3,10 +3,12 @@
 
 uint32_t  tokenize_asm (uint8_t *input)
 {
+    uint32_t    instruction      = 0x00000000;
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // declare and initialize variables
     //
+	/*
     int32_t     check            = 0;
     int32_t     index            = 0;
     uint64_t    result           = 0x0000000000000000;
@@ -140,6 +142,7 @@ uint32_t  tokenize_asm (uint8_t *input)
 	}
 
 	free (pattern);
+	*/
 
 	/*
         ////////////////////////////////////////////////////////////////////////////////
