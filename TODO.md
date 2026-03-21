@@ -45,12 +45,6 @@ directory:
   * `../obj/` - should also check
   * implement a command-line argument to specify
 
-## IOPORTS DISPLAY BASED ON SYMBOLIC NAME
-
-Like breakpoints,  rig up  logic that allows  for the  `display` (perhaps
-even `print`) of  IOPorts by specifying them by their  symbolic name, not
-just their hex value.
-
 ## WATCHPOINTS
 
 Idea for watchpoints:
