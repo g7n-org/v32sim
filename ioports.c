@@ -146,6 +146,7 @@ void  init_ioports  (void)
 
             case GPU_SelectedRegion:
                 sprintf (nptr, "GPU_SelectedRegion");
+                break;
 
             case GPU_DrawingPointX:
                 sprintf (nptr, "GPU_DrawingPointX");
@@ -303,10 +304,12 @@ void  init_ioports  (void)
                 break;
 
             case CAR_NumberOfTextures:
+                (pptr+index) -> fmt        = FORMAT_SIGNED;
                 sprintf (nptr, "CAR_NumberOfTextures");
                 break;
 
             case CAR_NumberOfSounds:
+                (pptr+index) -> fmt        = FORMAT_SIGNED;
                 sprintf (nptr, "CAR_NumberOfSounds");
                 break;
         }
@@ -322,7 +325,7 @@ void  init_ioports  (void)
     pptr -> qty                            = NUM_MEM_PORTS;
     pptr -> value.i32                      = 0x00000000;
     pptr -> flag                           = FLAG_READ;
-    pptr -> fmt                            = FORMAT_DEFAULT;
+    pptr -> fmt                            = FORMAT_BOOLEAN;
     pptr -> name                           = (int8_t *) malloc (sizeof (int8_t) * 32);
     nptr                                   = pptr -> name;
     sprintf (nptr, "MEM_Connected");
@@ -424,6 +427,73 @@ uint8_t  ioports_chk  (uint16_t  portaddr, uint8_t  mode, uint8_t  sys_force)
     }
 
     return (result);
+}
+
+int16_t  ioports_num (uint8_t *symbol)
+{
+    data_t   *dtmp         = NULL;
+    int32_t   count        = 0;
+    int16_t   portnum      = -1;
+    uint32_t  value        = 0;
+
+    switch (symbol[0])
+    {
+        case 'T': // TIM_
+        case 't': // TIM_
+            value          = TIM_PORT;
+            break;
+
+        case 'R': // RNG_
+        case 'r': // RNG_
+            value          = RNG_PORT;
+            break;
+
+        case 'G': // GPU_
+        case 'g': // GPU_
+            value          = GPU_PORT;
+            break;
+
+        case 'S': // SPU_
+        case 's': // SPU_
+            value          = SPU_PORT;
+            break;
+
+        case 'I': // INP_
+        case 'i': // INP_
+            value          = INP_PORT;
+            break;
+
+        case 'C': // CAR_
+        case 'c': // CAR_
+            value          = CAR_PORT;
+            break;
+
+        case 'M': // MEM_
+        case 'm': // MEM_
+            value          = MEM_PORT;
+            break;
+
+        default:
+            value          = -1;
+            break;
+    }
+
+    if (value             != -1)
+    {
+        dtmp               = *(ioports+value);
+        for (count         = 0;
+             count        <  dtmp -> qty;
+             count         = count + 1)
+        {
+            if (0         == (strcasecmp ((dtmp+count) -> name, symbol)))
+            {
+                portnum    = (value << 8) | count;
+                break;
+            }
+        }
+    }
+
+    return (portnum);
 }
 
 data_t  *ioports_ptr  (uint16_t  portaddr)

@@ -41,6 +41,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     uint8_t    *pattern2           = "^ *(0x[0-9A-F]{8}) *$";                     // memory
     uint8_t    *pattern3           = "^ *(0x[0-9A-F]{8}) *- *(0x[0-9A-F]{8}) *$"; // memrange
     uint8_t    *pattern4           = "^ *(0x[0-7][01][0-9A-F]) *$";               // ioport
+    uint8_t    *pattern5           = "^ *([CGIMRST][AEINP][GMPRU]_[A-Z]+) *$";    // ioport symbols
     uint8_t     result             = 0;
 
     fprintf (debug, "[tokenize_input] passed string: '%s'\n", input);
@@ -63,12 +64,13 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // allocate and populate pattern array
     //
-    pattern                        = (uint8_t **) malloc (sizeof (uint8_t *) * 5);
+    pattern                        = (uint8_t **) malloc (sizeof (uint8_t *) * 6);
     *(pattern+0)                   = pattern0;
     *(pattern+1)                   = pattern1;
     *(pattern+2)                   = pattern2;
     *(pattern+3)                   = pattern3;
     *(pattern+4)                   = pattern4;
+    *(pattern+5)                   = pattern5;
 
     for (index                             = 0;
          index                            <  4;
@@ -316,6 +318,21 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     SYSPORTSET(count, dval.value.raw);
                 }
 
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Check if we are setting an IOPort via symbolic name
+                //
+                result                     = parse_token (lval,
+                                                          *(pattern+5),
+                                                          PARSE_IOPORT);
+                if (result                == PARSE_IOPORT)
+                {
+                    count                  = ioports_num (lval);
+                    fprintf (debug, "[set] Setting %s (0x%.3X) to 0x%.8X\n",
+                                    lval, count, dval.value.raw);
+                    SYSPORTSET(count, dval.value.raw);
+                }
+
                 else if ((lval[0]         == 'C') ||
                          (lval[0]         == 'c'))
                 {
@@ -490,12 +507,12 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         }
                     }
                     token              = strtok ((string + match[2].rm_so), " ");
-                    for (count         = PARSE_REGISTER;
-                         count        <= PARSE_IOPORT;
+                    for (count         = (PARSE_REGISTER - 0x7A);
+                         count        <= (PARSE_IOPORT   - 0x7A) + 1;
                          count         = count + 1)
                     {
                         fprintf (debug,  "[tokenize_input] count: 0x%.2X, pattern: 0x%.2X\n",
-                                count, (count-0x7B));
+                                count, (count-0x7A));
 
                         ////////////////////////////////////////////////////////////////
                         //
@@ -506,9 +523,14 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         // PARSE_IOPORT            0x7E
                         // PARSE_NONE              0x7F
                         //
+                        value          = 0;
+                        if (count     == ((PARSE_IOPORT - 0x7A) + 1))
+                        {
+                            value      = 1;
+                        }
                         result         = parse_token (token,
-                                                      *(pattern+(count-0x7A)),
-                                                      count);
+                                                      *(pattern+count),
+                                                      ((count-value) + 0x7A));
                         if (result    != PARSE_NONE)
                         {
                             break;
@@ -630,7 +652,16 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_IOPORT:
-                            value              = strtol (token, NULL, 16);
+                            ////////////////////////////////////////////////////////////
+                            //
+                            // determine if the hex value or symbolic name was given
+                            //
+                            value              = ioports_num (token);
+                            if (value         == -1)
+                            {
+                                value          = strtol (token, NULL, 16);
+                            }
+                            fprintf (debug, "[display/iop] 0x%.3hX was specified\n", value);
                             tmp                = listnode (LIST_IOP, value);
 
                             if (token_label   != NULL)
@@ -832,8 +863,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     token              = strtok ((string + match[2].rm_so), " "); // move to next token
 
                     fprintf (debug, "[print] parsing: token: %s, fmt: %u\n", token, fmt);
-                    for (count      = PARSE_REGISTER;
-                         count     <= PARSE_IOPORT;
+                    for (count      = (PARSE_REGISTER - 0x7A);
+                         count     <= (PARSE_IOPORT   - 0x7A) + 1;
                          count      = count + 1)
                     {
                         ////////////////////////////////////////////////////////////////
@@ -845,9 +876,14 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         // PARSE_IOPORT            0x7E
                         // PARSE_NONE              0x7F
                         //
+                        value       = 0;
+                        if (count  == ((PARSE_IOPORT - 0x7A) + 1))
+                        {
+                            value   = 1;
+                        }
                         result      = parse_token (token,
-                                                   *(pattern+(count-0x7A)),
-                                                   count);
+                                                   *(pattern+count),
+                                                   ((count-value) + 0x7A));
                         if (result != PARSE_NONE)
                         {
                             break;
@@ -908,7 +944,16 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
 
                         case PARSE_IOPORT:
-                            value               = strtol (token, NULL, 16);
+                            ////////////////////////////////////////////////////////////
+                            //
+                            // determine if the hex value or symbolic name was given
+                            //
+                            value              = ioports_num (token);
+                            if (value         == -1)
+                            {
+                                value          = strtol (token, NULL, 16);
+                            }
+                            fprintf (debug, "[print/iop] 0x%.3hX was specified\n", value);
                             dtmp                = ioports_ptr (value);
                             output_iop (value, dtmp -> fmt, dtmp -> name);
                             break;

@@ -115,6 +115,8 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    Setting system resources is done outside any access-control\n");
             fprintf (stdout, "    bounds: those resources that are read-only will be impair\n");
             fprintf (stdout, "    the use of set.\n\n");
+            fprintf (stdout, "    Assigned values can be any of 0bBINARY, 0OCTAL, +/-SIGNED,\n");
+            fprintf (stdout, "    UNSIGNED, 0xHEXADCML, or F.LOAT\n\n");
             break;
 
         case INPUT_STEP:
