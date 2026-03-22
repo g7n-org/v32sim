@@ -69,11 +69,11 @@ uint8_t  prompt (uint32_t  word)
     uint8_t    processflag              = FALSE;
     //uint8_t    token_type               = PARSE_NONE;
 
-    if ((action                        != INPUT_NONE) &&
-        (action                        != INPUT_INIT))
-    {
-        displayshow  (dpoint, 0);
-    }
+    //if ((action                        != INPUT_NONE) &&
+    //    (action                        != INPUT_INIT))
+    //{
+    //    displayshow  (dpoint, 0);
+    //}
 
     ////////////////////////////////////////////////////////////////////////////////////
     //

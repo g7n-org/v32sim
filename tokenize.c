@@ -237,7 +237,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
             }
             else if (index                == 2) // assign-style command
             {
-                action                     = INPUT_SET;
+                //action                     = INPUT_SET;
                 len                        = (match[2].rm_eo - match[2].rm_so);
                 pos                        = (string + match[2].rm_so);
                 snprintf (lval, (len+1), "%.*s", (len+1), pos);
