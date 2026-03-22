@@ -577,26 +577,71 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
     //
     // Declare and initialize local variables
     //
-    uint16_t  type                = (portaddr & 0x0700) >> 8;  // port category
-    uint16_t  attr                = (portaddr & 0x00FF);       // item within category
-    int16_t   vtex                = 0;
-    int16_t   id                  = 0;
-    uint8_t   check               = FALSE;
-    data_t   *pptr                = *(ioports+type);           // pointer for sanity
-    region_t *rptr                = NULL;
-    int32_t  *iptr                = NULL;
-    int32_t  *fptr                = NULL;
+    uint32_t  value                   = 0;
+    uint16_t  type                    = (portaddr & 0x0700) >> 8;  // port category
+    uint16_t  attr                    = (portaddr & 0x00FF);       // item within category
+    int16_t   vtex                    = 0;
+    int16_t   id                      = 0;
+    uint8_t   check                   = FALSE;
+    data_t   *pptr                    = *(ioports+type);           // pointer for sanity
+    region_t *rptr                    = NULL;
+    int32_t  *iptr                    = NULL;
+    int32_t  *fptr                    = NULL;
 
-    check                         = ioports_chk (portaddr, FLAG_WRITE, sys_force);
-    if (check                    == TRUE)
+    check                             = ioports_chk (portaddr, FLAG_WRITE, sys_force);
+    if (check                        == TRUE)
     {
-        iptr                      = &((pptr+attr) -> value.i32);
-        fptr                      = &((pptr+attr) -> value.f32);
+        iptr                          = &((pptr+attr) -> value.i32);
+        fptr                          = &((pptr+attr) -> value.f32);
         switch (portaddr)
         {
             case RNG_CurrentValue:
                 srand (i32);
                 break;
+
+            case GPU_Command:
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Execute the GPU command
+                //
+                *iptr                 = i32;
+
+                if (*iptr            == GPUCommand_ClearScreen)
+                {
+                    value             = IPORTGET(GPU_ClearColor);
+                    // clear the GD image with indicated color
+                }
+                else if (*iptr       == GPUCommand_DrawRegion)
+                {
+                    // obtain current region and attributes, display it on GD image
+                    vtex              = IPORTGET(GPU_SelectedTexture);
+                    id                = IPORTGET(GPU_SelectedRegion);
+                    if (vtex         == -1)
+                    {
+                        rptr          = (bios_regions+id);
+                    }
+                    else if (vtex    != -2)
+                    {
+                        rptr          = (*(cart_regions+vtex)+id);
+                    }
+
+                    if (vtex         != -2)
+                    {
+                        ; // obtain each attribute, do what needs to be done
+                        /*
+                        rptr -> minX  = IPORTGET(GPU_RegionMinX);
+                        rptr -> minY  = IPORTGET(GPU_RegionMinY);
+                        rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
+                        rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
+                        rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
+                        rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
+                        */
+                    }
+                }
+                break;
+//| `0x12` | `GPUCommand_DrawRegionZoomed`     | draw region: rotation off, zoom on  |
+//| `0x13` | `GPUCommand_DrawRegionRotated`    | draw region: rotation on , zoom off |
+//| `0x14` | `GPUCommand_DrawRegionRotozoomed` | draw region: rotation on , zoom on  |
                     
             case GPU_SelectedTexture:
                 ////////////////////////////////////////////////////////////////////////
@@ -608,16 +653,14 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 if (vtex         == -1)
                 {
                     rptr          = (bios_regions+id);
-                    rptr -> minX  = IPORTGET(GPU_RegionMinX);
-                    rptr -> minY  = IPORTGET(GPU_RegionMinY);
-                    rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
-                    rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
-                    rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
-                    rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
                 }
                 else if (vtex    != -2)
                 {
                     rptr          = (*(cart_regions+vtex)+id);
+                }
+
+                if (vtex    != -2)
+                {
                     rptr -> minX  = IPORTGET(GPU_RegionMinX);
                     rptr -> minY  = IPORTGET(GPU_RegionMinY);
                     rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
@@ -640,16 +683,14 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 if (vtex         == -1)
                 {
                     rptr          = (bios_regions+id);
-                    PORTSET(GPU_RegionMinX,     rptr -> minX);
-                    PORTSET(GPU_RegionMinY,     rptr -> minY);
-                    PORTSET(GPU_RegionMaxX,     rptr -> maxX);
-                    PORTSET(GPU_RegionMaxY,     rptr -> maxY);
-                    PORTSET(GPU_RegionHotspotX, rptr -> hotX);
-                    PORTSET(GPU_RegionHotspotY, rptr -> hotY);
                 }
                 else if (vtex    != -2)
                 {
                     rptr          = (*(cart_regions+vtex)+id);
+                }
+
+                if (vtex         != -2)
+                {
                     PORTSET(GPU_RegionMinX,     rptr -> minX);
                     PORTSET(GPU_RegionMinY,     rptr -> minY);
                     PORTSET(GPU_RegionMaxX,     rptr -> maxX);
@@ -669,16 +710,14 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 if (vtex         == -1)
                 {
                     rptr          = (bios_regions+id);
-                    rptr -> minX  = IPORTGET(GPU_RegionMinX);
-                    rptr -> minY  = IPORTGET(GPU_RegionMinY);
-                    rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
-                    rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
-                    rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
-                    rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
                 }
                 else if (vtex    != -2)
                 {
                     rptr          = (*(cart_regions+vtex)+id);
+                }
+
+                if (vtex         != -2)
+                {
                     rptr -> minX  = IPORTGET(GPU_RegionMinX);
                     rptr -> minY  = IPORTGET(GPU_RegionMinY);
                     rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
@@ -701,16 +740,14 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 if (vtex         == -1)
                 {
                     rptr          = (bios_regions+id);
-                    PORTSET(GPU_RegionMinX,     rptr -> minX);
-                    PORTSET(GPU_RegionMinY,     rptr -> minY);
-                    PORTSET(GPU_RegionMaxX,     rptr -> maxX);
-                    PORTSET(GPU_RegionMaxY,     rptr -> maxY);
-                    PORTSET(GPU_RegionHotspotX, rptr -> hotX);
-                    PORTSET(GPU_RegionHotspotY, rptr -> hotY);
                 }
                 else if (vtex    != -2)
                 {
                     rptr          = (*(cart_regions+vtex)+id);
+                }
+
+                if (vtex         != -2)
+                {
                     PORTSET(GPU_RegionMinX,     rptr -> minX);
                     PORTSET(GPU_RegionMinY,     rptr -> minY);
                     PORTSET(GPU_RegionMaxX,     rptr -> maxX);
