@@ -176,7 +176,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     // needed based on the CART that is being run).
                     //
                     cart_regions               = (region_t **) calloc (sizeof (region_t *),
-                                                                       V32_CART_TEXTURES); 
+                                                                       data); 
 
                     ////////////////////////////////////////////////////////////////////
                     //

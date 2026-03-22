@@ -579,13 +579,17 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
     //
     uint16_t  type           = (portaddr & 0x0700) >> 8;    // port category
     uint16_t  attr           = (portaddr & 0x00FF);         // item within category
+    int16_t   vtex           = 0;
     int16_t   id             = 0;
     uint8_t   check          = FALSE;
     data_t   *pptr           = *(ioports+type);             // pointer for sanity
+    region_t *rptr           = NULL;
+    int32_t  *iptr           = NULL;
 
     check                    = ioports_chk (portaddr, FLAG_WRITE, sys_force);
     if (check               == TRUE)
     {
+        iptr                 = &((pptr+attr) -> value.i32);
         switch (portaddr)
         {
             case RNG_CurrentValue:
@@ -597,54 +601,59 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 //
                 // Back up current selected region data in current texture
                 //
-                if ((pptr+attr) -> value.i32      == -1)
+                vtex              = IPORTGET(GPU_SelectedTexture);
+                id                = IPORTGET(GPU_SelectedRegion);
+                if (vtex         == -1)
                 {
-                    (bios_regions)     -> minX     = IPORTGET(GPU_RegionMinX);
-                    (bios_regions)     -> minY     = IPORTGET(GPU_RegionMinY);
-                    (bios_regions)     -> maxX     = IPORTGET(GPU_RegionMaxX);
-                    (bios_regions)     -> maxY     = IPORTGET(GPU_RegionMaxY);
-                    (bios_regions)     -> hotX     = IPORTGET(GPU_RegionHotspotX);
-                    (bios_regions)     -> hotY     = IPORTGET(GPU_RegionHotspotY);
+                    rptr          = (bios_regions+id);
+                    rptr -> minX  = IPORTGET(GPU_RegionMinX);
+                    rptr -> minY  = IPORTGET(GPU_RegionMinY);
+                    rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
+                    rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
+                    rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
+                    rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
                 }
-                else if ((pptr+attr) -> value.i32 != -2)
+                else if (vtex    != -2)
                 {
-                    id                             = IPORTGET(GPU_SelectedRegion);
-                    (*(cart_regions+id)) -> minX   = IPORTGET(GPU_RegionMinX);
-                    (*(cart_regions+id)) -> minY   = IPORTGET(GPU_RegionMinY);
-                    (*(cart_regions+id)) -> maxX   = IPORTGET(GPU_RegionMaxX);
-                    (*(cart_regions+id)) -> maxY   = IPORTGET(GPU_RegionMaxY);
-                    (*(cart_regions+id)) -> hotX   = IPORTGET(GPU_RegionHotspotX);
-                    (*(cart_regions+id)) -> hotY   = IPORTGET(GPU_RegionHotspotY);
+                    rptr          = (*(cart_regions+vtex)+id);
+                    rptr -> minX  = IPORTGET(GPU_RegionMinX);
+                    rptr -> minY  = IPORTGET(GPU_RegionMinY);
+                    rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
+                    rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
+                    rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
+                    rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
                 }
 
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Set the (texture) port
                 //
-                (pptr+attr) -> value.i32           = i32;
+                *iptr             = i32;
+                vtex              = IPORTGET(GPU_SelectedTexture);
 
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Restore region data based on selected texture
                 //
-                if ((pptr+attr) -> value.i32      == -1)
+                if (vtex         == -1)
                 {
-                    PORTSET(GPU_RegionMinX,     (bios_regions) -> minX);
-                    PORTSET(GPU_RegionMinY,     (bios_regions) -> minY);
-                    PORTSET(GPU_RegionMaxX,     (bios_regions) -> maxX);
-                    PORTSET(GPU_RegionMaxY,     (bios_regions) -> maxY);
-                    PORTSET(GPU_RegionHotspotX, (bios_regions) -> hotX);
-                    PORTSET(GPU_RegionHotspotY, (bios_regions) -> hotY);
+                    rptr          = (bios_regions+id);
+                    PORTSET(GPU_RegionMinX,     rptr -> minX);
+                    PORTSET(GPU_RegionMinY,     rptr -> minY);
+                    PORTSET(GPU_RegionMaxX,     rptr -> maxX);
+                    PORTSET(GPU_RegionMaxY,     rptr -> maxY);
+                    PORTSET(GPU_RegionHotspotX, rptr -> hotX);
+                    PORTSET(GPU_RegionHotspotY, rptr -> hotY);
                 }
-                else if ((pptr+attr) -> value.i32 != -2)
+                else if (vtex    != -2)
                 {
-                    id                             = IPORTGET(GPU_SelectedRegion);
-                    PORTSET(GPU_RegionMinX,     (*(cart_regions+id)) -> minX);
-                    PORTSET(GPU_RegionMinY,     (*(cart_regions+id)) -> minY);
-                    PORTSET(GPU_RegionMaxX,     (*(cart_regions+id)) -> maxX);
-                    PORTSET(GPU_RegionMaxY,     (*(cart_regions+id)) -> maxY);
-                    PORTSET(GPU_RegionHotspotX, (*(cart_regions+id)) -> hotX);
-                    PORTSET(GPU_RegionHotspotY, (*(cart_regions+id)) -> hotY);
+                    rptr          = (*(cart_regions+vtex)+id);
+                    PORTSET(GPU_RegionMinX,     rptr -> minX);
+                    PORTSET(GPU_RegionMinY,     rptr -> minY);
+                    PORTSET(GPU_RegionMaxX,     rptr -> maxX);
+                    PORTSET(GPU_RegionMaxY,     rptr -> maxY);
+                    PORTSET(GPU_RegionHotspotX, rptr -> hotX);
+                    PORTSET(GPU_RegionHotspotY, rptr -> hotY);
                 }
                 break;
 
@@ -653,56 +662,59 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 //
                 // Back up current selected region data in current texture
                 //
-                id                                 = IPORTGET(GPU_SelectedTexture);
-                if (id                            == -1)
+                vtex              = IPORTGET(GPU_SelectedTexture);
+                id                = IPORTGET(GPU_SelectedRegion);
+                if (vtex         == -1)
                 {
-                    (bios_regions)     -> minX     = IPORTGET(GPU_RegionMinX);
-                    (bios_regions)     -> minY     = IPORTGET(GPU_RegionMinY);
-                    (bios_regions)     -> maxX     = IPORTGET(GPU_RegionMaxX);
-                    (bios_regions)     -> maxY     = IPORTGET(GPU_RegionMaxY);
-                    (bios_regions)     -> hotX     = IPORTGET(GPU_RegionHotspotX);
-                    (bios_regions)     -> hotY     = IPORTGET(GPU_RegionHotspotY);
+                    rptr          = (bios_regions+id);
+                    rptr -> minX  = IPORTGET(GPU_RegionMinX);
+                    rptr -> minY  = IPORTGET(GPU_RegionMinY);
+                    rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
+                    rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
+                    rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
+                    rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
                 }
-                else if (id                       != -2)
+                else if (vtex    != -2)
                 {
-                    id                             = IPORTGET(GPU_SelectedRegion);
-                    (*(cart_regions+id)) -> minX   = IPORTGET(GPU_RegionMinX);
-                    (*(cart_regions+id)) -> minY   = IPORTGET(GPU_RegionMinY);
-                    (*(cart_regions+id)) -> maxX   = IPORTGET(GPU_RegionMaxX);
-                    (*(cart_regions+id)) -> maxY   = IPORTGET(GPU_RegionMaxY);
-                    (*(cart_regions+id)) -> hotX   = IPORTGET(GPU_RegionHotspotX);
-                    (*(cart_regions+id)) -> hotY   = IPORTGET(GPU_RegionHotspotY);
+                    rptr          = (*(cart_regions+vtex)+id);
+                    rptr -> minX  = IPORTGET(GPU_RegionMinX);
+                    rptr -> minY  = IPORTGET(GPU_RegionMinY);
+                    rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
+                    rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
+                    rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
+                    rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
                 }
 
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Set the (region) port
                 //
-                (pptr+attr) -> value.i32           = i32;
+                *iptr             = i32;
+                id                = IPORTGET(GPU_SelectedRegion);
 
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Restore region data based on selected region
                 //
-                id                                 = IPORTGET(GPU_SelectedTexture);
-                if (id                            == -1)
+                if (vtex         == -1)
                 {
-                    PORTSET(GPU_RegionMinX,     (bios_regions) -> minX);
-                    PORTSET(GPU_RegionMinY,     (bios_regions) -> minY);
-                    PORTSET(GPU_RegionMaxX,     (bios_regions) -> maxX);
-                    PORTSET(GPU_RegionMaxY,     (bios_regions) -> maxY);
-                    PORTSET(GPU_RegionHotspotX, (bios_regions) -> hotX);
-                    PORTSET(GPU_RegionHotspotY, (bios_regions) -> hotY);
+                    rptr          = (bios_regions+id);
+                    PORTSET(GPU_RegionMinX,     rptr -> minX);
+                    PORTSET(GPU_RegionMinY,     rptr -> minY);
+                    PORTSET(GPU_RegionMaxX,     rptr -> maxX);
+                    PORTSET(GPU_RegionMaxY,     rptr -> maxY);
+                    PORTSET(GPU_RegionHotspotX, rptr -> hotX);
+                    PORTSET(GPU_RegionHotspotY, rptr -> hotY);
                 }
-                else if (id                       != -2)
+                else if (vtex    != -2)
                 {
-                    id                             = IPORTGET(GPU_SelectedRegion);
-                    PORTSET(GPU_RegionMinX,     (*(cart_regions+id)) -> minX);
-                    PORTSET(GPU_RegionMinY,     (*(cart_regions+id)) -> minY);
-                    PORTSET(GPU_RegionMaxX,     (*(cart_regions+id)) -> maxX);
-                    PORTSET(GPU_RegionMaxY,     (*(cart_regions+id)) -> maxY);
-                    PORTSET(GPU_RegionHotspotX, (*(cart_regions+id)) -> hotX);
-                    PORTSET(GPU_RegionHotspotY, (*(cart_regions+id)) -> hotY);
+                    rptr          = (*(cart_regions+vtex)+id);
+                    PORTSET(GPU_RegionMinX,     rptr -> minX);
+                    PORTSET(GPU_RegionMinY,     rptr -> minY);
+                    PORTSET(GPU_RegionMaxX,     rptr -> maxX);
+                    PORTSET(GPU_RegionMaxY,     rptr -> maxY);
+                    PORTSET(GPU_RegionHotspotX, rptr -> hotX);
+                    PORTSET(GPU_RegionHotspotY, rptr -> hotY);
                 }
                 break;
 
