@@ -21,6 +21,10 @@
 #define  V32_PAGE_MEMC           3
 #define  V32_PAGE_MASK           0x30000000
 
+#define  V32_BIOS_TEXTURES       1
+#define  V32_CART_TEXTURES       256
+#define  V32_REGIONS_PER_TEXTURE 4096
+
 #define  RAM_FIRST_ADDR          0x00000000
 #define  BIOS_FIRST_ADDR         0x10000000
 #define  CART_FIRST_ADDR         0x20000000

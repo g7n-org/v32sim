@@ -22,10 +22,12 @@ int8_t   *token_label;
 //
 // Variables related to IOPorts and memory
 //
-data_t  **ioports;
-mem_t    *memory;
-int8_t    sys_error;
-uint8_t   sys_reg_show;
+data_t   **ioports;
+region_t  *bios_regions;  // for managing textures and regions within textures
+region_t **cart_regions;  // for managing textures and regions within textures
+mem_t     *memory;
+int8_t     sys_error;
+uint8_t    sys_reg_show;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //

@@ -114,6 +114,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
     // Declare and initialize variables
     //
     FILE     *fptr                  = NULL;
+    int32_t   index                 = 0;
     uint32_t  offset                = 0x00000000;
     uint32_t  data                  = 0x00000000;
     uint32_t *checksum              = NULL;
@@ -156,7 +157,41 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             {
                 case V32_PAGE_CART:
                     fseek (fptr, (22 * wordsize), SEEK_SET);
-                    SYSPORTSET(CAR_NumberOfTextures, get_word (fptr));
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // Here we  obtain the number of  textures within the
+                    // CART,  so  memory  can  be  allocated  within  the
+                    // cart_regions array
+                    //
+                    data            = get_word (fptr);
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // CART texture/regions  is a 2D array  of region_t's
+                    // for   managing   the   regions  present   in   the
+                    // potentially many CART  textures. Allocation of the
+                    // second dimension is done  after the CART is loaded
+                    // (so that resources are  only allocated for what is
+                    // needed based on the CART that is being run).
+                    //
+                    cart_regions               = (region_t **) calloc (sizeof (region_t *),
+                                                                       V32_CART_TEXTURES); 
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // Allocate memory for each texture  (to  have up  to
+                    // 4096 regions)
+                    //
+                    for (index      = 0;
+                         index     <  data;
+                         index      = index + 1)
+                    {
+                        *(cart_regions+index)  = (region_t *) calloc (sizeof (region_t),
+                                                       V32_REGIONS_PER_TEXTURE);
+                    }
+                    SYSPORTSET(CAR_NumberOfTextures, data);
+
                     SYSPORTSET(CAR_NumberOfSounds,   get_word (fptr));
                     get_word (fptr);
                     SYSPORTSET(CAR_ProgramROMSize,   get_word (fptr));

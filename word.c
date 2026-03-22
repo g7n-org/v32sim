@@ -85,6 +85,19 @@ void      put_word (uint32_t  word, uint8_t  flag)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
+// int2word() - convert i32 element into a word_t and return it
+//
+word_t    int2word     (uint32_t  data)
+{
+	word_t  wtmp;
+	
+	wtmp.i32          = data;
+
+	return (wtmp);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
 // word2int() - extract i32 element of provided `word_t` and return it
 //
 // in the event that the passed-in word_t is NULL, return 0.

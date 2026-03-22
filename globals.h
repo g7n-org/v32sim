@@ -40,6 +40,17 @@ struct data_type
 };
 typedef struct data_type data_t;
 
+struct region_type
+{
+    int16_t   minX;
+    int16_t   minY;
+    int16_t   maxX;
+    int16_t   maxY;
+    int16_t   hotX;
+    int16_t   hotY;
+};
+typedef struct region_type  region_t;
+
 struct memory_type
 {
     uint8_t   type;
@@ -72,6 +83,8 @@ extern int8_t    *token_label;
 // Variables related to IOPorts
 //
 extern data_t   **ioports;
+extern region_t  *bios_regions;  // for managing textures and regions within textures
+extern region_t **cart_regions;  // for managing textures and regions within textures
 extern uint8_t    sys_reg_show;
 
 extern uint8_t    action;
