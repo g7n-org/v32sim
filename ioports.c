@@ -577,19 +577,21 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
     //
     // Declare and initialize local variables
     //
-    uint16_t  type           = (portaddr & 0x0700) >> 8;    // port category
-    uint16_t  attr           = (portaddr & 0x00FF);         // item within category
-    int16_t   vtex           = 0;
-    int16_t   id             = 0;
-    uint8_t   check          = FALSE;
-    data_t   *pptr           = *(ioports+type);             // pointer for sanity
-    region_t *rptr           = NULL;
-    int32_t  *iptr           = NULL;
+    uint16_t  type                = (portaddr & 0x0700) >> 8;  // port category
+    uint16_t  attr                = (portaddr & 0x00FF);       // item within category
+    int16_t   vtex                = 0;
+    int16_t   id                  = 0;
+    uint8_t   check               = FALSE;
+    data_t   *pptr                = *(ioports+type);           // pointer for sanity
+    region_t *rptr                = NULL;
+    int32_t  *iptr                = NULL;
+    int32_t  *fptr                = NULL;
 
-    check                    = ioports_chk (portaddr, FLAG_WRITE, sys_force);
-    if (check               == TRUE)
+    check                         = ioports_chk (portaddr, FLAG_WRITE, sys_force);
+    if (check                    == TRUE)
     {
-        iptr                 = &((pptr+attr) -> value.i32);
+        iptr                      = &((pptr+attr) -> value.i32);
+        fptr                      = &((pptr+attr) -> value.f32);
         switch (portaddr)
         {
             case RNG_CurrentValue:
@@ -728,11 +730,11 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
             case SPU_GlobalVolume:
             case SPU_ChannelVolume:
             case SPU_ChannelSpeed:
-                (pptr+attr) -> value.f32  = f32;
+                *fptr             = f32;
                 break;
 
             default: // catch all- the standard transaction for external setting
-                (pptr+attr) -> value.i32  = i32;
+                *iptr             = i32;
                 break;
         }
     }
