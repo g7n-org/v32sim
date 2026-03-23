@@ -13,6 +13,7 @@ void  usage (int8_t *program)
     fprintf (stdout, " -d, --deref-addr          output address of dereference\n");
     fprintf (stdout, " -e, --errorcheck          enable runtime error checking\n");
     fprintf (stdout, " -E, --entry-point=OFFSET  set simulator entry point\n");
+    fprintf (stdout, " -M, --memcfile=FILE       load this file as a MEMCARD\n");
     fprintf (stdout, " -n, --no-debug            do not process any debug files\n");
     fprintf (stdout, " -r, --run                 do not enable single-step mode\n");
     fprintf (stdout, " -w, --watch-for=OPCODE    run until OPCODE is encountered\n");

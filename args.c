@@ -20,6 +20,7 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "debug",          no_argument,       0, 'D' },
        { "entry-point",    required_argument, 0, 'E' },
        { "errorcheck",     no_argument,       0, 'e' },
+       { "memcfile",       required_argument, 0, 'M' },
        { "no-debug",       no_argument,       0, 'n' },
        { "run",            no_argument,       0, 'r' },
        { "watch-for",      required_argument, 0, 'w' },
@@ -33,7 +34,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:M:nrw:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -84,6 +85,10 @@ void  process_args (int32_t  argc, int8_t **argv)
                 rom_offset         = strtol (optarg, NULL, 16);
                 break;
 
+            case 'M':
+                memcfile           = optarg;
+                break;
+
             case 'n':
                 debugflag          = FALSE;
                 break;
@@ -106,7 +111,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:M:nrw:vh", long_options,
                                                   &option_index);
     }
 
