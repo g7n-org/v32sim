@@ -65,9 +65,6 @@ int32_t   main (int32_t  argc, char **argv)
     uint8_t   decodeflags           = FLAG_NONE;
     uint8_t   errorflag             = FLAG_NONE;
     uint8_t   processflag           = FALSE;
-    uint32_t  vbinoffset            = 0x00000000;
-    uint32_t  vtexoffset            = 0x00000000;
-    uint32_t  vsndoffset            = 0x00000000;
     uint32_t  value                 = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -284,9 +281,6 @@ int32_t   main (int32_t  argc, char **argv)
 
     /*
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
-    fprintf (stdout, "vbinoffset: %.8X\n", vbinoffset);
-    fprintf (stdout, "vtexoffset: %.8X\n", vtexoffset);
-    fprintf (stdout, "vsndoffset: %.8X\n", vsndoffset);
     */
     fprintf (stdout, "Vircon32 Simulator / Debugger  (v32sim)\n");
     fprintf (stdout, "=======================================\n");

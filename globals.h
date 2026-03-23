@@ -60,6 +60,10 @@ struct memory_type
     uint32_t  last_addr;
     uint32_t  size;
     uint32_t  checksum;
+	uint32_t  num_vtex;
+	uint32_t  num_vsnd;
+	uint32_t *vtex_offset;
+	uint32_t *vsnd_offset;
 };
 typedef struct memory_type mem_t;
 

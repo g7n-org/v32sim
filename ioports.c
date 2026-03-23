@@ -586,7 +586,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
     data_t   *pptr                    = *(ioports+type);           // pointer for sanity
     region_t *rptr                    = NULL;
     int32_t  *iptr                    = NULL;
-    int32_t  *fptr                    = NULL;
+    float    *fptr                    = NULL;
 
     check                             = ioports_chk (portaddr, FLAG_WRITE, sys_force);
     if (check                        == TRUE)

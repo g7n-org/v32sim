@@ -113,28 +113,37 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
     //
     // Declare and initialize variables
     //
-    FILE     *fptr                  = NULL;
-    int32_t   index                 = 0;
-    uint32_t  offset                = 0x00000000;
-    uint32_t  data                  = 0x00000000;
-    uint32_t *checksum              = NULL;
-    uint8_t   chk                   = FALSE;
-    uint8_t   result                = FALSE;
+    FILE     *fptr                    = NULL;
+    int32_t   count                   = 0;
+    int32_t   index                   = 0;
+    uint32_t  offset                  = 0x00000000;
+    uint32_t  num_vtex                = 0x00000000;
+    uint32_t  num_vsnd                = 0x00000000;
+    uint32_t  vtexoffset              = 0;
+    uint32_t  vsndoffset              = 0;
+    uint32_t  data_size               = 0x00000000;
+    uint32_t  data                    = 0x00000000;
+    uint32_t *checksum                = NULL;
+    uint32_t *iptr                    = NULL;
+    mem_t    *mptr                    = NULL;
+    uint8_t   chk                     = FALSE;
+    uint8_t   result                  = FALSE;
+    region_t *rptr                    = NULL;
 
-    if (filename                   != NULL)
+    if (filename                     != NULL)
     {
         ////////////////////////////////////////////////////////////////////////////////
         //
         // Adjust offset to be at the start of the indicated page
         //
-        offset                      = offset | (page << 28);
+        offset                        = offset | (page << 28);
 
         ////////////////////////////////////////////////////////////////////////////////
         //
         // Open indicated filename for reading
         //
-        fptr                        = fopen (filename, "rb");
-        if (fptr                   == NULL)
+        fptr                          = fopen (filename, "rb");
+        if (fptr                     == NULL)
         {
             fprintf (stderr, "[ERROR] Could not open '%s' for reading\n", filename);
             exit    (FILE_OPEN_ERROR);
@@ -144,10 +153,11 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
         //
         // Adjust size of region of memory
         //
-        (memory+page) -> size       = get_filesize (filename);
-        (memory+page) -> last_addr  = (memory+page) -> firstaddr + (memory+page) -> size;
-        chk                         = alloc_memory (page);
-        if (chk                    == TRUE)
+        (memory+page) -> size         = get_filesize (filename);
+        (memory+page) -> last_addr    = (memory+page) -> firstaddr;
+        (memory+page) -> last_addr   += (memory+page) -> size;
+        chk                           = alloc_memory (page);
+        if (chk                      == TRUE)
         {
             ////////////////////////////////////////////////////////////////////////////
             //
@@ -155,16 +165,29 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             //
             switch (page)
             {
+                case V32_PAGE_BIOS:
                 case V32_PAGE_CART:
-                    fseek (fptr, (22 * wordsize), SEEK_SET);
+                    fseek (fptr, (0x16 * wordsize), SEEK_SET);
 
                     ////////////////////////////////////////////////////////////////////
                     //
-                    // Here we  obtain the number of  textures within the
-                    // CART,  so  memory  can  be  allocated  within  the
-                    // cart_regions array
+                    // Here we  obtain the number of  textures and sounds
+                    // within the CART, for memory allocation of the CART
+                    // cart_regions array (and likely whatever soundarray
+                    // is eventually concocted)
                     //
-                    data            = get_word (fptr);
+                    num_vtex          = get_word (fptr);
+                    num_vsnd          = get_word (fptr);
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // While we are in the neighborhood, obtain the  vtex
+                    // and vsnd offsets
+                    //
+                    vtexoffset        = get_word (fptr);
+                    vtexoffset        = get_word (fptr);
+                    vtexoffset        = get_word (fptr);
+                    vsndoffset        = get_word (fptr);
 
                     ////////////////////////////////////////////////////////////////////
                     //
@@ -175,60 +198,176 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     // (so that resources are  only allocated for what is
                     // needed based on the CART that is being run).
                     //
-                    cart_regions               = (region_t **) calloc (sizeof (region_t *),
-                                                                       data); 
+                    if (page         == V32_PAGE_CART)
+                    {
+                        cart_regions  = (region_t **) calloc (sizeof (region_t *),
+                                                              num_vtex); 
+                    }
 
                     ////////////////////////////////////////////////////////////////////
                     //
                     // Allocate memory for each texture  (to  have up  to
                     // 4096 regions)
                     //
-                    for (index      = 0;
-                         index     <  data;
-                         index      = index + 1)
+                    for (index        = 0;
+                         index       <  num_vtex;
+                         index        = index + 1)
                     {
-                        *(cart_regions+index)  = (region_t *) calloc (sizeof (region_t),
-                                                       V32_REGIONS_PER_TEXTURE);
+                        if (page     == V32_PAGE_CART)
+                        {
+                            rptr      = (*(cart_regions+index));
+                        }
+                        else // BIOS
+                        {
+                            rptr      = (bios_regions+index);
+                        }
+                        rptr          = (region_t *) calloc (sizeof (region_t),
+                                                             V32_REGIONS_PER_TEXTURE);
                     }
-                    SYSPORTSET(CAR_NumberOfTextures, data);
+                    rptr              = NULL;
 
-                    SYSPORTSET(CAR_NumberOfSounds,   get_word (fptr));
-                    get_word (fptr);
-                    SYSPORTSET(CAR_ProgramROMSize,   get_word (fptr));
-                    SYSPORTSET(CAR_Connected,        TRUE);
-                case V32_PAGE_BIOS: // we need to skip ahead to word 0x23 (BIOS and CART)
-                    fseek (fptr, (35 * wordsize), SEEK_SET);
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // we need to skip ahead to word 0x22 (BIOS and CART), this will
+                    // contain the length of the VBIN section
+                    //
+                    fseek (fptr, (0x22 * wordsize), SEEK_SET);
+                    data_size         = get_word (fptr);
+
+                    if (page         == V32_PAGE_CART)
+                    {
+                        SYSPORTSET(CAR_NumberOfTextures, num_vtex);
+                        SYSPORTSET(CAR_NumberOfSounds,   num_vsnd);
+                        SYSPORTSET(CAR_Connected,        TRUE);
+                        SYSPORTSET(CAR_ProgramROMSize,   data_size);
+                        fprintf (debug, "[LOAD:CART] #vtex: %u, #vsnd: %u\n", num_vtex, num_vsnd);
+                    }
+                    else
+                    {
+                        fprintf (debug, "[LOAD:BIOS] #vtex: %u, #vsnd: %u\n", num_vtex, num_vsnd);
+                    }
                     break;
 
                 case V32_PAGE_MEMC: // we need to skip ahead to word ?? (check for value)
+                    fprintf (debug, "[LOAD:MEMC]\n");
+                    fseek (fptr, (0x02 * wordsize), SEEK_SET);
                     SYSPORTSET(MEM_Connected,        TRUE);
+                    data_size         = 262144;
+                    num_vtex          = 0;
+                    num_vsnd          = 0;
+                    vtexoffset        = 0;
+                    vsndoffset        = 0;
                     break;
             }
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Establish mem_t VTEX and VSND values (useful for system inventory)
+            //
+            mptr                      = (memory+page);
+            mptr -> num_vtex          = num_vtex;
+            mptr -> num_vsnd          = num_vsnd;
+            mptr -> vtex_offset       = (uint32_t *) calloc (sizeof (uint32_t), num_vtex);
+            mptr -> vsnd_offset       = (uint32_t *) calloc (sizeof (uint32_t), num_vsnd);
+            //(memory+page) -> num_vtex     = num_vtex;
+            //(memory+page) -> num_vsnd     = num_vsnd;
+            //(memory+page) -> vtex_offset  = (uint32_t *) calloc (sizeof (uint32_t), num_vtex);
+            //(memory+page) -> vsnd_offset  = (uint32_t *) calloc (sizeof (uint32_t), num_vsnd);
 
             ////////////////////////////////////////////////////////////////////////////
             //
             // Continually read in words from the file until we reach EOF, placing
             // each read word in memory at the appropriate offset.
             //
-            checksum                = &(memory+page) -> checksum;
-            while (!feof (fptr))
+            checksum                  = &(memory+page) -> checksum;
+            for (index                = 0;
+                 index               <  data_size;
+                 index                = index + 1)
             {
-                data                = get_word (fptr);
+                data                  = get_word (fptr);
                 SYSMEMSET(offset, data);
                 if (!feof (fptr))
                 {
-                    *checksum       = *checksum + data;
-                    offset          = offset + 1;
+                    *checksum         = *checksum + data;
+                    offset            = offset + 1;
+                }
+                else
+                {
+                    if (page         == V32_PAGE_MEMC)
+                    {
+                        fprintf (stderr, "[ERROR:MEMC] ");
+                    }
+                    else
+                    {
+                        fprintf (stderr, "[ERROR:VBIN] ");
+                    }
+                    fprintf (stderr, "Unexpected end of file reading '%s' at offset 0x%.8X!\n",
+                                     filename, offset);
+                    exit (FILE_POSITION_ERROR);
                 }
             }
 
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Now at first VTEX
+            //
+            if ((page                == V32_PAGE_BIOS) ||
+                (page                == V32_PAGE_CART))
+            {
+                fprintf (debug, "[LOAD:VBIN] final offset is: 0x%.8X\n", offset);
+                data                  = get_word (fptr); // V32_
+                data                  = get_word (fptr); // VTEX
+                data_size             = get_word (fptr); // width
+                data_size            *= get_word (fptr); // height
+                data_size            *= 4;
+                for (count            = 0;
+                     count           <  num_vtex;
+                     count            = count + 1)
+                {
+                    iptr              = mptr -> vtex_offset;
+                    *(iptr+count)     = offset;
+                    for (index        = 0;
+                         index       <  data_size;
+                         index        = index + 1)
+                    {
+                        data          = get_word (fptr);
+                        SYSMEMSET(offset, data);
+                        if (!feof (fptr))
+                        {
+                            *checksum = *checksum + data;
+                            offset    = offset + 1;
+                        }
+                        else
+                        {
+                            fprintf (stderr, "[ERROR:VTEX] Unexpected end of file reading '%s' at offset 0x%.8X!\n",
+                                             filename, offset);
+							break;
+                            //exit (FILE_POSITION_ERROR);
+                        }
+                    }
+
+                    fprintf (debug, "[LOAD:VBIN] final offset of vtex #%d is: 0x%.8X\n", count, offset);
+                    data              = get_word (fptr); // V32_
+                    data              = get_word (fptr); // VTEX
+                    data_size         = get_word (fptr); // width
+                    data_size        *= get_word (fptr); // height
+                    data_size        *= 4;
+                }
+
+                // TODO: add section for VSND data, will look much like the above
+            }
+            else
+            {
+                fprintf (debug, "[LOAD:MEMC] final offset is: 0x%.8X (%u)\n", offset, offset);
+            }
+            
             fclose (fptr);
 
             ////////////////////////////////////////////////////////////////////////////
             //
             // Operation deemed successful
             //
-            result                  = TRUE;
+            result                    = TRUE;
         }
     }
 
