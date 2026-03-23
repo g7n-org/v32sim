@@ -42,12 +42,6 @@ data back to the loaded memcfile.
 I will likely need to store `memcfile`  in `mem_t` to have it on hand for
 such operations.
 
-## VTEX offsets
-
-There  is currently  what  seems  to be  an  off-by-one  error with  VTEX
-offsets, as  stored in the mem_t.  This is triggering a  premature end of
-file error in `load_memory()`
-
 ## VSND DATA
 
 No VSND  data is  currently being  loaded into  memory. Support  for that
