@@ -68,7 +68,7 @@ uint8_t  unload_memory (uint32_t  page)
     //
     // Declare and initialize variables
     //
-	int32_t  index                  = 0;
+    int32_t  index                  = 0;
     uint8_t  result                 = TRUE;
 
     switch (page)
@@ -84,7 +84,7 @@ uint8_t  unload_memory (uint32_t  page)
             break;
 
         case V32_PAGE_MEMC:
-			// write MEMC data back to memcfile
+            // write MEMC data back to memcfile
             SYSPORTSET(MEM_Connected,        FALSE);
             break;
 
@@ -186,8 +186,8 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     // While we are in the neighborhood, obtain the  vtex
                     // and vsnd offsets
                     //
-                    vtexoffset        = get_word (fptr);
-                    vtexoffset        = get_word (fptr);
+                    vtexoffset        = get_word (fptr); // skipping
+                    vtexoffset        = get_word (fptr); // skipping
                     vtexoffset        = get_word (fptr);
                     vsndoffset        = get_word (fptr);
 
@@ -242,12 +242,14 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                         SYSPORTSET(CAR_NumberOfSounds,   num_vsnd);
                         SYSPORTSET(CAR_Connected,        TRUE);
                         SYSPORTSET(CAR_ProgramROMSize,   data_size);
-                        fprintf (debug, "[LOAD:CART] #vtex: %u, #vsnd: %u\n", num_vtex, num_vsnd);
+                        fprintf (debug, "[LOAD:CART] ");
                     }
                     else
                     {
-                        fprintf (debug, "[LOAD:BIOS] #vtex: %u, #vsnd: %u\n", num_vtex, num_vsnd);
+                        fprintf (debug, "[LOAD:BIOS] ");
                     }
+                    fprintf (debug, "#vtex: %u, #vsnd: %u, romsize: 0x%.8X\n",
+                                    num_vtex, num_vsnd, data_size);
                     break;
 
                 case V32_PAGE_MEMC: // we need to skip ahead to word ?? (check for value)
@@ -271,10 +273,6 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             mptr -> num_vsnd          = num_vsnd;
             mptr -> vtex_offset       = (uint32_t *) calloc (sizeof (uint32_t), num_vtex);
             mptr -> vsnd_offset       = (uint32_t *) calloc (sizeof (uint32_t), num_vsnd);
-            //(memory+page) -> num_vtex     = num_vtex;
-            //(memory+page) -> num_vsnd     = num_vsnd;
-            //(memory+page) -> vtex_offset  = (uint32_t *) calloc (sizeof (uint32_t), num_vtex);
-            //(memory+page) -> vsnd_offset  = (uint32_t *) calloc (sizeof (uint32_t), num_vsnd);
 
             ////////////////////////////////////////////////////////////////////////////
             //
@@ -321,7 +319,6 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                 data                  = get_word (fptr); // VTEX
                 data_size             = get_word (fptr); // width
                 data_size            *= get_word (fptr); // height
-                data_size            *= 4;
                 for (count            = 0;
                      count           <  num_vtex;
                      count            = count + 1)
@@ -343,8 +340,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                         {
                             fprintf (stderr, "[ERROR:VTEX] Unexpected end of file reading '%s' at offset 0x%.8X!\n",
                                              filename, offset);
-							break;
-                            //exit (FILE_POSITION_ERROR);
+                            exit (FILE_POSITION_ERROR);
                         }
                     }
 
@@ -353,7 +349,6 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     data              = get_word (fptr); // VTEX
                     data_size         = get_word (fptr); // width
                     data_size        *= get_word (fptr); // height
-                    data_size        *= 4;
                 }
 
                 // TODO: add section for VSND data, will look much like the above
