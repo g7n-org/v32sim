@@ -68,7 +68,8 @@ uint8_t  unload_memory (uint32_t  page)
     //
     // Declare and initialize variables
     //
-    uint8_t   result                = TRUE;
+	int32_t  index                  = 0;
+    uint8_t  result                 = TRUE;
 
     switch (page)
     {
@@ -83,6 +84,7 @@ uint8_t  unload_memory (uint32_t  page)
             break;
 
         case V32_PAGE_MEMC:
+			// write MEMC data back to memcfile
             SYSPORTSET(MEM_Connected,        FALSE);
             break;
 

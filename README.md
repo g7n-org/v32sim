@@ -12,13 +12,44 @@ At this  point, all  instructions have been  implemented (but  many still
 need testing);  registers and memory are  present and should behave  in a
 manner similar to how the system operates.
 
+## IOPORTS
+
 Many  IOPorts  are  present,  if  only  for  simple  reporting  or  basic
 operability. The `TIM_`, `RNG_`, `INP_`, and `CAR_` ports should be fully
 functional. For various transactions (`set`, `display`, or `print` at the
 prompt), the IOPort hex value OR the symbolic name can be specified.
 
-Initial MEMCARD support has been implemented (it should be able to load a
-MEMCARD when specified), but nothing has been tested.
+### GPU PORTS
+
+Many GPU ports are believed fully functional:
+
+  * GPU_ClearColor
+  * GPU_SelectedTexture
+  * GPU_SelectedRegion
+  * the MinX/Y, MaxX/Y, and HotspotX/Y ports
+
+The simulator functionally supports distinct  regions per texture, and of
+course many  textures (based  on how  many are present  in the  CART when
+loaded- BIOS is fixed).
+
+VTEX data is also properly loaded into memory.
+
+The other GPU ports  may well be able to be read  from/written to, but if
+there is deeper functionality, they currently  just serve as a storage of
+information (nothing is yet done with that information).
+
+## MEMCARD
+
+MEMCARD support is  increasingly functional: there is  now a command-line
+argument to  load a MEMCARD on  simulator start; the prompt's  `load` and
+`unload` commands can transact MEMCARDs.  And MEMCARD data is loaded into
+memory at  the appropriate place.  But: any  changes are not  yet written
+back out to the MEMCARD file on disk.
+
+No checks  are currently  done to  ensure the  file loaded  is in  fact a
+proper MEMCARD (V32-MEMC header is not  currently checked for, nor is the
+required file size  verified). But, it is locked in  to reading the exact
+filesize as indicated in the Vircon32 specifications.
 
 ## USAGE
 
@@ -35,6 +66,7 @@ Mandatory arguments to long options are mandatory for short options too.
  -d, --deref-addr          output address of dereference
  -E, --entry-point=OFFSET  set simulator entry point
  -e, --errorcheck          enable runtime error checking
+ -M, --memcfile=FILE       load this file as a MEMCARD
  -n, --no-debug            do not process any debug files
  -r, --run                 do not enable single-step mode
  -w, --watch-for=OPCODE    run until OPCODE is encountered
