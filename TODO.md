@@ -33,6 +33,19 @@ Texture, Region,  and Region  definition ports  are now  functioning. The
 VTEX data  is now properly  being loaded  into memory, stripping  out the
 headers.
 
+### VTEX TO PNG FORMAT
+
+Looking through  the code to  `vircon2png` (in  DevTools), I see  how the
+data is  stored in memory  for core PNG data,  using libpng. I  am hoping
+to  be able  to  replicate  this process,  then  use  something like  the
+libGD  `gdImageCreateFromPng()`  function  to  read it  directly  into  a
+`gdImagePtr`, then proceed on my way from there.
+
+  * https://libgd.github.io/manuals/2.3.0/files/gd_png-c.html
+  * https://libgd.github.io/manuals/2.2.3/files/gd_gd2-c.html
+  * https://libgd.github.io/manuals/2.3.0/files/gd_png-c.html#gdImageCreateFromPngPtr
+  * https://github.com/libgd/libgd/blob/master/src/pngtogd2.c
+
 ## MEMC
 
 Functional MEMC support is online, but  changes will be lost on simulator
