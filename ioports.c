@@ -260,6 +260,7 @@ void  init_ioports  (void)
                 break;
 
             case INP_GamepadConnected:
+                (pptr+index) -> value.i32  = 0;
                 sprintf (nptr, "INP_GamepadConnected");
                 break;
 
@@ -685,7 +686,8 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                     rptr               = (cart_vtex+num) -> region;
                 }
 
-                if (num               != -2)
+                if ((num              != -2) &&
+                    (id               != -2))
                 {
                     (rptr+id) -> minX  = IPORTGET(GPU_RegionMinX);
                     (rptr+id) -> minY  = IPORTGET(GPU_RegionMinY);
@@ -715,14 +717,15 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                     rptr               = (cart_vtex+num) -> region;
                 }
 
-                if (num               != -2)
+                if ((num              != -2) &&
+                    (id               != -2))
                 {
-                    PORTSET(GPU_RegionMinX,     rptr -> minX);
-                    PORTSET(GPU_RegionMinY,     rptr -> minY);
-                    PORTSET(GPU_RegionMaxX,     rptr -> maxX);
-                    PORTSET(GPU_RegionMaxY,     rptr -> maxY);
-                    PORTSET(GPU_RegionHotspotX, rptr -> hotX);
-                    PORTSET(GPU_RegionHotspotY, rptr -> hotY);
+                    PORTSET(GPU_RegionMinX,     (rptr+id) -> minX);
+                    PORTSET(GPU_RegionMinY,     (rptr+id) -> minY);
+                    PORTSET(GPU_RegionMaxX,     (rptr+id) -> maxX);
+                    PORTSET(GPU_RegionMaxY,     (rptr+id) -> maxY);
+                    PORTSET(GPU_RegionHotspotX, (rptr+id) -> hotX);
+                    PORTSET(GPU_RegionHotspotY, (rptr+id) -> hotY);
                 }
                 break;
 
@@ -742,7 +745,8 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                     rptr               = (cart_vtex+num) -> region;
                 }
 
-                if (num               != -2)
+                if ((num              != -2) &&
+                    (id               != -2))
                 {
                     (rptr+id) -> minX  = IPORTGET(GPU_RegionMinX);
                     (rptr+id) -> minY  = IPORTGET(GPU_RegionMinY);
@@ -772,14 +776,15 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                     rptr               = (cart_vtex+num) -> region;
                 }
 
-                if (num               != -2)
+                if ((num              != -2) &&
+                    (num              != -2))
                 {
-                    PORTSET(GPU_RegionMinX,     rptr -> minX);
-                    PORTSET(GPU_RegionMinY,     rptr -> minY);
-                    PORTSET(GPU_RegionMaxX,     rptr -> maxX);
-                    PORTSET(GPU_RegionMaxY,     rptr -> maxY);
-                    PORTSET(GPU_RegionHotspotX, rptr -> hotX);
-                    PORTSET(GPU_RegionHotspotY, rptr -> hotY);
+                    PORTSET(GPU_RegionMinX,     (rptr+id) -> minX);
+                    PORTSET(GPU_RegionMinY,     (rptr+id) -> minY);
+                    PORTSET(GPU_RegionMaxX,     (rptr+id) -> maxX);
+                    PORTSET(GPU_RegionMaxY,     (rptr+id) -> maxY);
+                    PORTSET(GPU_RegionHotspotX, (rptr+id) -> hotX);
+                    PORTSET(GPU_RegionHotspotY, (rptr+id) -> hotY);
                 }
                 break;
 
