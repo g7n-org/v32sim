@@ -770,11 +770,9 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         action         = INPUT_LABEL;
                         token          = strtok ((string + match[2].rm_so), " ");
                         result         = parse_token (token, *(pattern+2), PARSE_MEMORY);
-                        fprintf (debug, "[label] token: '%s', result: %X\n", token, result);
                         value          = strtol (token, NULL, 16);
                         ltmp           = listnode (LIST_MEM, value);
                         token_label    = strtok ((string + match[3].rm_so), " ");
-                        fprintf (debug, "[label] token_label: '%s'\n", token_label);
                         value          = sizeof (int8_t) * strlen (token_label) + 1;
                         ltmp -> label  = (int8_t *) malloc (value);
                         strcpy (ltmp -> label, token_label);

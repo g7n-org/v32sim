@@ -9,8 +9,10 @@
 #include <math.h>
 #include <getopt.h>
 #include <time.h>
-#include "globals.h"
 #include "ioports.h"
+#include "vtex.h"
+#include "gamepad.h"
+#include "globals.h"
 
 #define  BIOS_DEFAULT_PATH       "/usr/local/Vircon32/Emulator/Bios/StandardBios.v32"
 
@@ -102,6 +104,7 @@
 #define  INPUT_LOAD              20
 #define  INPUT_UNLOAD            21
 #define  INPUT_INVENTORY         22
+#define  INPUT_SCREENSHOT        23
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A

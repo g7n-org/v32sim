@@ -80,29 +80,26 @@ void  show_sysregs (void)
 void  display_config (void)
 {
     int32_t   index  = 0;
-    uint32_t *iptr   = NULL;
-    mem_t    *mptr   = NULL;
 
     fprintf (stdout, "v32sim system inventory\n");
     fprintf (stdout, "=======================\n");
     fprintf (stdout, "RAM:  %s\n", show_size (V32_PAGE_RAM));
     fprintf (stdout, "BIOS: %s\n", show_size (V32_PAGE_BIOS));
-    mptr             = (memory+V32_PAGE_BIOS);
-    for (index       = 0;
-         index      <  mptr -> num_vtex;
-         index       = index + 1)
-    {
-        iptr         = mptr -> vtex_offset;
-        fprintf (stdout, "  > VTEX #%d at 0x%.8X\n", index, *(iptr+index));
-    }
+    fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",
+             index,
+             (bios_vtex) -> wide,
+             (bios_vtex) -> high,
+             (bios_vtex) -> offset);
     fprintf (stdout, "CART: %s\n", show_size (V32_PAGE_CART));
-    mptr             = (memory+V32_PAGE_CART);
     for (index       = 0;
-         index      <  mptr -> num_vtex;
+         index      <  (cart_vtex+0) -> qty;
          index       = index + 1)
     {
-        iptr         = mptr -> vtex_offset;
-        fprintf (stdout, "  > VTEX #%d at 0x%.8X\n", index, *(iptr+index));
+        fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",
+                 index,
+                 (cart_vtex+index) -> wide,
+                 (cart_vtex+index) -> high,
+                 (cart_vtex+index) -> offset);
     }
     fprintf (stdout, "MEMC: %s\n", show_size (V32_PAGE_MEMC));
 }

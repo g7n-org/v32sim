@@ -146,6 +146,18 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    Could cause runtime problems depending on what is ignored.\n\n");
             break;
 
+        case INPUT_SCREENSHOT:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    screenshot [FILENAME]\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Output the current state of the Vircon32 screen to a PNG file.\n");
+            fprintf (stdout, "    The default filename will be 'v32sim.DATESTAMP.png', unless an\n");
+            fprintf (stdout, "    alternate FILENAME is specified.\n\n");
+            fprintf (stdout, "NOTE:\n");
+            fprintf (stdout, "    Various simulator settings can enhance the appearance of this\n");
+            fprintf (stdout, "    screenshot, such as 'screengrid', 'boundbox', and 'noextra'\n\n");
+            break;
+
         case INPUT_INVENTORY:
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    inventory\n\n");

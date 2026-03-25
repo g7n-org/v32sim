@@ -68,7 +68,6 @@ uint8_t  unload_memory (uint32_t  page)
     //
     // Declare and initialize variables
     //
-    int32_t  index                  = 0;
     uint8_t  result                 = TRUE;
 
     switch (page)
@@ -121,16 +120,15 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
     uint32_t  offset                  = 0x00000000;
     uint32_t  num_vtex                = 0x00000000;
     uint32_t  num_vsnd                = 0x00000000;
-    uint32_t  vtexoffset              = 0;
-    uint32_t  vsndoffset              = 0;
     uint32_t  data_size               = 0x00000000;
     uint32_t  data                    = 0x00000000;
     uint32_t *checksum                = NULL;
-    uint32_t *iptr                    = NULL;
-    mem_t    *mptr                    = NULL;
+    size_t    size                    = 0;
+    uint32_t  len                     = 0;
     uint8_t   chk                     = FALSE;
     uint8_t   result                  = FALSE;
-    region_t *rptr                    = NULL;
+	region_t *rptr                    = NULL;
+    vtex_t   *vptr                    = NULL;
 
     if (filename                     != NULL)
     {
@@ -186,10 +184,10 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     // While we are in the neighborhood, obtain the  vtex
                     // and vsnd offsets
                     //
-                    vtexoffset        = get_word (fptr); // skipping
-                    vtexoffset        = get_word (fptr); // skipping
-                    vtexoffset        = get_word (fptr);
-                    vsndoffset        = get_word (fptr);
+                    get_word (fptr); // skipping
+                    get_word (fptr); // skipping
+                    get_word (fptr); // VTEX offset
+                    get_word (fptr); // VSND offset
 
                     ////////////////////////////////////////////////////////////////////
                     //
@@ -202,9 +200,17 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     //
                     if (page         == V32_PAGE_CART)
                     {
-                        cart_regions  = (region_t **) calloc (sizeof (region_t *),
-                                                              num_vtex); 
+                        size          = sizeof (vtex_t);
+                        len           = num_vtex;
+                        cart_vtex     = (vtex_t *) calloc (size, len); 
+                        vptr          = cart_vtex;
                     }
+                    else
+                    {
+                        vptr          = bios_vtex;
+                    }
+
+                    vptr -> qty       = num_vtex;
 
                     ////////////////////////////////////////////////////////////////////
                     //
@@ -217,16 +223,17 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     {
                         if (page     == V32_PAGE_CART)
                         {
-                            rptr      = (*(cart_regions+index));
+                            rptr      = (cart_vtex+index) -> region;
                         }
                         else // BIOS
                         {
-                            rptr      = (bios_regions+index);
+                            rptr      = bios_vtex         -> region;
                         }
-                        rptr          = (region_t *) calloc (sizeof (region_t),
-                                                             V32_REGIONS_PER_TEXTURE);
+
+                        size          = sizeof (region_t);
+                        len           = V32_REGIONS_PER_TEXTURE;
+                        rptr          = (region_t *) calloc (size, len);
                     }
-                    rptr              = NULL;
 
                     ////////////////////////////////////////////////////////////////////
                     //
@@ -257,22 +264,8 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     fseek (fptr, (0x02 * wordsize), SEEK_SET);
                     SYSPORTSET(MEM_Connected,        TRUE);
                     data_size         = 262144;
-                    num_vtex          = 0;
-                    num_vsnd          = 0;
-                    vtexoffset        = 0;
-                    vsndoffset        = 0;
                     break;
             }
-
-            ////////////////////////////////////////////////////////////////////////////
-            //
-            // Establish mem_t VTEX and VSND values (useful for system inventory)
-            //
-            mptr                      = (memory+page);
-            mptr -> num_vtex          = num_vtex;
-            mptr -> num_vsnd          = num_vsnd;
-            mptr -> vtex_offset       = (uint32_t *) calloc (sizeof (uint32_t), num_vtex);
-            mptr -> vsnd_offset       = (uint32_t *) calloc (sizeof (uint32_t), num_vsnd);
 
             ////////////////////////////////////////////////////////////////////////////
             //
@@ -309,24 +302,38 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
 
             ////////////////////////////////////////////////////////////////////////////
             //
-            // Now at first VTEX
+            // Now at VTEX
             //
             if ((page                == V32_PAGE_BIOS) ||
                 (page                == V32_PAGE_CART))
             {
                 fprintf (debug, "[LOAD:VBIN] final offset is: 0x%.8X\n", offset);
-                data                  = get_word (fptr); // V32_
-                data                  = get_word (fptr); // VTEX
-                data_size             = get_word (fptr); // width
-                data_size            *= get_word (fptr); // height
                 for (count            = 0;
                      count           <  num_vtex;
                      count            = count + 1)
                 {
-                    iptr              = mptr -> vtex_offset;
-                    *(iptr+count)     = offset;
+					if (page         == V32_PAGE_CART)
+					{
+						vptr          = (cart_vtex+count);
+					}
+					else // BIOS
+					{
+						vptr          = bios_vtex;
+					}
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // populate VTEX attributes
+                    //
+                    get_word (fptr); // "V32_"
+                    get_word (fptr); // "VTEX"
+                    vptr -> wide      = get_word (fptr); // width
+                    vptr -> high      = get_word (fptr); // height
+                    vptr -> size      = vptr -> wide * vptr -> high;
+                    vptr -> offset    = offset;
+
                     for (index        = 0;
-                         index       <  data_size;
+                         index       <  vptr -> size;
                          index        = index + 1)
                     {
                         data          = get_word (fptr);
@@ -345,10 +352,6 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     }
 
                     fprintf (debug, "[LOAD:VBIN] final offset of vtex #%d is: 0x%.8X\n", count, offset);
-                    data              = get_word (fptr); // V32_
-                    data              = get_word (fptr); // VTEX
-                    data_size         = get_word (fptr); // width
-                    data_size        *= get_word (fptr); // height
                 }
 
                 // TODO: add section for VSND data, will look much like the above

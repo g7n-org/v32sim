@@ -40,6 +40,7 @@ struct data_type
 };
 typedef struct data_type data_t;
 
+/*
 struct region_type
 {
     int16_t   minX;
@@ -50,6 +51,7 @@ struct region_type
     int16_t   hotY;
 };
 typedef struct region_type  region_t;
+*/
 
 struct memory_type
 {
@@ -60,10 +62,6 @@ struct memory_type
     uint32_t  last_addr;
     uint32_t  size;
     uint32_t  checksum;
-	uint32_t  num_vtex;
-	uint32_t  num_vsnd;
-	uint32_t *vtex_offset;
-	uint32_t *vsnd_offset;
 };
 typedef struct memory_type mem_t;
 
@@ -87,8 +85,9 @@ extern int8_t    *token_label;
 // Variables related to IOPorts
 //
 extern data_t   **ioports;
-extern region_t  *bios_regions;  // for managing textures and regions within textures
-extern region_t **cart_regions;  // for managing textures and regions within textures
+extern vtex_t    *bios_vtex;  // for managing textures and regions within textures
+extern vtex_t    *cart_vtex;  // for managing textures and regions within textures
+extern gamepad_t *gamepad;
 extern uint8_t    sys_reg_show;
 
 extern uint8_t    action;

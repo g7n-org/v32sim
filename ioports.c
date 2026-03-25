@@ -11,6 +11,7 @@ void  init_ioports  (void)
     int8_t    *nptr                        = NULL;
     data_t    *pptr                        = NULL;
     size_t     len                         = 0;
+    size_t     size                        = 0;
     struct tm *current_time_tm;
     time_t     current_time_raw;
 
@@ -29,11 +30,15 @@ void  init_ioports  (void)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // BIOS texture/regions is a 1D array of region_t's for managing the
-    // regions present in the single BIOS texture.
+    // BIOS texture/regions is a 1D array of region_t's within a singular vtex,
+    // for managing the regions present in the single BIOS texture.
     //
-    bios_regions                           = (region_t *) calloc (sizeof (region_t),
-                                                          V32_REGIONS_PER_TEXTURE); 
+    size                                   = sizeof (vtex_t);
+    len                                    = 1;
+    bios_vtex                              = (vtex_t *)   calloc (size, len);
+    size                                   = sizeof (region_t);
+    len                                    = V32_REGIONS_PER_TEXTURE;
+    bios_vtex -> region                    = (region_t *) calloc (size, len);                   
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -577,22 +582,22 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
     //
     // Declare and initialize local variables
     //
-    uint32_t  value                   = 0;
-    uint16_t  type                    = (portaddr & 0x0700) >> 8;  // port category
-    uint16_t  attr                    = (portaddr & 0x00FF);       // item within category
-    int16_t   vtex                    = 0;
-    int16_t   id                      = 0;
-    uint8_t   check                   = FALSE;
-    data_t   *pptr                    = *(ioports+type);           // pointer for sanity
-    region_t *rptr                    = NULL;
-    int32_t  *iptr                    = NULL;
-    float    *fptr                    = NULL;
+    uint32_t  value                    = 0;
+    uint16_t  type                     = (portaddr & 0x0700) >> 8;  // port category
+    uint16_t  attr                     = (portaddr & 0x00FF);
+    int16_t   num                      = 0;
+    int16_t   id                       = 0;
+    uint8_t   check                    = FALSE;
+    data_t   *pptr                     = *(ioports+type);           // port pointer
+    region_t *rptr                     = NULL;                      // region pointer
+    int32_t  *iptr                     = NULL;                      // integer ptr
+    float    *fptr                     = NULL;                      // float pointer
 
-    check                             = ioports_chk (portaddr, FLAG_WRITE, sys_force);
-    if (check                        == TRUE)
+    check                              = ioports_chk (portaddr, FLAG_WRITE, sys_force);
+    if (check                         == TRUE)
     {
-        iptr                          = &((pptr+attr) -> value.i32);
-        fptr                          = &((pptr+attr) -> value.f32);
+        iptr                           = &((pptr+attr) -> value.i32);
+        fptr                           = &((pptr+attr) -> value.f32);
         switch (portaddr)
         {
             case RNG_CurrentValue:
@@ -604,28 +609,28 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 //
                 // Execute the GPU command
                 //
-                *iptr                 = i32;
+                *iptr                  = i32;
 
-                if (*iptr            == GPUCommand_ClearScreen)
+                if (*iptr             == GPUCommand_ClearScreen)
                 {
-                    value             = IPORTGET(GPU_ClearColor);
+                    value              = IPORTGET(GPU_ClearColor);
                     // clear the GD image with indicated color
                 }
-                else if (*iptr       == GPUCommand_DrawRegion)
+                else if (*iptr        == GPUCommand_DrawRegion)
                 {
                     // obtain current region and attributes, display it on GD image
-                    vtex              = IPORTGET(GPU_SelectedTexture);
-                    id                = IPORTGET(GPU_SelectedRegion);
-                    if (vtex         == -1)
+                    num                = IPORTGET(GPU_SelectedTexture);
+                    id                 = IPORTGET(GPU_SelectedRegion);
+                    if (num           == -1)
                     {
-                        rptr          = (bios_regions+id);
+                        rptr           = bios_vtex       -> region;
                     }
-                    else if (vtex    != -2)
+                    else if (num      != -2)
                     {
-                        rptr          = (*(cart_regions+vtex)+id);
+                        rptr           = (cart_vtex+num) -> region;
                     }
 
-                    if (vtex         != -2)
+                    if (num           != -2)
                     {
                         ; // obtain each attribute, do what needs to be done
                         /*
@@ -648,48 +653,48 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 //
                 // Back up current selected region data in current texture
                 //
-                vtex              = IPORTGET(GPU_SelectedTexture);
-                id                = IPORTGET(GPU_SelectedRegion);
-                if (vtex         == -1)
+                num                    = IPORTGET(GPU_SelectedTexture);
+                id                     = IPORTGET(GPU_SelectedRegion);
+                if (num               == -1)
                 {
-                    rptr          = (bios_regions+id);
+                    rptr               = bios_vtex       -> region;
                 }
-                else if (vtex    != -2)
+                else if (num          != -2)
                 {
-                    rptr          = (*(cart_regions+vtex)+id);
+                    rptr               = (cart_vtex+num) -> region;
                 }
 
-                if (vtex    != -2)
+                if (num               != -2)
                 {
-                    rptr -> minX  = IPORTGET(GPU_RegionMinX);
-                    rptr -> minY  = IPORTGET(GPU_RegionMinY);
-                    rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
-                    rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
-                    rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
-                    rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
+                    (rptr+id) -> minX  = IPORTGET(GPU_RegionMinX);
+                    (rptr+id) -> minY  = IPORTGET(GPU_RegionMinY);
+                    (rptr+id) -> maxX  = IPORTGET(GPU_RegionMaxX);
+                    (rptr+id) -> maxY  = IPORTGET(GPU_RegionMaxY);
+                    (rptr+id) -> hotX  = IPORTGET(GPU_RegionHotspotX);
+                    (rptr+id) -> hotY  = IPORTGET(GPU_RegionHotspotY);
                 }
 
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Set the (texture) port
                 //
-                *iptr             = i32;
-                vtex              = IPORTGET(GPU_SelectedTexture);
+                *iptr                  = i32;
+                num                    = IPORTGET(GPU_SelectedTexture);
 
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Restore region data based on selected texture
                 //
-                if (vtex         == -1)
+                if (num               == -1)
                 {
-                    rptr          = (bios_regions+id);
+                    rptr               = bios_vtex       -> region;
                 }
-                else if (vtex    != -2)
+                else if (num          != -2)
                 {
-                    rptr          = (*(cart_regions+vtex)+id);
+                    rptr               = (cart_vtex+num) -> region;
                 }
 
-                if (vtex         != -2)
+                if (num               != -2)
                 {
                     PORTSET(GPU_RegionMinX,     rptr -> minX);
                     PORTSET(GPU_RegionMinY,     rptr -> minY);
@@ -705,48 +710,48 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 //
                 // Back up current selected region data in current texture
                 //
-                vtex              = IPORTGET(GPU_SelectedTexture);
-                id                = IPORTGET(GPU_SelectedRegion);
-                if (vtex         == -1)
+                num                    = IPORTGET(GPU_SelectedTexture);
+                id                     = IPORTGET(GPU_SelectedRegion);
+                if (num               == -1)
                 {
-                    rptr          = (bios_regions+id);
+                    rptr               = bios_vtex       -> region;
                 }
-                else if (vtex    != -2)
+                else if (num          != -2)
                 {
-                    rptr          = (*(cart_regions+vtex)+id);
+                    rptr               = (cart_vtex+num) -> region;
                 }
 
-                if (vtex         != -2)
+                if (num               != -2)
                 {
-                    rptr -> minX  = IPORTGET(GPU_RegionMinX);
-                    rptr -> minY  = IPORTGET(GPU_RegionMinY);
-                    rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
-                    rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
-                    rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
-                    rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
+                    (rptr+id) -> minX  = IPORTGET(GPU_RegionMinX);
+                    (rptr+id) -> minY  = IPORTGET(GPU_RegionMinY);
+                    (rptr+id) -> maxX  = IPORTGET(GPU_RegionMaxX);
+                    (rptr+id) -> maxY  = IPORTGET(GPU_RegionMaxY);
+                    (rptr+id) -> hotX  = IPORTGET(GPU_RegionHotspotX);
+                    (rptr+id) -> hotY  = IPORTGET(GPU_RegionHotspotY);
                 }
 
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Set the (region) port
                 //
-                *iptr             = i32;
-                id                = IPORTGET(GPU_SelectedRegion);
+                *iptr                  = i32;
+                id                     = IPORTGET(GPU_SelectedRegion);
 
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Restore region data based on selected region
                 //
-                if (vtex         == -1)
+                if (num               == -1)
                 {
-                    rptr          = (bios_regions+id);
+                    rptr               = bios_vtex       -> region;
                 }
-                else if (vtex    != -2)
+                else if (num          != -2)
                 {
-                    rptr          = (*(cart_regions+vtex)+id);
+                    rptr               = (cart_vtex+num) -> region;
                 }
 
-                if (vtex         != -2)
+                if (num               != -2)
                 {
                     PORTSET(GPU_RegionMinX,     rptr -> minX);
                     PORTSET(GPU_RegionMinY,     rptr -> minY);
