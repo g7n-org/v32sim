@@ -6,6 +6,7 @@ void  init_ioports  (void)
     //
     // Declare and initialize variables
     //
+    int32_t    count                       = 0;
     int32_t    index                       = 0;
     int32_t    value                       = 0;
     int8_t    *nptr                        = NULL;
@@ -39,6 +40,26 @@ void  init_ioports  (void)
     size                                   = sizeof (region_t);
     len                                    = V32_REGIONS_PER_TEXTURE;
     bios_vtex -> region                    = (region_t *) calloc (size, len);                   
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // gamepad ports backing store: a 4-element array of gamepad_t
+    //
+    size                                      = sizeof (gamepad_t);
+    len                                       = 4;
+    gamepad                                   = (gamepad_t *) calloc (size, len);
+    for (index                                = 0;
+         index                               <  V32_NUM_GAMEPADS;
+         index                                = index + 1)
+    {
+        (gamepad+index) -> connected          = FALSE;
+        for (count                            = INP_GamepadLeft    - 0x402;
+             count                           <= INP_GamepadButtonR - 0x402;
+             count                            = count + 1)
+        {
+            (gamepad+index) -> button[count]  = -1;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -775,6 +796,24 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 *fptr             = f32;
                 break;
 
+            case INP_SelectedGamepad:
+                if ((i32         <  0) ||
+                    (i32         >  3))
+                {
+                    fprintf (debug, "[ioports_set] invalid gamepad id %d\n", i32);
+                    break;
+                }
+
+                *iptr             = i32;
+
+                for (value        = INP_GamepadLeft;
+                     value       <= INP_GamepadButtonR;
+                     value        = value + 1)
+                {
+                    SYSPORTSET(value, (gamepad+i32) -> button [value-0x402]);
+                }
+                break;
+
             default: // catch all- the standard transaction for external setting
                 *iptr             = i32;
                 break;
@@ -794,30 +833,47 @@ void  update_ioports (void)
     //
     // Declare and initialize local variables
     //
-    int32_t   type  = 0;     // type of port (category)
-    int32_t   attr  = 0;     // specific port in the category
-    data_t   *pptr  = NULL;  // pointer to port
-    int32_t   dptr  = 0;     // port data
+    int32_t   index        = 0;
+    int32_t   button       = 0;     // specific port in the category
+    int32_t  *iptr         = NULL;
+    uint8_t  *cptr         = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // update INP_ ports, specifically the dpad and buttons: each frame the value
     // moves away from 0 by 1 (be it negative- no pressed, or positive- pressed)
     //
-    type            = INP_PORT;
-    pptr            = *(ioports+type); // pointer for sanity
-    for (attr       = INP_GamepadLeft;
-         attr      <= INP_GamepadButtonR;
-         attr       = attr + 1)
+    for (index             = 0;
+         index            <  V32_NUM_GAMEPADS;
+         index             = index + 1)
     {
-        dptr        = (pptr+attr) -> value.i32;  // pointer to port data
-        if (dptr   <  0) // if the button is NOT currently pressed
+        cptr               = (gamepad+index) -> connected;
+        if (*cptr         == TRUE) // only update if connected
         {
-            dptr    = dptr - 1;
+            for (button    = INP_GamepadLeft    - 0x402;
+                 button   <= INP_GamepadButtonR - 0x402;
+                 button    = button + 1)
+            {
+                iptr       = (gamepad+index) -> button[button];
+                if (*iptr <  0) // if button NOT pressed
+                {
+                    *iptr  = *iptr - 1;
+                }
+                else
+                {
+                    *iptr  = *iptr + 1;
+                }
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // if the currently selected gamepad is the is the current index
+                // as we cycle through the gamepad array, update the ports
+                //
+                if (index == IPORTGET(INP_SelectedGamepad))
+                {
+                    SYSPORTSET((button+0x402), *iptr);
+                }
+            }
         }
-        else             // the button IS currently pressed
-        {
-            dptr    = dptr + 1;
-        }
-    }        
+    }
 }
