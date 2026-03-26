@@ -846,8 +846,12 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                      value       <= INP_GamepadButtonR;
                      value        = value + 1)
                 {
-                    bptr          = (gamepad+id) -> button[value-0x402];
-                    *bptr         = IPORTGET(value);
+                    if ((id      >= 0) &&
+                        (id      <= 3))
+                    {
+                        bptr      = (gamepad+id) -> button[value-0x402];
+                        *bptr     = IPORTGET(value);
+                    }
                     SYSPORTSET(value, (gamepad+i32) -> button[value-0x402]);
                 }
                 break;
