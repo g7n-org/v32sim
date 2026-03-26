@@ -842,22 +842,25 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 // restore current gamepad values in SelectedGamepad from 
                 // backing store
                 //
-                for (value        = INP_GamepadLeft;
-                     value       <= INP_GamepadButtonR;
-                     value        = value + 1)
+                for (value             = INP_GamepadLeft;
+                     value            <= INP_GamepadButtonR;
+                     value             = value + 1)
                 {
-                    if ((id      >= 0) &&
-                        (id      <= 3))
+                    if ((id           >= 0) &&
+                        (id           <= 3))
                     {
-                        bptr      = (gamepad+id) -> button[value-0x402];
-                        *bptr     = IPORTGET(value);
+						num            = value - 0x402;
+                        bptr           = (gamepad+id) -> button;
+                        *(bptr+num)    = IPORTGET(value);
                     }
-                    SYSPORTSET(value, (gamepad+i32) -> button[value-0x402]);
+					num                = value - 0x402;
+					bptr               = (gamepad+i32) -> button;
+                    SYSPORTSET(value, *(bptr+num));
                 }
                 break;
 
             default: // catch all- the standard transaction for external setting
-                *iptr             = i32;
+                *iptr                  = i32;
                 break;
         }
     }
@@ -889,7 +892,7 @@ void  update_ioports (void)
          index            <  V32_NUM_GAMEPADS;
          index             = index + 1)
     {
-        cptr               = (gamepad+index) -> connected;
+        cptr               = &(gamepad+index) -> connected;
         if (*cptr         == TRUE) // only update if connected
         {
             for (button    = INP_GamepadLeft    - 0x402;
