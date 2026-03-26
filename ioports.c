@@ -607,12 +607,13 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
     uint32_t  value                    = 0;
     uint16_t  type                     = (portaddr & 0x0700) >> 8;  // port category
     uint16_t  attr                     = (portaddr & 0x00FF);
-    int16_t   num                      = 0;
-    int16_t   id                       = 0;
+    int32_t   num                      = 0;
+    int32_t   id                       = 0;
     uint8_t   check                    = FALSE;
     data_t   *pptr                     = *(ioports+type);           // port pointer
     region_t *rptr                     = NULL;                      // region pointer
     int32_t  *iptr                     = NULL;                      // integer ptr
+    int32_t  *bptr                     = NULL;                      // button ptr (int)
     float    *fptr                     = NULL;                      // float pointer
 
     check                              = ioports_chk (portaddr, FLAG_WRITE, sys_force);
@@ -652,7 +653,8 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                         rptr           = (cart_vtex+num) -> region;
                     }
 
-                    if (num           != -2)
+                    if ((num          != -2) &&
+                        (id           != -2))
                     {
                         ; // obtain each attribute, do what needs to be done
                         /*
@@ -671,6 +673,12 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
 //| `0x14` | `GPUCommand_DrawRegionRotozoomed` | draw region: rotation on , zoom on  |
                     
             case GPU_SelectedTexture:
+                if ((i32         <  -1) ||
+                    (i32         >= 256))
+                {
+                    fprintf (debug, "[ioports_set] invalid texture id %d\n", i32);
+                    break;
+                }
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Back up current selected region data in current texture
@@ -730,6 +738,13 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 break;
 
             case GPU_SelectedRegion:
+                if ((i32         <  0) ||
+                    (i32         >= 4096))
+                {
+                    fprintf (debug, "[ioports_set] invalid region id %d\n", i32);
+                    break;
+                }
+
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Back up current selected region data in current texture
@@ -777,7 +792,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 }
 
                 if ((num              != -2) &&
-                    (num              != -2))
+                    (id               != -2))
                 {
                     PORTSET(GPU_RegionMinX,     (rptr+id) -> minX);
                     PORTSET(GPU_RegionMinY,     (rptr+id) -> minY);
@@ -809,13 +824,31 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                     break;
                 }
 
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // obtain current selected Gamepad
+                //
+                id                = IPORTGET(INP_SelectedGamepad);
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // update the port to reflect the new selected Gamepad
+                //
                 *iptr             = i32;
 
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // back up existing gamepad values to gamepad backing store; 
+                // restore current gamepad values in SelectedGamepad from 
+                // backing store
+                //
                 for (value        = INP_GamepadLeft;
                      value       <= INP_GamepadButtonR;
                      value        = value + 1)
                 {
-                    SYSPORTSET(value, (gamepad+i32) -> button [value-0x402]);
+                    bptr          = (gamepad+id) -> button[value-0x402];
+                    *bptr         = IPORTGET(value);
+                    SYSPORTSET(value, (gamepad+i32) -> button[value-0x402]);
                 }
                 break;
 
