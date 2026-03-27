@@ -235,6 +235,87 @@ void  init_ioports  (void)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // SPU ports: allocate and initialize
+    //
+    len                                    = sizeof (data_t)   * NUM_SPU_PORTS;
+    *(ioports+SPU_PORT)                    = (data_t *) malloc (len);
+    pptr                                   = *(ioports+SPU_PORT);
+    pptr -> qty                            = NUM_SPU_PORTS;
+
+    for (index                             = 0;
+         index                            <  NUM_SPU_PORTS;
+         index                             = index + 1)
+    {
+        (pptr+index) -> value.i32          = 0x00000000;
+        (pptr+index) -> flag               = FLAG_READ | FLAG_WRITE;
+        (pptr+index) -> fmt                = FORMAT_SIGNED;
+        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                               = (pptr+index) -> name;
+
+        switch (SPU_Command | index)
+        {
+            case SPU_Command:
+                (pptr+index) -> flag       = FLAG_WRITE;
+                (pptr+index) -> fmt        = FORMAT_HEX;
+                sprintf (nptr, "SPU_Command");
+                break;
+
+            case SPU_GlobalVolume:
+                sprintf (nptr, "SPU_GlobalVolume");
+                break;
+
+            case SPU_SelectedSound:
+                sprintf (nptr, "SPU_SelectedSound");
+                break;
+
+            case SPU_SelectedChannel:
+                sprintf (nptr, "SPU_SelectedChannel");
+                break;
+
+            case SPU_SoundLength:
+                sprintf (nptr, "SPU_SoundLength");
+                break;
+
+            case SPU_SoundPlayWithLoop:
+                sprintf (nptr, "SPU_SoundPlayWithLoop");
+                break;
+
+            case SPU_SoundLoopStart:
+                sprintf (nptr, "SPU_SoundLoopStart");
+                break;
+
+            case SPU_SoundLoopEnd:
+                sprintf (nptr, "SPU_SoundLoopEnd");
+                break;
+
+            case SPU_ChannelState:
+                sprintf (nptr, "SPU_ChannelState");
+                break;
+
+            case SPU_ChannelAssignedSound:
+                sprintf (nptr, "SPU_ChannelAssignedSound");
+                break;
+
+            case SPU_ChannelVolume:
+                sprintf (nptr, "SPU_ChannelVolume");
+                break;
+
+            case SPU_ChannelSpeed:
+                sprintf (nptr, "SPU_ChannelSpeed");
+                break;
+
+            case SPU_ChannelLoopEnabled:
+                sprintf (nptr, "SPU_ChannelLoopEnabled");
+                break;
+
+            case SPU_ChannelPosition:
+                sprintf (nptr, "SPU_ChannelPosition");
+                break;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // INP ports: allocate and initialize
     //
     len                                    = sizeof (data_t)   * NUM_INP_PORTS;
@@ -242,20 +323,20 @@ void  init_ioports  (void)
     pptr                                   = *(ioports+INP_PORT);
     pptr -> qty                            = NUM_INP_PORTS;
 
-    for (index                        = 0;
-         index                       <  NUM_INP_PORTS;
-         index                        = index + 1)
+    for (index                             = 0;
+         index                            <  NUM_INP_PORTS;
+         index                             = index + 1)
     {
-        (pptr+index) -> value.i32     = -1; // not pressed, negative value
-        (pptr+index) -> flag          = FLAG_READ;
-        (pptr+index) -> fmt           = FORMAT_SIGNED;
-        (pptr+index) -> name          = (int8_t *) malloc (sizeof (int8_t) * 32);
-        nptr                          = (pptr+index) -> name;
+        (pptr+index) -> value.i32          = -1; // not pressed, negative value
+        (pptr+index) -> flag               = FLAG_READ;
+        (pptr+index) -> fmt                = FORMAT_SIGNED;
+        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        nptr                               = (pptr+index) -> name;
 
         switch (INP_SelectedGamepad | index)
         {
             case INP_SelectedGamepad:
-                (pptr+index) -> flag  = FLAG_READ | FLAG_WRITE;
+                (pptr+index) -> flag       = FLAG_READ | FLAG_WRITE;
                 sprintf (nptr, "INP_SelectedGamepad");
                 break;
 
