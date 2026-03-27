@@ -160,7 +160,7 @@ linked_l *list_add       (linked_l *,  linked_l *);
 linked_l *list_grab      (linked_l **, linked_l *);
 void      displayshow    (linked_l *,  uint8_t);
 void      show_sysregs   (void);
-void      display_config (void);
+void      display_config (uint8_t);
 uint8_t  *show_size      (uint32_t);
 void      process_args   (int32_t,     int8_t  **);
 void      usage          (int8_t  *);

@@ -130,12 +130,17 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 {
                     action                 = INPUT_DISPLAY;
                 }
+                else if (byte             == 'g')   // gamepad
+                {
+                    action                 = INPUT_GAMEPAD;
+                    display_config (action);
+                }
                 else if (byte             == 'i')   // ignore
                 {
                     if (0                 == strncasecmp ((string+match[1].rm_so), "in", 2))
                     {
                         action             = INPUT_INVENTORY;
-                        display_config ();
+                        display_config (action);
                     }
                     else
                     {
@@ -697,17 +702,37 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     //
                     // example: gamepad0
                     //
-                    token              = strtok ((string + match[2].rm_so), " ");
-					fprintf (debug, "[gamepad] token: %s\n", token);
-                    value              = atoi (token);
+                    len                = 2;
+                    token              = (string + match[len].rm_so);
+                    fprintf (debug, "[gamepad] token: %s\n", token);
+                    if ((token[0]     >= '0') &&
+                        (token[0]     <= '3'))
+                    {
+                        value          = atoi (token);
+                        len            = len + 1;
+                    }
+                    else
+                    {
+                        value          = IPORTGET(INP_SelectedGamepad);
+                    }
+
+                    token              = (string + match[len].rm_so);
+                    
+                    /*
+    int32_t     check              = 0;
+    int32_t     count              = 0;
+    int32_t     value              = 0;
+    int32_t     index              = 0;
+    int32_t     len                = 0;
+    */
 
                     ////////////////////////////////////////////////////////////////////
                     //
                     // determine which gamepad command is issued
                     //
                     //token              = strtok ((string + match[2].rm_so), " ");
-                    token              = (string + match[3].rm_so);
-					fprintf (verbose, "[gamepad%d] %s\n", value, token);
+                    //token              = (string + match[3].rm_so);
+                    fprintf (verbose, "[gamepad%d] %s\n", value, token);
                     if (0             == strncasecmp (token, "se", 2)) // select
                     {
                         SYSPORTSET(INP_SelectedGamepad, value); 

@@ -77,31 +77,59 @@ void  show_sysregs (void)
     }
 }
 
-void  display_config (void)
+void  display_config (uint8_t  item)
 {
     int32_t   index  = 0;
+    data_t   *dptr   = NULL;
 
-    fprintf (stdout, "v32sim system inventory\n");
-    fprintf (stdout, "=======================\n");
-    fprintf (stdout, "RAM:  %s\n", show_size (V32_PAGE_RAM));
-    fprintf (stdout, "BIOS: %s\n", show_size (V32_PAGE_BIOS));
-    fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",
-             index,
-             (bios_vtex) -> wide,
-             (bios_vtex) -> high,
-             (bios_vtex) -> offset);
-    fprintf (stdout, "CART: %s\n", show_size (V32_PAGE_CART));
-    for (index       = 0;
-         index      <  (cart_vtex+0) -> qty;
-         index       = index + 1)
+    switch (item)
     {
-        fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",
-                 index,
-                 (cart_vtex+index) -> wide,
-                 (cart_vtex+index) -> high,
-                 (cart_vtex+index) -> offset);
+        case INPUT_INVENTORY:
+            fprintf (stdout, "v32sim system inventory\n");
+            fprintf (stdout, "===================================\n");
+            fprintf (stdout, "RAM:  %s\n", show_size (V32_PAGE_RAM));
+            fprintf (stdout, "BIOS: %s\n", show_size (V32_PAGE_BIOS));
+            fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",
+                     index,
+                     (bios_vtex) -> wide,
+                     (bios_vtex) -> high,
+                     (bios_vtex) -> offset);
+            fprintf (stdout, "CART: %s\n", show_size (V32_PAGE_CART));
+            for (index       = 0;
+                 index      <  (cart_vtex+0) -> qty;
+                 index       = index + 1)
+            {
+                fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",
+                         index,
+                         (cart_vtex+index) -> wide,
+                         (cart_vtex+index) -> high,
+                         (cart_vtex+index) -> offset);
+            }
+            fprintf (stdout, "MEMC: %s\n", show_size (V32_PAGE_MEMC));
+            fprintf (stdout, "\n");
+            break;
+
+        case INPUT_GAMEPAD:
+            fprintf (stdout, "v32sim gamepad\n");
+            fprintf (stdout, "=============================\n");
+            fprintf (stdout, "%22s: %d\n",
+                             "INP_SelectedGamepad",
+                             IPORTGET(INP_SelectedGamepad));
+            fprintf (stdout, "%22s: %s\n",
+                             "INP_GamepadConnected",
+                             (IPORTGET(INP_GamepadConnected) == 1) ? "true" : "false");
+            for (index       = INP_GamepadLeft;
+                 index      <= INP_GamepadButtonR;
+                 index       = index + 1)
+            {
+                dptr         = ioports_ptr ((uint16_t) index);
+                fprintf (stdout, "%22s: %d\n",
+                                 dptr -> name,
+                                 IPORTGET((uint16_t) index));
+            }
+            fprintf (stdout, "\n");
+            break;
     }
-    fprintf (stdout, "MEMC: %s\n", show_size (V32_PAGE_MEMC));
 }
 
 uint8_t *show_size (uint32_t  page)

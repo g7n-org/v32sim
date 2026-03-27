@@ -261,6 +261,7 @@ void  init_ioports  (void)
 
             case INP_GamepadConnected:
                 (pptr+index) -> value.i32  = 0;
+                (pptr+index) -> fmt        = FORMAT_BOOLEAN;
                 sprintf (nptr, "INP_GamepadConnected");
                 break;
 
@@ -937,7 +938,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 // update the gamepad backing store
                 //
                 bptr                   = (gamepad+id) -> button;
-                *(bptr+type)           = i32;
+                *(bptr+(attr-2))       = i32;
                 break;
 
             default: // catch all- the standard transaction for external setting
