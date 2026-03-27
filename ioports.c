@@ -679,6 +679,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                     fprintf (debug, "[ioports_set] invalid texture id %d\n", i32);
                     break;
                 }
+
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Back up current selected region data in current texture
@@ -832,9 +833,21 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
 
                 ////////////////////////////////////////////////////////////////////////
                 //
+                // check that the current gamepad is connected
+                //
+                check             = IPORTGET(INP_GamepadConnected);
+
+                ////////////////////////////////////////////////////////////////////////
+                //
                 // update the port to reflect the new selected Gamepad
                 //
                 *iptr             = i32;
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // restore the selected gamepad's connected state from backing store
+                //
+                SYSPORTSET(INP_GamepadConnected, (gamepad+i32) -> connected);
 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -846,17 +859,85 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                      value            <= INP_GamepadButtonR;
                      value             = value + 1)
                 {
-                    if ((id           >= 0) &&
-                        (id           <= 3))
-                    {
-						num            = value - 0x402;
-                        bptr           = (gamepad+id) -> button;
-                        *(bptr+num)    = IPORTGET(value);
-                    }
-					num                = value - 0x402;
-					bptr               = (gamepad+i32) -> button;
+                    num                = value - 0x402;
+                    bptr               = (gamepad+i32) -> button;
                     SYSPORTSET(value, *(bptr+num));
                 }
+                break;
+
+            case INP_GamepadConnected:
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // obtain current selected Gamepad
+                //
+                id                     = IPORTGET(INP_SelectedGamepad);
+                if ((id               <  0) ||
+                    (id               >  3))
+                {
+                    fprintf (debug, "[ioports_set] invalid gamepad id %d\n", id);
+                    break;
+                }
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // update the port to reflect the current selected Gamepad state
+                //
+                *iptr                  = i32;
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // update the gamepad backing store
+                //
+                (gamepad+id) -> connected  = i32;
+                break;
+
+            case INP_GamepadLeft:
+            case INP_GamepadRight:
+            case INP_GamepadUp:
+            case INP_GamepadDown:
+            case INP_GamepadButtonStart:
+            case INP_GamepadButtonA:
+            case INP_GamepadButtonB:
+            case INP_GamepadButtonX:
+            case INP_GamepadButtonY:
+            case INP_GamepadButtonL:
+            case INP_GamepadButtonR:
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // obtain current selected Gamepad
+                //
+                id                     = IPORTGET(INP_SelectedGamepad);
+
+                if ((id               <  0) ||
+                    (id               >  3))
+                {
+                    fprintf (debug, "[ioports_set] invalid gamepad id %d\n", i32);
+                    break;
+                }
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // obtain current selected Gamepad
+                //
+                check                  = IPORTGET(INP_GamepadConnected);
+                if (check             != TRUE)
+                {
+                    fprintf (debug, "[ioports_set] gamepad %d not connected\n", id);
+                    break;
+                }
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // update the port to reflect the current selected Gamepad state
+                //
+                *iptr                  = i32;
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // update the gamepad backing store
+                //
+                bptr                   = (gamepad+id) -> button;
+                *(bptr+type)           = i32;
                 break;
 
             default: // catch all- the standard transaction for external setting

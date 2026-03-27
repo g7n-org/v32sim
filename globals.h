@@ -1,6 +1,10 @@
 #ifndef  _GLOBALS_H
 #define  _GLOBALS_H
 
+typedef signed   long long int slli;
+typedef unsigned long long int ulli;
+typedef struct timespec        TimeSpec;
+
 // Simplify opcode display
 struct instruction_opcode
 {
@@ -172,5 +176,7 @@ uint8_t  *get_input      (FILE *,      const uint8_t *);
 uint8_t   prompt         (uint32_t);
 linked_l *find_label     (linked_l *,  int8_t *);
 linked_l *find_value     (linked_l *,  uint32_t);
+slli      timediff_ns    (TimeSpec *,  TimeSpec *);
+void      gamepad_io     (uint16_t);
 
 #endif

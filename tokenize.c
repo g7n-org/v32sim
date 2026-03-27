@@ -689,6 +689,82 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
                     }
                 }
+                else if (byte         == 'g') // gamepad
+                {
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // determine which gamepad was specified (0-3)
+                    //
+                    // example: gamepad0
+                    //
+                    token              = strtok ((string + match[2].rm_so), " ");
+					fprintf (debug, "[gamepad] token: %s\n", token);
+                    value              = atoi (token);
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // determine which gamepad command is issued
+                    //
+                    //token              = strtok ((string + match[2].rm_so), " ");
+                    token              = (string + match[3].rm_so);
+					fprintf (verbose, "[gamepad%d] %s\n", value, token);
+                    if (0             == strncasecmp (token, "se", 2)) // select
+                    {
+                        SYSPORTSET(INP_SelectedGamepad, value); 
+                    }
+                    else if (0        == strncasecmp (token, "c",  1)) // connect
+                    {
+                        SYSPORTSET(INP_GamepadConnected, 1); 
+                    }
+                    else if (0        == strncasecmp (token, "di", 2)) // disconnect
+                    {
+                        SYSPORTSET(INP_GamepadConnected, 0); 
+                    }
+                    else if (0        == strncasecmp (token, "le", 2)) // left
+                    {
+                        gamepad_io (INP_GamepadLeft);
+                    }
+                    else if (0        == strncasecmp (token, "ri", 2)) // right
+                    {
+                        gamepad_io (INP_GamepadRight);
+                    }
+                    else if (0        == strncasecmp (token, "u",  1)) // up
+                    {
+                        gamepad_io (INP_GamepadUp);
+                    }
+                    else if (0        == strncasecmp (token, "d",  1)) // down
+                    {
+                        gamepad_io (INP_GamepadDown);
+                    }
+                    else if (0        == strncasecmp (token, "S",  1)) // START
+                    {
+                        gamepad_io (INP_GamepadButtonStart);
+                    }
+                    else if (0        == strncasecmp (token, "A",  1)) // A
+                    {
+                        gamepad_io (INP_GamepadButtonA);
+                    }
+                    else if (0        == strncasecmp (token, "B",  1)) // B
+                    {
+                        gamepad_io (INP_GamepadButtonB);
+                    }
+                    else if (0        == strncasecmp (token, "X",  1)) // X
+                    {
+                        gamepad_io (INP_GamepadButtonX);
+                    }
+                    else if (0        == strncasecmp (token, "Y",  1)) // Y
+                    {
+                        gamepad_io (INP_GamepadButtonY);
+                    }
+                    else if (0        == strncasecmp (token, "L",  1)) // L
+                    {
+                        gamepad_io (INP_GamepadButtonL);
+                    }
+                    else if (0        == strncasecmp (token, "R",  1)) // R
+                    {
+                        gamepad_io (INP_GamepadButtonR);
+                    }
+                }
                 else if (byte         == 'h') // help
                 {
                     token              = strtok ((string + match[2].rm_so), " ");

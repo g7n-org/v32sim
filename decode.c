@@ -556,8 +556,8 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case WAIT:
-                waitflag    = TRUE; // triggers TIM_CycleCounter to reset
-                update_frame ();        // update Frame Counter
+			waitflag        = TRUE; // triggers TIM_CycleCounter to reset
+			update_frame ();        // update Frame Counter
             break;
 
         case JMP:

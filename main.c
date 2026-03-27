@@ -62,6 +62,10 @@ int32_t   main (int32_t  argc, char **argv)
     linked_l *btmp                  = NULL;
     linked_l *tmp                   = NULL;
     size_t    len                   = 0;
+    slli      elapsed_ns            = 0;
+    TimeSpec  delay;
+    TimeSpec  start;
+    TimeSpec  end;
     uint8_t   chk                   = FALSE;
     uint8_t   decodeflags           = FLAG_NONE;
     uint8_t   errorflag             = FLAG_NONE;
@@ -314,9 +318,6 @@ int32_t   main (int32_t  argc, char **argv)
             btmp                       = btmp -> next;
         }
 
-        REG(IP)                        = rom_offset;
-        REG(IR)                        = IMEMGET(REG(IP)); // current instruction
-
         ////////////////////////////////////////////////////////////////////////////////
         //
         // Check for instruction opcode (watchfor trigger)
@@ -344,6 +345,17 @@ int32_t   main (int32_t  argc, char **argv)
             runflag                    = FALSE;
         }
 
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Update the InstructionPointer and InstructionRegister
+        //
+        REG(IP)                        = rom_offset;
+        REG(IR)                        = IMEMGET(REG(IP)); // current instruction
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Update the ImmediateValue system register (based on instruction in IR)
+        //
         if ((REG(IR) & IMMVAL_MASK)   == IMMVAL_MASK)
         {
             REG(IV)                    = IMEMGET(REG(IP) + 1);
@@ -355,16 +367,29 @@ int32_t   main (int32_t  argc, char **argv)
             decodeflags                = FLAG_NONE;
         }
 
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // If verbosity is enabled and we are in continuation mode
+        //
         if ((verbose                  == stderr) &&
             (runflag                  == TRUE))
         {
             put_word (REG(IR), FLAG_DISPLAY);
 
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // If enabled, check for error generating instruction
+            //
             if (errorcheck            == TRUE)
             {
                 errorflag              = decode (REG(IR), REG(IV), FREG(IV),
                                                  decodeflags    | FLAG_ERROR);
 
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // If errorflag is false (there is a detected problem), kick back
+                // to te prompt, set up error highlighting.
+                //
                 if (errorflag         == FALSE)
                 {
                     runflag            = FALSE;
@@ -372,6 +397,10 @@ int32_t   main (int32_t  argc, char **argv)
                 }
             }
 
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Display the current instruction
+            //
             decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
             if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
             {
@@ -380,8 +409,16 @@ int32_t   main (int32_t  argc, char **argv)
             }
         }
 
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Single-step mode
+        //
         if (runflag                   == FALSE)
         {
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Display the prompt
+            //
             do
             {
                 if (sys_reg_show      == TRUE)
@@ -410,6 +447,10 @@ int32_t   main (int32_t  argc, char **argv)
                     put_word (REG(IR), FLAG_DISPLAY);
                 }
 
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // If enabled, check for error generating instruction
+                //
                 if (errorcheck        == TRUE)
                 {
                     errorflag          = decode (REG(IR), REG(IV), FREG(IV),
@@ -470,8 +511,51 @@ int32_t   main (int32_t  argc, char **argv)
         //
         if (ignoreflag                == FALSE)
         {
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Obtain the current time, for instruction timing purposes
+            // (pre-execution)
+            //
+            timespec_get (&start, TIME_UTC);
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Clear the system error variable
+            //
             sys_error                  = ERROR_NONE;
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Execute the current instruction
+            //
             decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_PROCESS);
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Obtain the current time (post execution), for instruction timing
+            // purposes
+            //
+            timespec_get (&end, TIME_UTC);
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Calculate the time elapsed
+            //
+            elapsed_ns                 = timediff_ns (&start, &end);
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // If the instruction took less than 66 nanoseconds, we need to
+            // delay to keep sync with the 15MHz clock speed
+            //
+            fprintf (debug, "[main] instruction took %llu nanoseconds\n", elapsed_ns);
+            if (elapsed_ns            <  66)
+            {
+                delay.tv_sec           = 0;
+                delay.tv_nsec          = 66 - elapsed_ns;
+
+                nanosleep (&delay, NULL);
+            }
         }
 
         ////////////////////////////////////////////////////////////////////////////////

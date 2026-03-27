@@ -9,6 +9,7 @@
 #include <math.h>
 #include <getopt.h>
 #include <time.h>
+#include <unistd.h>
 #include "ioports.h"
 #include "vtex.h"
 #include "gamepad.h"
