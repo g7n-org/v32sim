@@ -221,18 +221,21 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                          index       <  num_vtex;
                          index        = index + 1)
                     {
+                        size          = sizeof (region_t);
+                        len           = V32_REGIONS_PER_TEXTURE;
+
                         if (page     == V32_PAGE_CART)
                         {
                             rptr      = (cart_vtex+index) -> region;
+                            (cart_vtex+index) -> region  = (region_t *) calloc (size, len);
                         }
                         else // BIOS
                         {
                             rptr      = bios_vtex         -> region;
+                            rptr      = (region_t *) calloc (size, len);
                         }
 
-                        size          = sizeof (region_t);
-                        len           = V32_REGIONS_PER_TEXTURE;
-                        rptr          = (region_t *) calloc (size, len);
+                        //rptr          = (region_t *) calloc (size, len);
                     }
 
                     ////////////////////////////////////////////////////////////////////
