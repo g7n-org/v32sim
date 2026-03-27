@@ -124,7 +124,7 @@ void  init_ioports  (void)
 
     (pptr+0) -> value.i32                  = 0x00000000; //rand ();
     (pptr+0) -> flag                       = FLAG_READ | FLAG_WRITE;
-    (pptr+index) -> fmt                    = FORMAT_SIGNED;
+    (pptr+0) -> fmt                        = FORMAT_SIGNED;
     (pptr+0) -> name                       = (int8_t *) malloc (sizeof (int8_t) * 32);
     nptr                                   = (pptr+0) -> name;
     sprintf (nptr, "RNG_CurrentValue");
