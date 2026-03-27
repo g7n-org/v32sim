@@ -1062,14 +1062,14 @@ void  update_ioports (void)
                  button   <= INP_GamepadButtonR - 0x402;
                  button    = button + 1)
             {
-                iptr       = (gamepad+index) -> button[button];
-                if (*iptr <  0) // if button NOT pressed
+                iptr       = (gamepad+index) -> button;
+                if (*(iptr+button) <  0) // if button NOT pressed
                 {
-                    *iptr  = *iptr - 1;
+                    *(iptr+button)  = *(iptr+button) - 1;
                 }
                 else
                 {
-                    *iptr  = *iptr + 1;
+                    *(iptr+button)  = *(iptr+button) + 1;
                 }
 
                 ////////////////////////////////////////////////////////////////////////
@@ -1079,7 +1079,7 @@ void  update_ioports (void)
                 //
                 if (index == IPORTGET(INP_SelectedGamepad))
                 {
-                    SYSPORTSET((button+0x402), *iptr);
+                    SYSPORTSET((button+0x402), *(iptr+button));
                 }
             }
         }
