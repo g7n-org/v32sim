@@ -83,6 +83,7 @@
 #define  LIST_MEM                2
 #define  LIST_MEM_DEREF          3
 #define  LIST_IOP                4
+#define  LIST_PTR                5
 
 #define  INPUT_NONE              0
 #define  INPUT_INIT              1
@@ -225,6 +226,8 @@
 #define  FLAG_DATA               8
 #define  FLAG_ERROR              16
 #define  FLAG_DEMO               32
+#define  FLAG_ZERO               64
+#define  FLAG_RETERR             128
 
 #define  FLAG_READ               4
 #define  FLAG_WRITE              2

@@ -2,17 +2,21 @@
 
 linked_l *listnode (uint8_t  type, uint32_t  value)
 {
-    linked_l *newnode    = (linked_l *) malloc (sizeof (linked_l) * 1);
+    size_t    size       = sizeof (linked_l);
+    //linked_l *newnode    = (linked_l *) malloc (sizeof (linked_l) * 1);
+    linked_l *newnode    = (linked_l *) ralloc (size, 1, FLAG_RETERR | FLAG_ZERO);
     if (newnode         == NULL)
     {
         fprintf (stderr, "[ERROR] Could not allocate memory for linked list node!\n");
-        exit (LIST_ALLOC_FAIL);
+        exit    (LIST_ALLOC_FAIL);
     }
 
     newnode -> label     = NULL;
     newnode -> type      = type;
     newnode -> number    = 0;
     newnode -> space     = 7;
+    newnode -> pointer   = NULL;
+    newnode -> dpointer  = NULL;
     newnode -> data.raw  = value;
     newnode -> next      = NULL;
 

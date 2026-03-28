@@ -28,8 +28,10 @@ struct linked_list
     uint8_t    space;
     uint8_t    fmt;
     uint32_t   number;
+	void      *pointer;
+	void     **dpointer;
     word_t     data;
-    linked_l *next;
+    linked_l  *next;
 };
 
 struct data_type
@@ -43,19 +45,6 @@ struct data_type
     int8_t  *alias;
 };
 typedef struct data_type data_t;
-
-/*
-struct region_type
-{
-    int16_t   minX;
-    int16_t   minY;
-    int16_t   maxX;
-    int16_t   maxY;
-    int16_t   hotX;
-    int16_t   hotY;
-};
-typedef struct region_type  region_t;
-*/
 
 struct memory_type
 {
@@ -109,10 +98,11 @@ extern uint8_t    wordsize;
 extern uint32_t   rom_offset;
 extern uint32_t   seek_word;
 extern uint32_t   watch_word;
-extern linked_l *bpoint;
-extern linked_l *dpoint;
-extern linked_l *lpoint;
-extern linked_l *tpoint;
+extern linked_l  *bpoint;
+extern linked_l  *dpoint;
+extern linked_l  *lpoint;
+extern linked_l  *mpoint; // tracking allocated memory
+extern linked_l  *tpoint;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -178,5 +168,7 @@ linked_l *find_label     (linked_l *,  int8_t *);
 linked_l *find_value     (linked_l *,  uint32_t);
 slli      timediff_ns    (TimeSpec *,  TimeSpec *);
 void      gamepad_io     (uint16_t);
+void     *ralloc         (size_t,      size_t,      uint8_t);
+void      rfree          (void *);
 
 #endif

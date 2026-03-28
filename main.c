@@ -51,6 +51,7 @@ uint32_t  watch_word;
 linked_l *bpoint;
 linked_l *dpoint;
 linked_l *lpoint;
+linked_l *mpoint; // tracking allocated memory
 linked_l *tpoint;
 
 int32_t   main (int32_t  argc, char **argv)
@@ -96,6 +97,11 @@ int32_t   main (int32_t  argc, char **argv)
     sys_reg_show                    = FALSE;
     action                          = INPUT_INIT;
     token_label                     = NULL;
+    bpoint                          = NULL;
+    dpoint                          = NULL;
+    lpoint                          = NULL;
+    mpoint                          = NULL;
+    tpoint                          = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
