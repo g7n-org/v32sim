@@ -8,6 +8,10 @@ Should default entry point be at `CART` start of `0x20000000`?
 
 Trap SIGINT (breaks when in runmode)
 
+## SIGNALS (SIGSEGV)
+
+Display some simulator variables
+
 ## TRANSITION REGISTERS TO USE ACCESS FUNCTIONS
 
 Like memory  and ioports, have  registers also  use a `_get`  and `_set`;
@@ -23,11 +27,16 @@ that you cannot restore a save state for an entirely different cartridge.
 
 Perhaps some simple checksum of the CART? Could do that in load_memory()!
 
-## IMPLEMENT OTHER IOPORTS
+## IMPLEMENT SPU IOPORTS
 
-  * `SPU_` - currently zero functionality
+The SPU ports now exist, but no functionality currently exists: the ports
+can only be read from or written to, but nothing happens to the data that
+resides in the SPU ports.
 
-### GPU PORTS
+At least now, all ports exist, so any code using the SPU ports should now
+not segfault.
+
+## GPU PORTS
 
 Texture, Region,  and Region  definition ports  are now  functioning. The
 VTEX data  is now properly  being loaded  into memory, stripping  out the

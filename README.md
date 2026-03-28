@@ -14,14 +14,30 @@ manner similar to how the system operates.
 
 ## IOPORTS
 
-Many  IOPorts  are  present,  if  only  for  simple  reporting  or  basic
-operability. The `TIM_`, `RNG_`, `INP_`, and `CAR_` ports should be fully
-functional. For various transactions (`set`, `display`, or `print` at the
-prompt), the IOPort hex value OR the symbolic name can be specified.
+All IOPorts are available within the simulator. However, not all ports in
+each category are functionally accurate.
 
-### GPU PORTS
+For example: the SPU ports are not involved in any processing. Any values
+written to them or read from them are just that: standalone values. There
+will be no change to that data.
 
-Many GPU ports are believed fully functional:
+Some other  ports do  have established functionality:  all the  TIM, RNG,
+INP, CAR, and MEM ports should actually behave as expected.
+
+Furthermore, some of  the GPU ports are now  functional, especially those
+related to textures, regions, and their definitions. All textures present
+in a V32 file will be loaded into memory in the simulator.
+
+### TEXTURES AND REGIONS
+
+Outside of  BIOS and CART code  that manipulates the GPU  ports, from the
+simulator prompt  one can  manipulate the texture  and region  GPU ports,
+through the use of the `set` command and `display` or `print` commands.
+
+Also,  the `inventory`  command  will display  the currently  established
+texture information (resolution, offsets) in the BIOS and CART.
+
+Many GPU ports should be fully functional:
 
   * GPU_ClearColor
   * GPU_SelectedTexture
@@ -37,6 +53,19 @@ VTEX data is also properly loaded into memory.
 The other GPU ports  may well be able to be read  from/written to, but if
 there is deeper functionality, they currently  just serve as a storage of
 information (nothing is yet done with that information).
+
+### GAMEPADS
+
+As there is no actual gamepad support integrated into the simulator,  any
+and all gamepad transactions are controlled via the `gamepad` command  at
+the simulator prompt:
+
+  * `gamepad` - will list the current selected gamepad's values
+  * `gamepad1 select` - will select gamepad 1
+  * `gamepad1 connect` -  will connect gamepad 1 (allows changes)
+  * `gamepad1 disconnect` -  disconnects gamepad 1
+  * `gamepad left` - toggle `left` on the selected gamepad
+  * `gamepad L` - toggles `L` button on the selected gamepad
 
 ## MEMCARD
 
