@@ -143,7 +143,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
     //
     // allocate and populate pattern array
     //
-    pattern                  = (uint8_t **) malloc (sizeof (uint8_t *) * 3);
+    pattern                  = (uint8_t **) ralloc (sizeof (uint8_t *), 3, FLAG_NONE);
     *(pattern+0)             = form0;
     *(pattern+1)             = form1;
     *(pattern+2)             = form2;
@@ -188,7 +188,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
             //
             // allocate memory for reconstructed string
             //
-            string           = (uint8_t *) malloc (sizeof (uint8_t) * strlen (input));
+            string           = (uint8_t *) ralloc (sizeof (uint8_t), strlen (input), FLAG_NONE);
             snprintf (string, strlen (input) - 1, "%.*s %.*s %.*s",
                       (int) (match[1].rm_eo - match[1].rm_so),
                       (input + match[1].rm_so),
@@ -250,7 +250,7 @@ uint8_t  parse_imm (uint8_t *token, data_t *data)
     //
     // allocate and populate pattern array
     //
-    pattern                   = (uint8_t **) malloc (sizeof (uint8_t *) * 6);
+    pattern                   = (uint8_t **) ralloc (sizeof (uint8_t *), 6, FLAG_NONE);
     *(pattern+0)              = form0;
     *(pattern+1)              = form1;
     *(pattern+2)              = form2;
@@ -368,6 +368,7 @@ uint8_t   parse_reg (uint8_t *token)
     uint8_t     result          = 0xFF;
     regex_t     regex;
     regmatch_t  match[2];
+	int8_t     *source          = NULL;
     uint8_t   **pattern         = NULL;
     uint8_t    *form0           = "^ *(R[0-9]|R1[0-5]) *$";           // reg
     uint8_t    *form1           = "^ *[[] *(R[0-9]|R1[0-5]) *[]] *$"; // reg ptr
@@ -381,11 +382,15 @@ uint8_t   parse_reg (uint8_t *token)
 
     fprintf (debug, "[parse_reg] passed token: '%s'\n", token);
 
+    source                          = (uint8_t *) ralloc (sizeof (uint8_t),
+                                                          18,
+                                                          FLAG_NONE);
+
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // allocate and populate pattern array
     //
-    pattern                     = (uint8_t **) malloc (sizeof (uint8_t *) * 9);
+    pattern                     = (uint8_t **) ralloc (sizeof (uint8_t *), 9, FLAG_NONE);
     *(pattern+0)                = form0;
     *(pattern+1)                = form1;
     *(pattern+2)                = form2;
@@ -539,6 +544,8 @@ uint8_t   parse_reg (uint8_t *token)
     }
 
     fprintf (debug, "[parse_reg] register numberic ID: %hhu\n", result);
+
+	rfree (source);
 
     return (result);
 }

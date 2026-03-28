@@ -71,6 +71,8 @@ void  decode_display (uint32_t  instruction,
     uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port                 = (instruction & IOPORT_MASK);
+    int8_t   *destination          = NULL;
+    int8_t   *source               = NULL;
     uint32_t  value                = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -97,11 +99,31 @@ void  decode_display (uint32_t  instruction,
         { "ACOS" }, { "ATAN2" }, { "LOG"   }, { "POW"  }
     };
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
     //
     // Set display FILE pointer to appropriate destination (based on flags)
     //
     display                        = (displayflag == TRUE) ? stdout : devnull;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // 18 is the maximum length of potential columnar output of an operand:
+    //
+    // "[RXX+0x12345678],\0" <- 17 bytes of string data + 1 NULL terminator
+    // "0123456789ABCDEF10"
+    //
+    destination                     = (uint8_t *) ralloc (sizeof (uint8_t),
+                                                          18,
+                                                          FLAG_RETERR);
+    source                          = (uint8_t *) ralloc (sizeof (uint8_t),
+                                                          18,
+                                                          FLAG_RETERR);
+    if ((destination               == NULL) ||
+        (source                    == NULL))
+    {
+        fprintf (stderr, "[decode] ERROR: Allocation of string failed\n");
+        exit (STRING_ALLOC_FAIL);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     //
@@ -525,6 +547,9 @@ void  decode_display (uint32_t  instruction,
     {
         fprintf (display, "\n");
     }
+
+    rfree (destination);
+    rfree (source);
 }
 
 void  decode_process (uint32_t  instruction,
@@ -556,8 +581,8 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case WAIT:
-			waitflag        = TRUE; // triggers TIM_CycleCounter to reset
-			update_frame ();        // update Frame Counter
+            waitflag        = TRUE; // triggers TIM_CycleCounter to reset
+            update_frame ();        // update Frame Counter
             break;
 
         case JMP:

@@ -54,8 +54,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 else // assuming label
                 {
                     fprintf (debug, "[arg] BREAK adding the label: '%s'\n", optarg);
-                    value          = sizeof (int8_t) * strlen (optarg) + 1;
-                    tmp -> label   = (int8_t *) malloc (value);
+                    tmp -> label   = (int8_t *) ralloc (sizeof (int8_t), strlen (optarg) + 1, FLAG_NONE);
                     strcpy (tmp -> label, optarg);
                 }
                 tpoint             = list_add (tpoint, tmp);

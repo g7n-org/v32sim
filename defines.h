@@ -226,8 +226,10 @@
 #define  FLAG_DATA               8
 #define  FLAG_ERROR              16
 #define  FLAG_DEMO               32
-#define  FLAG_ZERO               64
-#define  FLAG_RETERR             128
+
+#define  FLAG_ZERO               1
+#define  FLAG_RETERR             2
+#define  FLAG_TRACK              4
 
 #define  FLAG_READ               4
 #define  FLAG_WRITE              2

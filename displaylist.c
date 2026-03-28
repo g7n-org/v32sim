@@ -141,7 +141,7 @@ uint8_t *show_size (uint32_t  page)
         (page         <= V32_PAGE_MEMC))
     {
         size           = (memory+page) -> size;
-        result         = (uint8_t *) malloc (sizeof (uint8_t) * 12);
+        result         = (uint8_t *) ralloc (sizeof (uint8_t), 12, FLAG_NONE);
         if (size      >= 1073741824)
         {
             sprintf (result, "%4luGiW",

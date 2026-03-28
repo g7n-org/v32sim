@@ -13,8 +13,14 @@ uint32_t  get_word (FILE *fptr)
     //
     // Declare and initialize local variables
     //
-    int32_t   index   = 0;
-    uint32_t  word    = 0x00000000;  // clear word
+    int32_t   index  = 0;
+    uint32_t  word   = 0x00000000;  // clear word
+    uint8_t  *data   = (uint8_t *) ralloc (sizeof (uint8_t), wordsize, FLAG_NONE);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // This is merely the word of data being read in, so wordsize bytes
+    //
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -33,18 +39,20 @@ uint32_t  get_word (FILE *fptr)
         //
         // Assemble the individual bytes into one word
         //
-        for (index    = 0;
-             index   <  wordsize;
-             index    = index + 1)
+        for (index   = 0;
+             index  <  wordsize;
+             index   = index + 1)
         {
             ////////////////////////////////////////////////////////////////////////////
             //
             // shifts and iORs to place the byte at the appropriate
             // word byte offset
             //
-            word      = word | (*(data+index) << (8 * index));
+            word     = word | (*(data+index) << (8 * index));
         }
     }
+
+    rfree (data);
 
     return (word);
 }
@@ -87,13 +95,13 @@ void      put_word (uint32_t  word, uint8_t  flag)
 //
 // int2word() - convert i32 element into a word_t and return it
 //
-word_t    int2word     (uint32_t  data)
+word_t    int2word     (uint32_t  value)
 {
-	word_t  wtmp;
-	
-	wtmp.i32          = data;
+    word_t  wtmp;
+    
+    wtmp.i32          = value;
 
-	return (wtmp);
+    return (wtmp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +137,7 @@ uint32_t  word2raw     (word_t *info)
 word_t   *new_word_i32 (uint32_t *value, uint8_t  num)
 {
     int32_t  index               = 0;
-    word_t  *new_word            = (word_t *) malloc (sizeof (word_t) * num);
+    word_t  *new_word            = (word_t *) ralloc (sizeof (word_t), num, FLAG_NONE);
 
     for (index                   = 0;
          index                  <  num;

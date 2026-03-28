@@ -11,11 +11,12 @@ void  init_memory (void)
     // Allocate the memory device
     //
     len                                     = NUM_MEMORY_PAGES;
-    memory                                  = (mem_t *) calloc (sizeof (mem_t), len);
+    //memory                                  = (mem_t *) ralloc (sizeof (mem_t), len, FLAG_TRACK | FLAG_RETERR);
+    memory                                  = (mem_t *) ralloc (sizeof (mem_t), len, FLAG_RETERR);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // Verify malloc() was successful
+    // Verify ralloc() was successful
     //
     if (memory                             == NULL)
     {
@@ -119,7 +120,8 @@ uint8_t  alloc_memory (int32_t  page)
             //
             // allocate memory for the page
             //
-            (memory+page)     -> data       = (data_t *) calloc (len, sizeof (data_t));
+            //(memory+page)     -> data       = (data_t *) ralloc (sizeof (data_t), len, FLAG_TRACK | FLAG_RETERR);
+            (memory+page)     -> data       = (data_t *) ralloc (sizeof (data_t), len, FLAG_RETERR);
             if ((memory+page) -> data      == NULL)
             {
                 fprintf (stderr, "[error] failed to allocate for memory page\n");

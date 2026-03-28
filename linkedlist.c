@@ -3,7 +3,6 @@
 linked_l *listnode (uint8_t  type, uint32_t  value)
 {
     size_t    size       = sizeof (linked_l);
-    //linked_l *newnode    = (linked_l *) malloc (sizeof (linked_l) * 1);
     linked_l *newnode    = (linked_l *) ralloc (size, 1, FLAG_RETERR | FLAG_ZERO);
     if (newnode         == NULL)
     {
@@ -106,6 +105,22 @@ linked_l *find_value (linked_l *list, uint32_t  value)
     while (tmp                 != NULL)
     {
         if (tmp -> data.raw    == value)
+        {
+            break;
+        }
+        tmp                     = tmp -> next;
+    }
+
+    return (tmp);
+}
+
+linked_l *find_ptr (linked_l *list, void *pointer)
+{
+    linked_l *tmp               = list;
+
+    while (tmp                 != NULL)
+    {
+        if (tmp -> pointer     == pointer)
         {
             break;
         }

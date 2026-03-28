@@ -8,9 +8,6 @@ FILE     *display;
 FILE     *devnull;
 FILE     *debug;
 FILE     *verbose;
-uint8_t  *data;
-uint8_t  *destination;
-uint8_t  *source;
 int8_t   *biosfile;
 int8_t   *cartfile;
 int8_t   *memcfile;
@@ -154,42 +151,15 @@ int32_t   main (int32_t  argc, char **argv)
     if (biosfile                   == NULL)
     {
         len                         = strlen (BIOS_DEFAULT_PATH) + 1;
-        biosfile                    = (int8_t *) malloc (len);
+        biosfile                    = (int8_t *) ralloc (sizeof (int8_t),
+                                                         strlen (BIOS_DEFAULT_PATH) + 1,
+                                                         FLAG_NONE);
         if (biosfile               == NULL)
         {
             fprintf (stderr, "[ERROR] Allocation for '%s' failed\n", "biosfile");
             exit (STRING_ALLOC_FAIL);
         }
         strcpy (biosfile, BIOS_DEFAULT_PATH);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // 18 is the maximum length of potential columnar output of an operand:
-    //
-    // "[RXX+0x12345678],\0" <- 17 bytes of string data + 1 NULL terminator
-    // "0123456789ABCDEF10"
-    //
-    len                             = sizeof (uint8_t) * 18;
-    destination                     = (uint8_t *) malloc (len);
-    source                          = (uint8_t *) malloc (len);
-    if ((destination               == NULL) ||
-        (source                    == NULL))
-    {
-        fprintf (stderr, "[ERROR] Allocation of string failed\n");
-        exit (STRING_ALLOC_FAIL);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // This is merely the word of data being read in, so wordsize bytes
-    //
-    len                             = sizeof (uint8_t) * wordsize;
-    data                            = (uint8_t *) malloc (len);
-    if (data                       == NULL)
-    {
-        fprintf (stderr, "[ERROR] Allocation of string '%s' failed\n", data);
-        exit (STRING_ALLOC_FAIL);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +186,8 @@ int32_t   main (int32_t  argc, char **argv)
     //
     chk                             = load_memory (V32_PAGE_BIOS, biosfile);
     if ((debugflag                 == TRUE) &&
-        (chk                       == TRUE))
+        (chk                       == TRUE) &&
+        (biosfile                  != NULL))
     {
         load_labels (biosfile);
     }
@@ -227,7 +198,8 @@ int32_t   main (int32_t  argc, char **argv)
     //
     chk                             = load_memory (V32_PAGE_CART, cartfile);
     if ((debugflag                 == TRUE) &&
-        (chk                       == TRUE))
+        (chk                       == TRUE) &&
+        (cartfile                  != NULL))
     {
         load_labels (cartfile);
     }
@@ -620,6 +592,22 @@ int32_t   main (int32_t  argc, char **argv)
             }
             ignoreflag                 = FALSE;
         }
+    }
+
+    rfree  (reg);
+    rfree  (memory);
+    rfree  (ioports);
+
+    if ((devnull                      != NULL) &&
+        (devnull                      != stderr))
+    {
+        fclose (devnull);
+    }
+
+    if ((verbose                      != NULL) &&
+        (verbose                      != stderr))
+    {
+        fclose (verbose);
     }
 
     fprintf (stdout, "SYSTEM HALTED\n");

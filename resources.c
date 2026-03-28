@@ -54,9 +54,11 @@ void *ralloc (size_t  size, size_t  number, uint8_t  flag)
         //
         // create and add a new node to the list 
         //
-        if (resource           != NULL)
+        if ((resource          != NULL) &&
+            (FLAG_TRACK        == (flag & FLAG_TRACK)))
         {
             mtmp                = listnode (LIST_PTR, 0);
+            mtmp -> space       = size * number;
             mtmp -> pointer     = resource;
             mtmp -> dpointer    = &resource;
             mpoint              = list_add (mpoint, mtmp);
@@ -68,8 +70,24 @@ void *ralloc (size_t  size, size_t  number, uint8_t  flag)
 
 void  rfree (void *resource)
 {
-    if (resource != NULL)
+    linked_l *mptr                   = NULL;
+    if (resource                    != NULL)
     {
-        free (resource)
+        mptr                         = find_ptr  (mpoint,  resource);
+        if (mptr                    != NULL)
+        {
+            mptr                     = list_grab (&mpoint, mptr);
+            if (mptr                != NULL)
+            {
+                free (mptr -> pointer);
+                *(mptr -> dpointer)  = NULL;
+                free (mptr);
+                mptr                 = NULL;
+            }
+            else
+            {
+                free (resource);
+            }
+        }
     }
 }

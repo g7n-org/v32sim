@@ -6,13 +6,14 @@ void  init_ioports  (void)
     //
     // Declare and initialize variables
     //
-    int32_t    count                       = 0;
-    int32_t    index                       = 0;
-    int32_t    value                       = 0;
-    int8_t    *nptr                        = NULL;
-    data_t    *pptr                        = NULL;
-    size_t     len                         = 0;
-    size_t     size                        = 0;
+    int32_t    count               = 0;
+    int32_t    index               = 0;
+    int32_t    value               = 0;
+    int32_t   *iptr                = 0;
+    int8_t    *nptr                = NULL;
+    data_t    *pptr                = NULL;
+    size_t     len                 = 0;
+    size_t     size                = 0;
     struct tm *current_time_tm;
     time_t     current_time_raw;
 
@@ -21,9 +22,10 @@ void  init_ioports  (void)
     // ioports is the top-level (double pointer) nexus, each category is a single-
     // pointer array hanging off of each element of ioports.
     //
-    len                                    = sizeof (data_t *) * NUM_PORT_CATEGORIES;
-    ioports                                = (data_t **) malloc (len);
-    if (ioports                           == NULL)
+    ioports                        = (data_t **) ralloc (sizeof (data_t *),
+                                                         NUM_PORT_CATEGORIES,
+                                                         FLAG_RETERR);
+    if (ioports                   == NULL)
     {
         fprintf (stderr, "[error] failed to allocate memory for 'ioports'\n");
         exit (IOPORTS_ALLOC_FAIL);
@@ -34,30 +36,31 @@ void  init_ioports  (void)
     // BIOS texture/regions is a 1D array of region_t's within a singular vtex,
     // for managing the regions present in the single BIOS texture.
     //
-    size                                   = sizeof (vtex_t);
-    len                                    = 1;
-    bios_vtex                              = (vtex_t *)   calloc (size, len);
-    size                                   = sizeof (region_t);
-    len                                    = V32_REGIONS_PER_TEXTURE;
-    bios_vtex -> region                    = (region_t *) calloc (size, len);                   
+    size                           = sizeof (vtex_t);
+    len                            = 1;
+    bios_vtex                      = (vtex_t *) ralloc (size, len, FLAG_ZERO);
+    size                           = sizeof (region_t);
+    len                            = V32_REGIONS_PER_TEXTURE;
+    bios_vtex -> region            = (region_t *) ralloc (size, len, FLAG_ZERO);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // gamepad ports backing store: a 4-element array of gamepad_t
     //
-    size                                      = sizeof (gamepad_t);
-    len                                       = 4;
-    gamepad                                   = (gamepad_t *) calloc (size, len);
-    for (index                                = 0;
-         index                               <  V32_NUM_GAMEPADS;
-         index                                = index + 1)
+    size                              = sizeof (gamepad_t);
+    len                               = 4;
+    gamepad                           = (gamepad_t *) ralloc (size, len, FLAG_ZERO);
+    for (index                        = 0;
+         index                       <  V32_NUM_GAMEPADS;
+         index                        = index + 1)
     {
-        (gamepad+index) -> connected          = FALSE;
-        for (count                            = INP_GamepadLeft    - 0x402;
-             count                           <= INP_GamepadButtonR - 0x402;
-             count                            = count + 1)
+        (gamepad+index) -> connected  = FALSE;
+        for (count                    = INP_GamepadLeft    - 0x402;
+             count                   <= INP_GamepadButtonR - 0x402;
+             count                    = count + 1)
         {
-            (gamepad+index) -> button[count]  = -1;
+            iptr                      = (gamepad+index) -> button;
+            *(iptr+count)             = -1;
         }
     }
 
@@ -65,8 +68,9 @@ void  init_ioports  (void)
     //
     // TIM ports: allocate and initialize
     //
-    len                                    = sizeof (data_t)   * NUM_TIM_PORTS;
-    *(ioports+TIM_PORT)                    = (data_t *) malloc (len);
+    len                                    = NUM_TIM_PORTS;
+    size                                   = sizeof (data_t);
+    *(ioports+TIM_PORT)                    = (data_t *) ralloc (size, len, FLAG_NONE);
     pptr                                   = *(ioports+TIM_PORT);
     pptr -> qty                            = NUM_TIM_PORTS;
 
@@ -80,7 +84,9 @@ void  init_ioports  (void)
         (pptr+index) -> value.i32          = 0x00000000;
         (pptr+index) -> flag               = FLAG_READ;
         (pptr+index) -> fmt                = FORMAT_UNSIGNED;
-        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        len                                = 32;
+        size                               = sizeof (int8_t);
+        (pptr+index) -> name               = (int8_t *) ralloc (size, len, FLAG_NONE);
         nptr                               = (pptr+index) -> name;
 
         switch (TIM_CurrentDate | index)
@@ -117,15 +123,18 @@ void  init_ioports  (void)
     //
     // RNG ports: allocate and initialize
     //
-    len                                    = sizeof (data_t)   * NUM_RNG_PORTS;
-    *(ioports+RNG_PORT)                    = (data_t *) malloc (len);
+    len                                    = NUM_RNG_PORTS;
+    size                                   = sizeof (data_t);
+    *(ioports+RNG_PORT)                    = (data_t *) ralloc (size, len, FLAG_NONE);
     pptr                                   = *(ioports+RNG_PORT);
     pptr -> qty                            = NUM_RNG_PORTS;
 
     (pptr+0) -> value.i32                  = 0x00000000; //rand ();
     (pptr+0) -> flag                       = FLAG_READ | FLAG_WRITE;
     (pptr+0) -> fmt                        = FORMAT_SIGNED;
-    (pptr+0) -> name                       = (int8_t *) malloc (sizeof (int8_t) * 32);
+    len                                    = 32;
+    size                                   = sizeof (int8_t);
+    (pptr+0) -> name                       = (int8_t *) ralloc (size, len, FLAG_NONE);
     nptr                                   = (pptr+0) -> name;
     sprintf (nptr, "RNG_CurrentValue");
 
@@ -133,8 +142,9 @@ void  init_ioports  (void)
     //
     // GPU ports: allocate and initialize
     //
-    len                                    = sizeof (data_t)   * NUM_GPU_PORTS;
-    *(ioports+GPU_PORT)                    = (data_t *) malloc (len);
+    len                                    = NUM_GPU_PORTS;
+    size                                   = sizeof (data_t);
+    *(ioports+GPU_PORT)                    = (data_t *) ralloc (size, len, FLAG_NONE);
     pptr                                   = *(ioports+GPU_PORT);
     pptr -> qty                            = NUM_GPU_PORTS;
 
@@ -145,7 +155,9 @@ void  init_ioports  (void)
         (pptr+index) -> value.i32          = 0x00000000;
         (pptr+index) -> flag               = FLAG_READ | FLAG_WRITE;
         (pptr+index) -> fmt                = FORMAT_SIGNED;
-        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        len                                = 32;
+        size                               = sizeof (int8_t);
+        (pptr+index) -> name               = (int8_t *) ralloc (size, len, FLAG_NONE);
         nptr                               = (pptr+index) -> name;
 
         switch (GPU_Command | index)
@@ -237,8 +249,9 @@ void  init_ioports  (void)
     //
     // SPU ports: allocate and initialize
     //
-    len                                    = sizeof (data_t)   * NUM_SPU_PORTS;
-    *(ioports+SPU_PORT)                    = (data_t *) malloc (len);
+    len                                    = NUM_SPU_PORTS;
+    size                                   = sizeof (data_t);
+    *(ioports+SPU_PORT)                    = (data_t *) ralloc (size, len, FLAG_NONE);
     pptr                                   = *(ioports+SPU_PORT);
     pptr -> qty                            = NUM_SPU_PORTS;
 
@@ -249,7 +262,9 @@ void  init_ioports  (void)
         (pptr+index) -> value.i32          = 0x00000000;
         (pptr+index) -> flag               = FLAG_READ | FLAG_WRITE;
         (pptr+index) -> fmt                = FORMAT_SIGNED;
-        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        len                                = 32;
+        size                               = sizeof (int8_t);
+        (pptr+index) -> name               = (int8_t *) ralloc (size, len, FLAG_NONE);
         nptr                               = (pptr+index) -> name;
 
         switch (SPU_Command | index)
@@ -318,8 +333,9 @@ void  init_ioports  (void)
     //
     // INP ports: allocate and initialize
     //
-    len                                    = sizeof (data_t)   * NUM_INP_PORTS;
-    *(ioports+INP_PORT)                    = (data_t *) malloc (len);
+    len                                    = NUM_INP_PORTS;
+    size                                   = sizeof (data_t);
+    *(ioports+INP_PORT)                    = (data_t *) ralloc (size, len, FLAG_NONE);
     pptr                                   = *(ioports+INP_PORT);
     pptr -> qty                            = NUM_INP_PORTS;
 
@@ -330,7 +346,9 @@ void  init_ioports  (void)
         (pptr+index) -> value.i32          = -1; // not pressed, negative value
         (pptr+index) -> flag               = FLAG_READ;
         (pptr+index) -> fmt                = FORMAT_SIGNED;
-        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        len                                = 32;
+        size                               = sizeof (int8_t);
+        (pptr+index) -> name               = (int8_t *) ralloc (size, len, FLAG_NONE);
         nptr                               = (pptr+index) -> name;
 
         switch (INP_SelectedGamepad | index)
@@ -396,8 +414,9 @@ void  init_ioports  (void)
     //
     // CAR ports: allocate and initialize
     //
-    len                                    = sizeof (data_t)   * NUM_CAR_PORTS;
-    *(ioports+CAR_PORT)                    = (data_t *) malloc (len);
+    len                                    = NUM_CAR_PORTS;
+    size                                   = sizeof (data_t);
+    *(ioports+CAR_PORT)                    = (data_t *) ralloc (size, len, FLAG_NONE);
     pptr                                   = *(ioports+CAR_PORT);
     pptr -> qty                            = NUM_CAR_PORTS;
 
@@ -408,7 +427,9 @@ void  init_ioports  (void)
         (pptr+index) -> value.i32          = 0x00000000;
         (pptr+index) -> flag               = FLAG_READ;
         (pptr+index) -> fmt                = FORMAT_UNSIGNED;
-        (pptr+index) -> name               = (int8_t *) malloc (sizeof (int8_t) * 32);
+        len                                = 32;
+        size                               = sizeof (int8_t);
+        (pptr+index) -> name               = (int8_t *) ralloc (size, len, FLAG_NONE);
         nptr                               = (pptr+index) -> name;
 
         switch (CAR_Connected | index)
@@ -438,14 +459,17 @@ void  init_ioports  (void)
     //
     // MEM ports: allocate and initialize
     //
-    len                                    = sizeof (data_t)   * NUM_MEM_PORTS;
-    *(ioports+MEM_PORT)                    = (data_t *) malloc (len);
+    len                                    = NUM_MEM_PORTS;
+    size                                   = sizeof (data_t);
+    *(ioports+MEM_PORT)                    = (data_t *) ralloc (size, len, FLAG_NONE);
     pptr                                   = *(ioports+MEM_PORT);
     pptr -> qty                            = NUM_MEM_PORTS;
     pptr -> value.i32                      = 0x00000000;
     pptr -> flag                           = FLAG_READ;
     pptr -> fmt                            = FORMAT_BOOLEAN;
-    pptr -> name                           = (int8_t *) malloc (sizeof (int8_t) * 32);
+    len                                    = 32;
+    size                                   = sizeof (int8_t);
+    pptr -> name                           = (int8_t *) ralloc (size, len, FLAG_NONE);
     nptr                                   = pptr -> name;
     sprintf (nptr, "MEM_Connected");
 }
@@ -653,7 +677,7 @@ word_t *ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
         type                              = (portaddr & 0x0700) >> 8;
         attr                              = (portaddr & 0x00FF);
         pptr                              = *(ioports+type);
-        result                            = (word_t *) malloc (sizeof (word_t) * 1);
+        result                            = (word_t *) ralloc (sizeof (word_t), 1, FLAG_NONE);
         switch (portaddr)
         {
             ////////////////////////////////////////////////////////////////////////////

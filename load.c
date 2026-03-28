@@ -127,7 +127,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
     uint32_t  len                     = 0;
     uint8_t   chk                     = FALSE;
     uint8_t   result                  = FALSE;
-	region_t *rptr                    = NULL;
+    region_t *rptr                    = NULL;
     vtex_t   *vptr                    = NULL;
 
     if (filename                     != NULL)
@@ -202,7 +202,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     {
                         size          = sizeof (vtex_t);
                         len           = num_vtex;
-                        cart_vtex     = (vtex_t *) calloc (size, len); 
+                        cart_vtex     = (vtex_t *) ralloc (size, len, FLAG_ZERO); 
                         vptr          = cart_vtex;
                     }
                     else
@@ -227,12 +227,12 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                         if (page     == V32_PAGE_CART)
                         {
                             rptr      = (cart_vtex+index) -> region;
-                            (cart_vtex+index) -> region  = (region_t *) calloc (size, len);
+                            (cart_vtex+index) -> region  = (region_t *) ralloc (size, len, FLAG_ZERO);
                         }
                         else // BIOS
                         {
                             rptr      = bios_vtex         -> region;
-                            rptr      = (region_t *) calloc (size, len);
+                            rptr      = (region_t *) ralloc (size, len, FLAG_ZERO);
                         }
 
                         //rptr          = (region_t *) calloc (size, len);
@@ -315,14 +315,14 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                      count           <  num_vtex;
                      count            = count + 1)
                 {
-					if (page         == V32_PAGE_CART)
-					{
-						vptr          = (cart_vtex+count);
-					}
-					else // BIOS
-					{
-						vptr          = bios_vtex;
-					}
+                    if (page         == V32_PAGE_CART)
+                    {
+                        vptr          = (cart_vtex+count);
+                    }
+                    else // BIOS
+                    {
+                        vptr          = bios_vtex;
+                    }
 
                     ////////////////////////////////////////////////////////////////////
                     //

@@ -6,16 +6,16 @@ void  init_registers (void)
     //
     // Declare and initialize variables
     //
-    int32_t    index                       = 0;
-    size_t     len                         = 0;
+    int32_t    index     = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // reg is an array of word_t, one for each specified register.
     //
-    len                                = sizeof (data_t) * NUM_REGISTERS;
-    reg                                = (data_t *) malloc (len);
-    if (reg                           == NULL)
+    reg                  = (data_t *) ralloc (sizeof (data_t),
+                                              NUM_REGISTERS,
+                                              FLAG_RETERR);
+    if (reg             == NULL)
     {
         fprintf (stderr, "[ERROR] Failed to allocate resources for registers\n");
         exit    (DATA_ALLOC_FAIL);
@@ -25,25 +25,32 @@ void  init_registers (void)
     //
     // initialize the registers
     //
-    for (index                         = 0;
-         index                        <  NUM_REGISTERS;
-         index                         = index + 1)
+    for (index           = 0;
+         index          <  NUM_REGISTERS;
+         index           = index + 1)
     {
-        len                            = sizeof (int8_t) * 4;
-        REGNAME(index)                 = (int8_t *) malloc (len);
-        REGALIAS(index)                = NULL;
+        REGNAME(index)   = (int8_t *) ralloc (sizeof (int8_t), 4, FLAG_NONE);
+        REGALIAS(index)  = NULL;
         sprintf (REGNAME(index), "R%u", index);
-        REG(index)                     = 0x00000000;
-        REGMODE(index)                 = REG_INT;
+        REG(index)       = 0x00000000;
+        REGMODE(index)   = REG_INT;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // allocate memory for aliases of pertinent registers
+    //
+    for (index           = CR;
+         index          <= SP;
+         index           = index + 1)
+    {
+        REGALIAS(index)  = (int8_t *) ralloc (sizeof (int8_t), 4, FLAG_NONE);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // set up aliases for string registers
     //
-    REGALIAS(CR)                       = (int8_t *) malloc (len);
-    REGALIAS(SR)                       = (int8_t *) malloc (len);
-    REGALIAS(DR)                       = (int8_t *) malloc (len);
     sprintf (REGALIAS(CR), "CR");
     sprintf (REGALIAS(SR), "SR");
     sprintf (REGALIAS(DR), "DR");
@@ -52,8 +59,6 @@ void  init_registers (void)
     //
     // set up aliases for stack registers
     //
-    REGALIAS(BP)                       = (int8_t *) malloc (len);
-    REGALIAS(SP)                       = (int8_t *) malloc (len);
     sprintf (REGALIAS(BP), "BP");
     sprintf (REGALIAS(SP), "SP");
 
@@ -61,8 +66,8 @@ void  init_registers (void)
     //
     // initialize stack registers to system defaults
     //
-    REG(BP)                            = 0x003FFFFF;
-    REG(SP)                            = 0x003FFFFF;
+    REG(BP)              = 0x003FFFFF;
+    REG(SP)              = 0x003FFFFF;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -76,7 +81,7 @@ void  init_registers (void)
     //
     // initialize the system registers to system defaults
     //
-    REG(IP)                            = 0x10000004; // BIOS entry point
+    REG(IP)              = 0x10000004; // BIOS entry point
 }
 
 word_t *reg_get (uint8_t  id, uint8_t  sys_force)

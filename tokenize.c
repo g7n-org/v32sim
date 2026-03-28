@@ -54,7 +54,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // allocate and populate form array
     //
-    form                           = (uint8_t **) malloc (sizeof (uint8_t *) * 4);
+    form                           = (uint8_t **) ralloc (sizeof (uint8_t *), 4, FLAG_NONE);
     *(form+0)                      = form0;
     *(form+1)                      = form1;
     *(form+2)                      = form2;
@@ -64,7 +64,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // allocate and populate pattern array
     //
-    pattern                        = (uint8_t **) malloc (sizeof (uint8_t *) * 6);
+    pattern                        = (uint8_t **) ralloc (sizeof (uint8_t *), 6, FLAG_NONE);
     *(pattern+0)                   = pattern0;
     *(pattern+1)                   = pattern1;
     *(pattern+2)                   = pattern2;
@@ -588,8 +588,9 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
                                 if (token_label   != NULL)
                                 {
-                                    value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                    tmp -> label   = (int8_t *) malloc (value);
+                                    tmp -> label   = (int8_t *) ralloc (sizeof  (int8_t),
+                                                                        strlen (token_label) + 1,
+                                                                        FLAG_NONE);
                                     strcpy (tmp -> label, token_label);
                                 }
                                 tmp -> fmt         = fmt;
@@ -610,8 +611,9 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
                             if (token_label   != NULL)
                             {
-                                value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                tmp -> label   = (int8_t *) malloc (value);
+                                tmp -> label   = (int8_t *) ralloc (sizeof (int8_t),
+                                                                    strlen (token_label) + 1,
+                                                                    FLAG_NONE);
                                 strcpy (tmp -> label, token_label);
                             }
                             tmp -> fmt         = fmt;
@@ -648,8 +650,9 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
                             if (token_label   != NULL)
                             {
-                                value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                tmp -> label   = (int8_t *) malloc (value);
+                                tmp -> label   = (int8_t *) ralloc (sizeof (int8_t),
+                                                                    strlen (token_label) + 1,
+                                                                    FLAG_NONE);
                                 strcpy (tmp -> label, token_label);
                             }
                             tmp -> fmt         = fmt;
@@ -669,17 +672,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             fprintf (debug, "[display/iop] 0x%.3hX was specified\n", value);
                             tmp                = listnode (LIST_IOP, value);
 
-                            if (token_label   != NULL)
-                            {
-                                value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                tmp -> label   = (int8_t *) malloc (value);
-                            }
-                            else
+                            if (token_label   == NULL)
                             {
                                 dtmp           = ioports_ptr (value);
                                 token_label    = dtmp -> name;
-                                value          = sizeof (int8_t) * strlen (token_label) + 1;
-                                tmp -> label   = (int8_t *) malloc (value);
                                 if (fmt       != FORMAT_DEFAULT)
                                 {
                                     tmp -> fmt = fmt;
@@ -689,6 +685,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                     tmp -> fmt = dtmp -> fmt;
                                 }
                             }
+
+                            tmp -> label       = (int8_t *) ralloc (sizeof (int8_t),
+                                                                    strlen (token_label) + 1,
+                                                                     FLAG_NONE);
                             strcpy (tmp -> label, token_label);
                             dpoint             = list_add (dpoint, tmp);
                             break;
@@ -874,8 +874,9 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         value          = strtol (token, NULL, 16);
                         ltmp           = listnode (LIST_MEM, value);
                         token_label    = strtok ((string + match[3].rm_so), " ");
-                        value          = sizeof (int8_t) * strlen (token_label) + 1;
-                        ltmp -> label  = (int8_t *) malloc (value);
+                        ltmp -> label  = (int8_t *) ralloc (sizeof (int8_t),
+                                                              strlen (token_label) + 1,
+                                                            FLAG_NONE);
                         strcpy (ltmp -> label, token_label);
                         lpoint         = list_add (lpoint, ltmp);
                     }
@@ -1155,8 +1156,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         regfree (&regex);
     }
 
-    free    (form);
-    free    (pattern);
+    rfree   (form);
+    rfree   (pattern);
 
     return  (result);
 }
