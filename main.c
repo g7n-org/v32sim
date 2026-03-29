@@ -12,6 +12,8 @@ int8_t   *biosfile;
 int8_t   *cartfile;
 int8_t   *memcfile;
 int8_t   *commandfile;
+int8_t   *asmdebug;
+int8_t   *cdebug;
 data_t   *reg;
 int8_t   *token_label;
 
@@ -189,7 +191,7 @@ int32_t   main (int32_t  argc, char **argv)
         (chk                       == TRUE) &&
         (biosfile                  != NULL))
     {
-        load_labels (biosfile, V32_PAGE_BIOS);
+        value                       = load_labels (biosfile, V32_PAGE_BIOS);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +204,11 @@ int32_t   main (int32_t  argc, char **argv)
         (cartfile                  != NULL))
     {
         load_labels (cartfile, V32_PAGE_CART);
+    }
+
+    if (asmdebug                   != NULL)
+    {
+        load_labels (asmdebug, 0);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

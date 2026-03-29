@@ -181,7 +181,7 @@ uint8_t  prompt (uint32_t  word)
     return (processflag);
 }
 
-uint32_t  load_labels (uint8_t *filename, uint8_t  page)
+uint32_t  load_labels (uint8_t *datafile, uint8_t  page)
 {
     FILE     *fptr                      = NULL;
     int32_t   index                     = 0;
@@ -191,43 +191,79 @@ uint32_t  load_labels (uint8_t *filename, uint8_t  page)
     uint32_t  offset                    = 0;
     uint32_t  line_number               = 0;
     uint32_t  tally                     = 0;
-    uint8_t  *input                     = NULL;
+    uint8_t  *debugfile                 = NULL;
     uint8_t  *input_string              = NULL;
+    uint8_t  *filename                  = NULL;
+    uint8_t  *path                      = NULL;
+    uint8_t  *string                    = NULL;
     uint8_t  *token                     = NULL;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Load labels from debug file (if it exists)
     //
-    if (filename                       != NULL)
+    if (datafile                       != NULL)
     {
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // Generate debug filename (stored in variable 'input')
+        // Generate debug datafile (stored in variable 'debugfile')
         //
         size                            = sizeof (uint8_t);
-        len                             = strlen (filename) + 1;
+        len                             = strlen (datafile) + 1;
         token                           = (uint8_t *) ralloc (size, len, FLAG_NONE);
-        strncpy (token, filename, strlen (filename));
-        fprintf (debug, "[load_labels] filename:     %s\n", filename);
-        fprintf (debug, "[load_labels] token:        %s\n", token);
+        strncpy (token, datafile, len);
+        fprintf (debug, "[load_labels] datafile:     '%s'\n", datafile);
+        fprintf (debug, "[load_labels] token:        '%s'\n", token);
 
-        input_string                    = strtok (token, ".");
-        fprintf (debug, "[load_labels] token:        %s\n", token);
-        fprintf (debug, "[load_labels] input_string: %s\n", input_string);
+        string                          = dirname  (token);
+        size                            = sizeof (uint8_t);
+        len                             = strlen (string) + 1;
+        path                            = (uint8_t *) ralloc (size, len, FLAG_NONE);            
+        strncpy (path, string, len);
+
+        len                             = strlen (datafile) + 1;
+        strncpy (token, datafile, len);
+        filename                        = basename (token);
+
+        fprintf (debug, "[load_labels] path:         '%s'\n", path);
+        fprintf (debug, "[load_labels] filename:     '%s'\n", filename);
+
+        input_string                    = strtok (filename, ".");
+        fprintf (debug, "[load_labels] input_string: '%s'\n", input_string);
 
         size                            = sizeof (uint8_t);
-        len                             = strlen (input_string) + 12;
-        input                           = (uint8_t *) ralloc (size, len, FLAG_NONE);
-        sprintf (input, "%s.vbin.debug", input_string);
-        fprintf (debug, "[load_labels] input:        %s\n", input);
+        len                             = strlen (input_string) + 13;
+        debugfile                       = (uint8_t *) ralloc (size, len, FLAG_NONE);
+        sprintf (debugfile, "%s/%s.vbin.debug", path, input_string);
+        fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
     
-        fptr                            = fopen (input, "r");
+        fptr                            = fopen (debugfile, "r");
         if (fptr                       == NULL)
         {
-            fprintf (verbose, "No debug file for '%s' found. Skipping...\n", input);
+            fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
+            rfree (debugfile);
+
+            debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
+            sprintf (debugfile, "obj/%s.vbin.debug", input_string);
+            fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
+            fptr                        = fopen (debugfile, "r");
+            if (fptr                   == NULL)
+            {
+                fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
+                rfree (debugfile);
+
+                debugfile               = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                sprintf (debugfile, "%s.vbin.debug", input_string);
+                fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
+                fptr                    = fopen (debugfile, "r");
+                if (fptr               == NULL)
+                {
+                    fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
+                }
+            }
         }
-        else
+
+        if (fptr                       != NULL)
         {
             if (page                   == V32_PAGE_BIOS)
             {
@@ -238,17 +274,17 @@ uint32_t  load_labels (uint8_t *filename, uint8_t  page)
                 fprintf (verbose, "[CART] ");
             }
 
-            fprintf (verbose, "LOADING DEBUGGING DATA FOR: %s\n", filename);
+            fprintf (verbose, "LOADING DEBUGGING DATA FOR: %s\n", datafile);
             while (!feof (fptr))
             {
                 index                   = 0;
-                *(input+index)          = ' ';
-                while (*(input+index)  != '\0')
+                *(debugfile+index)          = ' ';
+                while (*(debugfile+index)  != '\0')
                 {
-                    *(input+index)      = fgetc (fptr);
-                    if (*(input+index) == '\n')
+                    *(debugfile+index)      = fgetc (fptr);
+                    if (*(debugfile+index) == '\n')
                     {
-                        *(input+index)  = '\0';
+                        *(debugfile+index)  = '\0';
                         break;
                     }
 
@@ -257,7 +293,7 @@ uint32_t  load_labels (uint8_t *filename, uint8_t  page)
                         break;
                     }
                     index               = index + 1;
-                    *(input+index)      = ' ';
+                    *(debugfile+index)      = ' ';
                 }
             
                 if (feof (fptr))
@@ -275,7 +311,7 @@ uint32_t  load_labels (uint8_t *filename, uint8_t  page)
                 // For label loading, we are specifically interested in the lines
                 // with a label in the last field (second example)
                 //
-                input_string            = strtok (input, ","); // offset
+                input_string            = strtok (debugfile, ","); // offset
                 offset                  = strtol (input_string, NULL, 16);
                 ltmp                    = listnode (LIST_MEM, offset);
 
@@ -310,8 +346,9 @@ uint32_t  load_labels (uint8_t *filename, uint8_t  page)
         //
         // deallocate resources
         //
+        rfree (path);
         rfree (token);
-        rfree (input);
+        rfree (debugfile);
     }
 
     return (tally);

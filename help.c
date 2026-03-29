@@ -12,6 +12,8 @@ void  usage (int8_t *program)
     fprintf (stdout, " -c, --colors              enable colorized output\n");
     fprintf (stdout, " -d, --deref-addr          output address of dereference\n");
     fprintf (stdout, " -e, --errorcheck          enable runtime error checking\n");
+    fprintf (stdout, " -F, --asm-debug-file=FILE load asm labels from this file\n");
+    fprintf (stdout, " -f, --c-debug-file=FILE   load C labels from this file\n");
     fprintf (stdout, " -E, --entry-point=OFFSET  set simulator entry point\n");
     fprintf (stdout, " -M, --memcfile=FILE       load this file as a MEMCARD\n");
     fprintf (stdout, " -n, --no-debug            do not process any debug files\n");

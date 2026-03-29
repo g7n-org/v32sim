@@ -18,6 +18,8 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "command-file",   required_argument, 0, 'C' },
        { "deref-addr",     no_argument,       0, 'd' },
        { "debug",          no_argument,       0, 'D' },
+       { "asm-debug-file", required_argument, 0, 'F' },
+       { "c-debug-file",   required_argument, 0, 'f' },
        { "entry-point",    required_argument, 0, 'E' },
        { "errorcheck",     no_argument,       0, 'e' },
        { "memcfile",       required_argument, 0, 'M' },
@@ -34,7 +36,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:M:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:F:f:M:nrw:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -84,6 +86,16 @@ void  process_args (int32_t  argc, int8_t **argv)
                 rom_offset         = strtol (optarg, NULL, 16);
                 break;
 
+            case 'F': // asm-debug-file
+                asmdebug           = (int8_t *) ralloc (sizeof (int8_t), strlen (optarg) + 1, FLAG_NONE);
+                strcpy (asmdebug, optarg);
+                break;
+
+            case 'f': // c-debug-file
+                cdebug   = (int8_t *) ralloc (sizeof (int8_t), strlen (optarg) + 1, FLAG_NONE);
+                strcpy (cdebug, optarg);
+                break;
+
             case 'M':
                 memcfile           = optarg;
                 break;
@@ -110,7 +122,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:M:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:F:f:M:nrw:vh", long_options,
                                                   &option_index);
     }
 

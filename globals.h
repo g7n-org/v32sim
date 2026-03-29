@@ -67,6 +67,8 @@ extern int8_t    *biosfile;
 extern int8_t    *cartfile;
 extern int8_t    *memcfile;
 extern int8_t    *commandfile;
+extern int8_t    *asmdebug;
+extern int8_t    *cdebug;
 extern int8_t     sys_error;
 extern mem_t     *memory;
 extern data_t    *reg;
