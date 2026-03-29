@@ -23,6 +23,7 @@ typedef union word_type word_t;
 typedef struct linked_list linked_l;
 struct linked_list
 {
+    int8_t    *name;  // to store filename
     int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    space;
@@ -122,12 +123,13 @@ void      update_ioports (void);
 void      init_memory    (void);                              // initialize memory
 uint8_t   alloc_memory   (int32_t);
 void      load_command   (void);
-uint32_t  load_labels    (uint8_t *);
+uint32_t  load_labels    (uint8_t *,   uint8_t);
 uint8_t   load_memory    (uint32_t,    int8_t *);             // load file into memory
 uint8_t   unload_memory  (uint32_t);
 uint8_t   memory_chk     (uint32_t,    uint8_t,     uint8_t);
 word_t   *memory_get     (uint32_t,    uint8_t);              // get value from memory
 void      memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory
+void      fmemory_set    (uint32_t,    float,       uint8_t);
 void      init_registers (void);
 word_t   *reg_get        (uint8_t,     uint8_t);
 int8_t   *reg_get_name   (uint8_t,     uint8_t);

@@ -3,6 +3,7 @@ ARCH = $(shell uname -m)
 LIBS =    -lreadline -lm
 CFLAGS =  -Wall --std=gnu18 -funsigned-char -Wno-unused-value
 CFLAGS += -Wno-pointer-sign -Wno-main -Wno-int-conversion
+CFLAGS += -Wno-unused-but-set-variable
 INC = 
 CC = gcc
 SRC = $(wildcard *.c)

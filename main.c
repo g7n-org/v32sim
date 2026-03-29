@@ -189,7 +189,7 @@ int32_t   main (int32_t  argc, char **argv)
         (chk                       == TRUE) &&
         (biosfile                  != NULL))
     {
-        load_labels (biosfile);
+        load_labels (biosfile, V32_PAGE_BIOS);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +201,7 @@ int32_t   main (int32_t  argc, char **argv)
         (chk                       == TRUE) &&
         (cartfile                  != NULL))
     {
-        load_labels (cartfile);
+        load_labels (cartfile, V32_PAGE_CART);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

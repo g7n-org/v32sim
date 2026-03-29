@@ -69,12 +69,6 @@ uint8_t  prompt (uint32_t  word)
     uint8_t    processflag              = FALSE;
     //uint8_t    token_type               = PARSE_NONE;
 
-    //if ((action                        != INPUT_NONE) &&
-    //    (action                        != INPUT_INIT))
-    //{
-    //    displayshow  (dpoint, 0);
-    //}
-
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Display the prompt and obtain input
@@ -145,6 +139,10 @@ uint8_t  prompt (uint32_t  word)
             lastaction                 = INPUT_NONE;
             break;
 
+        case INPUT_GAMEPAD:
+            lastaction                 = INPUT_NONE;
+            break;
+
         case INPUT_QUIT:
             processflag                = 2;
             break;
@@ -183,7 +181,7 @@ uint8_t  prompt (uint32_t  word)
     return (processflag);
 }
 
-uint32_t  load_labels (uint8_t *filename)
+uint32_t  load_labels (uint8_t *filename, uint8_t  page)
 {
     FILE     *fptr                      = NULL;
     int32_t   index                     = 0;
@@ -231,6 +229,15 @@ uint32_t  load_labels (uint8_t *filename)
         }
         else
         {
+            if (page                   == V32_PAGE_BIOS)
+            {
+                fprintf (verbose, "[BIOS] ");
+            }
+            else if (page              == V32_PAGE_CART)
+            {
+                fprintf (verbose, "[CART] ");
+            }
+
             fprintf (verbose, "LOADING DEBUGGING DATA FOR: %s\n", filename);
             while (!feof (fptr))
             {
@@ -238,7 +245,7 @@ uint32_t  load_labels (uint8_t *filename)
                 *(input+index)          = ' ';
                 while (*(input+index)  != '\0')
                 {
-                    input[index]        = fgetc (fptr);
+                    *(input+index)      = fgetc (fptr);
                     if (*(input+index) == '\n')
                     {
                         *(input+index)  = '\0';
@@ -270,18 +277,26 @@ uint32_t  load_labels (uint8_t *filename)
                 //
                 input_string            = strtok (input, ","); // offset
                 offset                  = strtol (input_string, NULL, 16);
+                ltmp                    = listnode (LIST_MEM, offset);
 
                 input_string            = strtok (NULL, ",");  // filename
-                input_string            = strtok (NULL, ",");  // line number
-                line_number             = strtol (input_string, NULL, 10);
-
-                input_string            = strtok (NULL, ",");  // label, if present
-                ltmp                    = listnode (LIST_MEM, offset);
-                ltmp -> number          = line_number;
                 if (input_string       != NULL)
                 {
-					size                = sizeof (int8_t);
-					len                 = strlen (input_string) + 1;
+                    size                = sizeof (int8_t);
+                    len                 = strlen (input_string);
+                    ltmp -> name        = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
+                    strncpy (ltmp -> name, input_string, len);
+                }
+
+                input_string            = strtok (NULL, ",");  // line number
+                line_number             = strtol (input_string, NULL, 10);
+                ltmp -> number          = line_number;
+
+                input_string            = strtok (NULL, ",");  // label, if present
+                if (input_string       != NULL)
+                {
+                    size                = sizeof (int8_t);
+                    len                 = strlen (input_string) + 1;
                     ltmp -> label       = (int8_t *) ralloc (size, len, FLAG_NONE);
                     strcpy (ltmp -> label, input_string);
                 }

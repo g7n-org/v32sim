@@ -33,18 +33,6 @@ void  init_ioports  (void)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // BIOS texture/regions is a 1D array of region_t's within a singular vtex,
-    // for managing the regions present in the single BIOS texture.
-    //
-    size                           = sizeof (vtex_t);
-    len                            = 1;
-    bios_vtex                      = (vtex_t *) ralloc (size, len, FLAG_ZERO);
-    size                           = sizeof (region_t);
-    len                            = V32_REGIONS_PER_TEXTURE;
-    bios_vtex -> region            = (region_t *) ralloc (size, len, FLAG_ZERO);
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
     // gamepad ports backing store: a 4-element array of gamepad_t
     //
     size                              = sizeof (gamepad_t);

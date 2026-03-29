@@ -11,7 +11,6 @@ void  init_memory (void)
     // Allocate the memory device
     //
     len                                     = NUM_MEMORY_PAGES;
-    //memory                                  = (mem_t *) ralloc (sizeof (mem_t), len, FLAG_TRACK | FLAG_RETERR);
     memory                                  = (mem_t *) ralloc (sizeof (mem_t), len, FLAG_RETERR);
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -20,7 +19,7 @@ void  init_memory (void)
     //
     if (memory                             == NULL)
     {
-        fprintf (stderr, "[error] failed to allocate for memory resource\n");
+        fprintf (stderr, "[init_memory] ERROR: failed to allocate memory!\n");
         exit (MEMORY_ALLOC_FAIL);
     }
 
@@ -120,8 +119,9 @@ uint8_t  alloc_memory (int32_t  page)
             //
             // allocate memory for the page
             //
-            //(memory+page)     -> data       = (data_t *) ralloc (sizeof (data_t), len, FLAG_TRACK | FLAG_RETERR);
-            (memory+page)     -> data       = (data_t *) ralloc (sizeof (data_t), len, FLAG_RETERR);
+            (memory+page)     -> data       = (data_t *) ralloc (sizeof (data_t),
+                                                                 len,
+                                                                 FLAG_RETERR);
             if ((memory+page) -> data      == NULL)
             {
                 fprintf (stderr, "[error] failed to allocate for memory page\n");
@@ -164,22 +164,18 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  flag, uint8_t  sys_force)
     switch (page)
     {
         case V32_PAGE_RAM:
-            attr               = (memory+page) -> flag;
             sprintf (type, "RAM ");
             break;
 
         case V32_PAGE_BIOS:
-            attr               = (memory+page) -> flag;
             sprintf (type, "BIOS");
             break;
 
         case V32_PAGE_CART:
-            attr               = (memory+page) -> flag;
             sprintf (type, "CART");
             break;
 
         case V32_PAGE_MEMC:
-            attr               = (memory+page) -> flag;
             sprintf (type, "MEMC");
             break;
 
@@ -201,6 +197,7 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  flag, uint8_t  sys_force)
     //
     if (result                == TRUE)
     {
+        attr                   = (memory+page) -> flag;
         if ((address          >  (memory+page) -> last_addr) ||
             ((sys_force       == FALSE) &&
              (flag            != (flag & attr))))
@@ -263,5 +260,20 @@ void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
     {
         dptr                        = (memory+page)  -> data;
         (dptr+offset) -> value.i32  = dataword;
+    }
+}
+
+void    fmemory_set (uint32_t  address, float  dataword, uint8_t  sys_force)
+{
+    data_t   *dptr                  = NULL;
+    uint32_t  page                  = (address & 0xF0000000) >> 28;
+    uint32_t  offset                = (address & 0x0FFFFFFF);
+    uint8_t   check                 = TRUE;
+
+    check                           = memory_chk (address, FLAG_WRITE, sys_force);
+    if (check                      == TRUE)
+    {
+        dptr                        = (memory+page)  -> data;
+        (dptr+offset) -> value.f32  = dataword;
     }
 }

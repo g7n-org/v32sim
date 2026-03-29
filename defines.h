@@ -205,6 +205,7 @@
 #define  ISYSMEMGET(addr)        word2int (memory_get (addr, TRUE))
 #define  FMEMGET(addr)           word2float (memory_get (addr, FALSE))
 #define  MEMSET(addr, word)      memory_set (addr, word, FALSE)
+#define  FMEMSET(addr, word)     fmemory_set (addr, word, FALSE)
 #define  SYSMEMSET(addr, word)   memory_set (addr, word, TRUE)
 
 #define  IPORTGET(addr)          word2int (ioports_get (addr, FALSE))
