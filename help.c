@@ -52,6 +52,29 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  quit                    exit the simulator\n");
             break;
 
+        case INPUT_GAMEPAD:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    gamepad\n");
+            fprintf (stdout, "    gamepad# COMMAND\n");
+            fprintf (stdout, "    gamepad COMMAND\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Display current values, or manipulate the gamepads\n");
+            fprintf (stdout, "    (0-3), with the following commands:\n\n");
+            fprintf (stdout, "    select      - switch to the indicated gamepad (0-3)\n");
+            fprintf (stdout, "    connect     - connect the selected gamepad (active)\n");
+            fprintf (stdout, "    disconnect  - disconnect the selected gamepad (inactive)\n");
+            fprintf (stdout, "    left        - toggle left d-pad button (pressed/not pressed)\n");
+            fprintf (stdout, "    right       - toggle right d-pad button (pressed/not pressed)\n");
+            fprintf (stdout, "    up          - toggle up d-pad button (pressed/not pressed)\n");
+            fprintf (stdout, "    down        - toggle down d-pad button (pressed/not pressed)\n");
+            fprintf (stdout, "    start       - toggle start button (pressed/not pressed)\n");
+            fprintf (stdout, "    A|B|X|Y|L|R - toggle indicated button (pressed/not pressed)\n\n");
+            fprintf (stdout, "NOTES:\n");
+            fprintf (stdout, "    When pressed, the button's value will be a positive number\n");
+            fprintf (stdout, "    of frames it has been pressed. When not pressed, a negative\n");
+            fprintf (stdout, "    number of frames it has not been pressed\n\n");
+            break;
+
         case INPUT_REPLACE:
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    replace IP:0xADDR IR:0xINSTRUCT IV:0xIMMEDIATE\n");

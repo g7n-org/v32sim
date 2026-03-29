@@ -594,9 +594,9 @@ int32_t   main (int32_t  argc, char **argv)
         }
     }
 
-    rfree  (reg);
-    rfree  (memory);
-    rfree  (ioports);
+    rfree (reg);
+    rfree (memory);
+    rfree (ioports);
 
     if ((devnull                      != NULL) &&
         (devnull                      != stderr))

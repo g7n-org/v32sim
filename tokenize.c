@@ -808,6 +808,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         help (INPUT_DISPLAY);
                         action         = INPUT_INIT;
                     }
+                    else if (0        == strncasecmp (token, "g", 1))
+                    {
+                        help (INPUT_GAMEPAD);
+                        action         = INPUT_INIT;
+                    }
                     else if (0        == strncasecmp (token, "ig", 2))
                     {
                         help (INPUT_IGNORE);
