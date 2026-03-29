@@ -120,6 +120,15 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             {
                 case V32_PAGE_BIOS:
                 case V32_PAGE_CART:
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // load any debug file labels pertaining to page being loaded
+                    //
+                    if (debugflag      == TRUE)
+                    {
+                        load_labels (filename, page);
+                    }
+
                     fseek (fptr, (0x16 * wordsize), SEEK_SET);
 
                     ////////////////////////////////////////////////////////////////////
@@ -353,8 +362,10 @@ uint8_t  unload_memory (uint32_t  page)
     //
     // Declare and initialize variables
     //
-    uint8_t  result                 = TRUE;
-    int32_t  index                  = 0;
+    int32_t   index                 = 0;
+    linked_l *ltmp                  = NULL;
+    linked_l *ltmp2                 = NULL;
+    uint8_t   result                = TRUE;
 
     switch (page)
     {
@@ -394,6 +405,35 @@ uint8_t  unload_memory (uint32_t  page)
         (memory+page) -> data       = NULL;
         (memory+page) -> size       = 0;
         (memory+page) -> last_addr  = (memory+page) -> firstaddr;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // clear the established labels and offsets from the label list pertaining to
+    // the page just unloaded
+    //
+    if ((page                      == V32_PAGE_BIOS) ||
+        (page                      == V32_PAGE_CART))
+    {
+        ltmp                        = lpoint;
+        while (ltmp                != NULL)
+        {
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // if the node pertains to the unloaded page, grab and free it
+            //
+             if (ltmp -> type       == page)   
+            {
+                ltmp2               = ltmp;
+                ltmp                = ltmp -> next;
+                ltmp2               = list_grab (&lpoint, ltmp2);
+                rfree (ltmp2);
+            }
+            else
+            {
+                ltmp                = ltmp -> next;
+            }
+        }
     }
 
     return (result);

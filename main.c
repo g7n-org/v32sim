@@ -187,25 +187,17 @@ int32_t   main (int32_t  argc, char **argv)
     // Initialize BIOS (load contents into memory), optionally loading any debug data
     //
     chk                             = load_memory (V32_PAGE_BIOS, biosfile);
-    if ((debugflag                 == TRUE) &&
-        (chk                       == TRUE) &&
-        (biosfile                  != NULL))
-    {
-        value                       = load_labels (biosfile, V32_PAGE_BIOS);
-    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Initialize CART (load contents into memory), optionally loading any debug data
     //
     chk                             = load_memory (V32_PAGE_CART, cartfile);
-    if ((debugflag                 == TRUE) &&
-        (chk                       == TRUE) &&
-        (cartfile                  != NULL))
-    {
-        load_labels (cartfile, V32_PAGE_CART);
-    }
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // If an assembly debug file was specified, process it here
+    //
     if (asmdebug                   != NULL)
     {
         load_labels (asmdebug, 0);
