@@ -120,14 +120,6 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             {
                 case V32_PAGE_BIOS:
                 case V32_PAGE_CART:
-                    ////////////////////////////////////////////////////////////////////
-                    //
-                    // load any debug file labels pertaining to page being loaded
-                    //
-                    if (debugflag      == TRUE)
-                    {
-                        load_labels (filename, page);
-                    }
 
                     fseek (fptr, (0x16 * wordsize), SEEK_SET);
 
@@ -161,12 +153,16 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     // of the CART, so that resources are  only allocated
                     // for what is needed based on the CART being loaded.
                     //
-                    if (page           == V32_PAGE_CART)
+                    if (page            == V32_PAGE_CART)
                     {
-                        size            = sizeof (vtex_t);
-                        len             = num_vtex;
-                        cart_vtex       = (vtex_t *) ralloc (size, len, FLAG_ZERO); 
-                        vptr            = cart_vtex;
+                        size             = sizeof (vtex_t);
+                        len              = num_vtex;
+                        cart_vtex        = (vtex_t *) ralloc (size, len, FLAG_ZERO); 
+                        vptr             = cart_vtex;
+                        if (vptr        != NULL)
+                        {
+                            vptr -> qty  = num_vtex;
+                        }
                     }
 
                     ////////////////////////////////////////////////////////////////////
@@ -179,15 +175,15 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     // that resources are  only to be allocated for  what
                     // is needed based on the BIOS being loaded.
                     //
-                    else if (page      == V32_PAGE_BIOS)
+                    else if (page       == V32_PAGE_BIOS)
                     {
-                        size            = sizeof (vtex_t);
-                        len             = 1;
-                        bios_vtex       = (vtex_t *) ralloc (size, len, FLAG_ZERO);
-                        vptr            = bios_vtex;
+                        size             = sizeof (vtex_t);
+                        len              = 1;
+                        bios_vtex        = (vtex_t *) ralloc (size, len, FLAG_ZERO);
+                        vptr             = bios_vtex;
+                        vptr -> qty      = num_vtex;
                     }
 
-                    vptr -> qty         = num_vtex;
 
                     ////////////////////////////////////////////////////////////////////
                     //
@@ -195,7 +191,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     // 4096 regions)
                     //
                     for (index          = 0;
-                         index         <  vptr -> qty;
+                         index         <  num_vtex;
                          index          = index + 1)
                     {
                         size            = sizeof (region_t);
@@ -235,6 +231,14 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     }
                     fprintf (debug, "#vtex: %u, #vsnd: %u, romsize: 0x%.8X\n",
                                     num_vtex, num_vsnd, data_size);
+					/*
+					if ((debugflag                 == TRUE) &&
+						(chk                       == TRUE) &&
+						(filename                  != NULL))
+					{
+						load_labels (filename, page);
+					}
+					*/
                     break;
 
                 case V32_PAGE_MEMC: // we need to skip ahead to word ?? (check for value)

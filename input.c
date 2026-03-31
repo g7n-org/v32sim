@@ -218,7 +218,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page)
         string                              = dirname  (token);
         size                                = sizeof (uint8_t);
         len                                 = strlen (string) + 1;
-        path                                = (uint8_t *) ralloc (size, len, FLAG_NONE);            
+        path                                = (uint8_t *) ralloc (size, len, FLAG_NONE);
         strncpy (path, string, len);
 
         len                                 = strlen (datafile) + 1;
@@ -263,6 +263,10 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page)
             }
         }
 
+        rfree (path);
+        rfree (debugfile);
+        rfree (token);
+
         if (fptr                           != NULL)
         {
             if (page                       == V32_PAGE_BIOS)
@@ -276,7 +280,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page)
 
             fprintf (verbose, "LOADING DEBUGGING DATA FOR: %s\n", datafile);
 
-			string                          = (int8_t *) ralloc (sizeof (int8_t), 96, FLAG_ZERO);
+            string                          = (int8_t *) ralloc (sizeof (int8_t), 96, FLAG_ZERO);
             while (!feof (fptr))
             {
                 index                       = 0;
@@ -346,16 +350,8 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page)
                 tally                       = tally + 1;
             }
             fclose (fptr);
-			rfree (string);
+            rfree (string);
         }
-
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // deallocate resources
-        //
-        rfree (path);
-        rfree (token);
-        rfree (debugfile);
     }
 
     return (tally);

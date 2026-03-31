@@ -188,11 +188,34 @@ int32_t   main (int32_t  argc, char **argv)
     //
     chk                             = load_memory (V32_PAGE_BIOS, biosfile);
 
+    ////////////////////////////////////////////////////////////////////
+    //
+    // load any debug file labels pertaining to page being loaded
+    //
+    if ((debugflag                 == TRUE) &&
+        (chk                       == TRUE) &&
+        (biosfile                  != NULL))
+    {
+        load_labels (biosfile, V32_PAGE_BIOS);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Initialize CART (load contents into memory), optionally loading any debug data
     //
     chk                             = load_memory (V32_PAGE_CART, cartfile);
+
+    ////////////////////////////////////////////////////////////////////
+    //
+    // load any debug file labels pertaining to page being loaded
+    //
+	/*
+    if ((debugflag                 == TRUE) &&
+        (chk                       == TRUE) &&
+        (biosfile                  != NULL))
+    {
+        load_labels (cartfile, V32_PAGE_CART);
+    }*/
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
