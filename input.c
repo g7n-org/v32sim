@@ -181,7 +181,7 @@ uint8_t  prompt (uint32_t  word)
     return (processflag);
 }
 
-uint32_t  load_labels (uint8_t *datafile, uint8_t  page)
+uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
 {
     FILE     *fptr                          = NULL;
     int32_t   index                         = 0;
@@ -204,39 +204,57 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page)
     //
     if (datafile                           != NULL)
     {
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // Generate debug datafile (stored in variable 'debugfile')
-        //
-        size                                = sizeof (uint8_t);
-        len                                 = strlen (datafile) + 1;
-        token                               = (uint8_t *) ralloc (size, len, FLAG_NONE);
-        strncpy (token, datafile, len);
-        fprintf (debug, "[load_labels] datafile:     '%s'\n", datafile);
-        fprintf (debug, "[load_labels] token:        '%s'\n", token);
+        if ((flag & FLAG_SEARCH)           == FLAG_SEARCH)
+        {
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // Generate debug datafile (stored in variable 'debugfile')
+            //
+            size                            = sizeof (uint8_t);
+            len                             = strlen (datafile) + 1;
+            token                           = (uint8_t *) ralloc (size, len, FLAG_NONE);
+            strncpy (token, datafile, len);
+            fprintf (debug, "[load_labels] datafile:     '%s'\n", datafile);
+            fprintf (debug, "[load_labels] token:        '%s'\n", token);
 
-        string                              = dirname  (token);
-        size                                = sizeof (uint8_t);
-        len                                 = strlen (string) + 1;
-        path                                = (uint8_t *) ralloc (size, len, FLAG_NONE);
-        strncpy (path, string, len);
+            string                          = dirname  (token);
+            size                            = sizeof (uint8_t);
+            len                             = strlen (string) + 1;
+            path                            = (uint8_t *) ralloc (size, len, FLAG_NONE);
+            strncpy (path, string, len);
 
-        len                                 = strlen (datafile) + 1;
-        strncpy (token, datafile, len);
-        filename                            = basename (token);
+            len                             = strlen (datafile) + 1;
+            strncpy (token, datafile, len);
+            filename                        = basename (token);
 
-        fprintf (debug, "[load_labels] path:         '%s'\n", path);
-        fprintf (debug, "[load_labels] filename:     '%s'\n", filename);
+            fprintf (debug, "[load_labels] path:         '%s'\n", path);
+            fprintf (debug, "[load_labels] filename:     '%s'\n", filename);
 
-        input_string                        = strtok (filename, ".");
-        fprintf (debug, "[load_labels] input_string: '%s'\n", input_string);
+            input_string                    = strtok (filename, ".");
+            fprintf (debug, "[load_labels] input_string: '%s'\n", input_string);
 
-        size                                = sizeof (uint8_t);
-        len                                 = strlen (input_string) + 13;
-        debugfile                           = (uint8_t *) ralloc (size, len, FLAG_NONE);
-        sprintf (debugfile, "%s/%s.vbin.debug", path, input_string);
-        fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
-    
+            if ((flag & FLAG_ASM)          == FLAG_ASM)
+            {
+                size                        = sizeof (uint8_t);
+                len                         = strlen (input_string) + 16;
+                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                sprintf (debugfile, "%s/%s.vbin.debug", path, input_string);
+                fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
+            }
+            else if ((flag & FLAG_C)       == FLAG_C)
+            {
+                size                        = sizeof (uint8_t);
+                len                         = strlen (input_string) + 16;
+                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                sprintf (debugfile, "%s/%s.asm.debug", path, input_string);
+                fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
+            }
+        }
+        else
+        {
+            debugfile                       = datafile;
+        }
+
         fptr                                = fopen (debugfile, "r");
         if (fptr                           == NULL)
         {

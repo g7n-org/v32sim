@@ -164,6 +164,7 @@
 
 #define  TRUE                    1
 #define  FALSE                   0
+#define  MU                      255 // not applicable
 
 #define  NUM_REGISTERS           19
 
@@ -232,6 +233,10 @@
 #define  FLAG_ZERO               1
 #define  FLAG_RETERR             2
 #define  FLAG_TRACK              4
+
+#define  FLAG_SEARCH             1
+#define  FLAG_ASM                2
+#define  FLAG_C                  4
 
 #define  FLAG_READ               4
 #define  FLAG_WRITE              2

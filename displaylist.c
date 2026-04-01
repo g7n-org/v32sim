@@ -80,6 +80,7 @@ void  show_sysregs (void)
 void  display_config (uint8_t  item)
 {
     int32_t   index  = 0;
+    int32_t   qty    = 0;
     data_t   *dptr   = NULL;
 
     switch (item)
@@ -95,8 +96,17 @@ void  display_config (uint8_t  item)
                      (bios_vtex) -> high,
                      (bios_vtex) -> offset);
             fprintf (stdout, "CART: %s\n", show_size (V32_PAGE_CART));
+            if (cart_vtex   == NULL)
+            {
+                qty          = 0;
+            }
+            else
+            {
+                qty          = (cart_vtex+0) -> qty;
+            }
+
             for (index       = 0;
-                 index      <  (cart_vtex+0) -> qty;
+                 index      <  qty;
                  index       = index + 1)
             {
                 fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",

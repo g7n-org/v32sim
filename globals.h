@@ -67,8 +67,10 @@ extern int8_t    *biosfile;
 extern int8_t    *cartfile;
 extern int8_t    *memcfile;
 extern int8_t    *commandfile;
-extern int8_t    *asmdebug;
-extern int8_t    *cdebug;
+extern int8_t    *biosasmdebug;
+extern int8_t    *cartasmdebug;
+extern int8_t    *bioscdebug;
+extern int8_t    *cartcdebug;
 extern int8_t     sys_error;
 extern mem_t     *memory;
 extern data_t    *reg;
@@ -85,7 +87,10 @@ extern gamepad_t *gamepad;
 extern uint8_t    sys_reg_show;
 
 extern uint8_t    action;
-extern uint8_t    debugflag;
+extern uint8_t    biosasmdebugflag;
+extern uint8_t    bioscdebugflag;
+extern uint8_t    cartasmdebugflag;
+extern uint8_t    cartcdebugflag;
 extern uint8_t    runflag;
 extern uint8_t    colorflag;
 extern uint8_t    branchflag;
@@ -125,7 +130,7 @@ void      update_ioports (void);
 void      init_memory    (void);                              // initialize memory
 uint8_t   alloc_memory   (int32_t);
 void      load_command   (void);
-uint32_t  load_labels    (uint8_t *,   uint8_t);
+uint32_t  load_labels    (uint8_t *,   uint8_t,     uint8_t);
 uint8_t   load_memory    (uint32_t,    int8_t *);             // load file into memory
 uint8_t   unload_memory  (uint32_t);
 uint8_t   memory_chk     (uint32_t,    uint8_t,     uint8_t);

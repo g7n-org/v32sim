@@ -12,8 +12,10 @@ int8_t   *biosfile;
 int8_t   *cartfile;
 int8_t   *memcfile;
 int8_t   *commandfile;
-int8_t   *asmdebug;
-int8_t   *cdebug;
+int8_t   *biosasmdebug;
+int8_t   *cartasmdebug;
+int8_t   *bioscdebug;
+int8_t   *cartcdebug;
 data_t   *reg;
 int8_t   *token_label;
 
@@ -34,7 +36,10 @@ uint8_t    sys_reg_show;
 // flags
 //
 uint8_t   action;
-uint8_t   debugflag;
+uint8_t   biosasmdebugflag;
+uint8_t   bioscdebugflag;
+uint8_t   cartasmdebugflag;
+uint8_t   cartcdebugflag;
 uint8_t   runflag;
 uint8_t   colorflag;
 uint8_t   branchflag;
@@ -82,7 +87,10 @@ int32_t   main (int32_t  argc, char **argv)
     commandfile                     = NULL;
     rom_offset                      = BIOS_START_OFFSET;
     branchflag                      = FALSE;
-    debugflag                       = TRUE;
+    biosasmdebugflag                = FALSE;
+    bioscdebugflag                  = FALSE;
+    cartasmdebugflag                = FALSE;
+    cartcdebugflag                  = FALSE;
     runflag                         = FALSE;
     colorflag                       = FALSE;
     seek_word                       = 0xFFFFFFFF;
@@ -188,15 +196,26 @@ int32_t   main (int32_t  argc, char **argv)
     //
     chk                             = load_memory (V32_PAGE_BIOS, biosfile);
 
-    ////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
     //
     // load any debug file labels pertaining to page being loaded
     //
-    if ((debugflag                 == TRUE) &&
-        (chk                       == TRUE) &&
+    if ((biosasmdebugflag          == FALSE) &&
+        (chk                       == TRUE)  &&
         (biosfile                  != NULL))
     {
-        load_labels (biosfile, V32_PAGE_BIOS);
+        load_labels (biosfile, V32_PAGE_BIOS, FLAG_SEARCH | FLAG_ASM);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // load any debug file labels pertaining to page being loaded
+    //
+    if ((bioscdebugflag            == FALSE) &&
+        (chk                       == TRUE)  &&
+        (biosfile                  != NULL))
+    {
+        load_labels (biosfile, V32_PAGE_BIOS, FLAG_SEARCH | FLAG_C);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -205,25 +224,63 @@ int32_t   main (int32_t  argc, char **argv)
     //
     chk                             = load_memory (V32_PAGE_CART, cartfile);
 
-    ////////////////////////////////////////////////////////////////////
+    /*
+    ////////////////////////////////////////////////////////////////////////////////////
     //
     // load any debug file labels pertaining to page being loaded
     //
-	/*
-    if ((debugflag                 == TRUE) &&
+    if ((cartasmdebugflag          == FALSE) &&
         (chk                       == TRUE) &&
-        (biosfile                  != NULL))
+        (cartfile                  != NULL))
     {
-        load_labels (cartfile, V32_PAGE_CART);
+        load_labels (cartfile, V32_PAGE_CART, FLAG_SEARCH | FLAG_ASM);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // load any debug file labels pertaining to page being loaded
+    //
+    if ((cartcdebugflag            == FALSE) &&
+        (chk                       == TRUE) &&
+        (cartfile                  != NULL))
+    {
+        load_labels (cartfile, V32_PAGE_CART, FLAG_SEARCH | FLAG_C);
     }*/
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // If an assembly debug file was specified, process it here
+    // If a BIOS assembly debug file was specified, process it here
     //
-    if (asmdebug                   != NULL)
+    if (biosasmdebug               != NULL)
     {
-        load_labels (asmdebug, 0);
+        load_labels (biosasmdebug, 0, FLAG_NONE);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // If a BIOS C debug file was specified, process it here
+    //
+    if (bioscdebug                 != NULL)
+    {
+        load_labels (bioscdebug,   0, FLAG_NONE);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // If a CART assembly debug file was specified, process it here
+    //
+    if (cartasmdebug               != NULL)
+    {
+        load_labels (cartasmdebug, 0, FLAG_NONE);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // If a CART C debug file was specified, process it here
+    //
+    if (cartcdebug                 != NULL)
+    {
+        load_labels (cartcdebug,   0, FLAG_NONE);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

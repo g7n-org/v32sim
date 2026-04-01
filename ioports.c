@@ -722,6 +722,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 break;
 
             case GPU_Command:
+
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Execute the GPU command
@@ -744,6 +745,10 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                     }
                     else if (num      != -2)
                     {
+                        if (cart_vtex == NULL)
+                        {
+                            break;
+                        }
                         rptr           = (cart_vtex+num) -> region;
                     }
 
@@ -771,6 +776,13 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                     (i32         >= 256))
                 {
                     fprintf (debug, "[ioports_set] invalid texture id %d\n", i32);
+                    break;
+                }
+
+                if ((i32         != -1) &&
+                    (cart_vtex   == NULL))
+                {
+                    fprintf (debug, "[ioports_set] no CART textures present (%d)\n", i32);
                     break;
                 }
 
@@ -845,6 +857,13 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 // Back up current selected region data in current texture
                 //
                 num                    = IPORTGET(GPU_SelectedTexture);
+
+                if ((num              != -1) &&
+                    (cart_vtex        == NULL))
+                {
+                    break;
+                }
+
                 id                     = IPORTGET(GPU_SelectedRegion);
                 if (num               == -1)
                 {

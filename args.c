@@ -18,8 +18,10 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "command-file",   required_argument, 0, 'C' },
        { "deref-addr",     no_argument,       0, 'd' },
        { "debug",          no_argument,       0, 'D' },
-       { "asm-debug-file", required_argument, 0, 'F' },
-       { "c-debug-file",   required_argument, 0, 'f' },
+       { "bios-asm-debug", required_argument, 0, 16  },
+       { "cart-asm-debug", required_argument, 0, 17  },
+       { "bios-c-debug",   required_argument, 0, 18  },
+       { "cart-c-debug",   required_argument, 0, 19  },
        { "entry-point",    required_argument, 0, 'E' },
        { "errorcheck",     no_argument,       0, 'e' },
        { "memcfile",       required_argument, 0, 'M' },
@@ -36,7 +38,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:F:f:M:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:M:nrw:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -86,14 +88,36 @@ void  process_args (int32_t  argc, int8_t **argv)
                 rom_offset         = strtol (optarg, NULL, 16);
                 break;
 
-            case 'F': // asm-debug-file
-                asmdebug           = (int8_t *) ralloc (sizeof (int8_t), strlen (optarg) + 1, FLAG_NONE);
-                strcpy (asmdebug, optarg);
+            case 16: // bios-asm-debug
+                biosasmdebug       = (int8_t *) ralloc (sizeof (int8_t),
+                                                        strlen (optarg) + 1,
+                                                        FLAG_NONE);
+                strcpy (biosasmdebug, optarg);
+                biosasmdebugflag   = TRUE;
                 break;
 
-            case 'f': // c-debug-file
-                cdebug   = (int8_t *) ralloc (sizeof (int8_t), strlen (optarg) + 1, FLAG_NONE);
-                strcpy (cdebug, optarg);
+            case 17: // cart-asm-debug
+                cartasmdebug       = (int8_t *) ralloc (sizeof (int8_t),
+                                                        strlen (optarg) + 1,
+                                                        FLAG_NONE);
+                strcpy (cartasmdebug, optarg);
+                cartasmdebugflag   = TRUE;
+                break;
+
+            case 18: // bios-c-debug
+                bioscdebug         = (int8_t *) ralloc (sizeof (int8_t),
+                                                        strlen (optarg) + 1,
+                                                        FLAG_NONE);
+                strcpy (bioscdebug, optarg);
+                bioscdebugflag     = TRUE;
+                break;
+
+            case 19: // cart-c-debug
+                cartcdebug         = (int8_t *) ralloc (sizeof (int8_t),
+                                                        strlen (optarg) + 1,
+                                                        FLAG_NONE);
+                strcpy (bioscdebug, optarg);
+                cartcdebugflag     = TRUE;
                 break;
 
             case 'M':
@@ -101,7 +125,10 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
 
             case 'n':
-                debugflag          = FALSE;
+                biosasmdebugflag   = MU;
+                bioscdebugflag     = MU;
+                cartasmdebugflag   = MU;
+                cartcdebugflag     = MU;
                 break;
 
             case 'r':
@@ -122,7 +149,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:F:f:M:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:M:nrw:vh", long_options,
                                                   &option_index);
     }
 

@@ -231,14 +231,14 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     }
                     fprintf (debug, "#vtex: %u, #vsnd: %u, romsize: 0x%.8X\n",
                                     num_vtex, num_vsnd, data_size);
-					/*
-					if ((debugflag                 == TRUE) &&
-						(chk                       == TRUE) &&
-						(filename                  != NULL))
-					{
-						load_labels (filename, page);
-					}
-					*/
+                    /*
+                    if ((debugflag                 == TRUE) &&
+                        (chk                       == TRUE) &&
+                        (filename                  != NULL))
+                    {
+                        load_labels (filename, page, FLAG_NONE);
+                    }
+                    */
                     break;
 
                 case V32_PAGE_MEMC: // we need to skip ahead to word ?? (check for value)
@@ -403,9 +403,14 @@ uint8_t  unload_memory (uint32_t  page)
             break;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // If a valid unload transaction, clear the allocated memory and reset the
+    // page attributes to reflect the unloaded state
+    //
     if (result                     == TRUE)
     {
-        free ((memory+page) -> data);
+        rfree ((memory+page) -> data);
         (memory+page) -> data       = NULL;
         (memory+page) -> size       = 0;
         (memory+page) -> last_addr  = (memory+page) -> firstaddr;
@@ -437,6 +442,50 @@ uint8_t  unload_memory (uint32_t  page)
             {
                 ltmp                = ltmp -> next;
             }
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // if a BIOS ASM debug file was specified, clear it
+        //
+        if ((biosasmdebug          != NULL) &&
+            (page                  == V32_PAGE_BIOS))
+        {
+            rfree (biosasmdebug);
+            biosasmdebug            = NULL;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // if a CART ASM debug file was specified, clear it
+        //
+        if ((cartasmdebug          != NULL) &&
+            (page                  == V32_PAGE_BIOS))
+        {
+            rfree (cartasmdebug);
+            cartasmdebug            = NULL;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // if a BIOS C debug file was specified, clear it
+        //
+        if ((bioscdebug            != NULL) &&
+            (page                  == V32_PAGE_CART))
+        {
+            rfree (bioscdebug);
+            bioscdebug              = NULL;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // if a CART C debug file was specified, clear it
+        //
+        if ((cartcdebug            != NULL) &&
+            (page                  == V32_PAGE_CART))
+        {
+            rfree (cartcdebug);
+            cartcdebug              = NULL;
         }
     }
 
