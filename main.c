@@ -36,6 +36,7 @@ uint8_t    sys_reg_show;
 // flags
 //
 uint8_t   action;
+uint8_t   modeflag;
 uint8_t   biosasmdebugflag;
 uint8_t   bioscdebugflag;
 uint8_t   cartasmdebugflag;
@@ -64,6 +65,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // declare and initialize variables
     //
+    FILE     *fptr                  = NULL;
     linked_l *btmp                  = NULL;
     linked_l *tmp                   = NULL;
     size_t    len                   = 0;
@@ -75,7 +77,12 @@ int32_t   main (int32_t  argc, char **argv)
     uint8_t   decodeflags           = FLAG_NONE;
     uint8_t   errorflag             = FLAG_NONE;
     uint8_t   processflag           = FALSE;
+    uint8_t  *filename              = NULL;
     uint32_t  value                 = 0;
+    uint32_t  line_number           = 0;
+    uint8_t  *line_input            = NULL;
+    int32_t   index                 = 0;
+    size_t    buffer_size           = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -86,6 +93,7 @@ int32_t   main (int32_t  argc, char **argv)
     memcfile                        = NULL;
     commandfile                     = NULL;
     rom_offset                      = BIOS_START_OFFSET;
+    modeflag                        = FLAG_C;
     branchflag                      = FALSE;
     biosasmdebugflag                = FALSE;
     bioscdebugflag                  = FALSE;
@@ -224,7 +232,6 @@ int32_t   main (int32_t  argc, char **argv)
     //
     chk                             = load_memory (V32_PAGE_CART, cartfile);
 
-    /*
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // load any debug file labels pertaining to page being loaded
@@ -245,7 +252,7 @@ int32_t   main (int32_t  argc, char **argv)
         (cartfile                  != NULL))
     {
         load_labels (cartfile, V32_PAGE_CART, FLAG_SEARCH | FLAG_C);
-    }*/
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -478,6 +485,47 @@ int32_t   main (int32_t  argc, char **argv)
             //
             do
             {
+
+				if (modeflag          == FLAG_C)
+				{
+					fprintf (stdout, "** MODEFLAG FLAG_C\n");
+					tmp                = find_value (lpoint, REG(IP));
+					if (tmp           != NULL)
+					{
+						if (filename  == NULL)
+						{
+							fptr       = fopen (tmp -> cname, "r");
+							line_number  = 1;
+						}
+						else if (strcmp (filename, tmp -> cname) == 0)
+						{
+							fclose (fptr);
+							fptr       = fopen (tmp -> cname, "r");
+							line_number  = 1;
+						}
+
+						if (tmp -> line <  line_number)
+						{
+							if (fptr != NULL)
+								fclose (fptr);
+							fptr       = fopen (tmp -> cname, "r");
+							line_number  = 1;
+						}
+
+						for (index     = 1;
+							 index    <  tmp -> line;
+							 index     = index + 1)
+						{
+							len        = getline (&line_input, &buffer_size, fptr);
+						}
+						line_number    = index;
+
+						if (len       >  0)
+							fprintf (stdout, "%4u: %s\n", tmp -> line, line_input);
+						else
+							fprintf (stdout, "empty (line_number: %u, tmp->line: %u\n", line_number, tmp->line);
+					}
+				}
                 if (sys_reg_show      == TRUE)
                 {
                     show_sysregs ();

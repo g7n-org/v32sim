@@ -24,6 +24,7 @@ typedef struct linked_list linked_l;
 struct linked_list
 {
     int8_t    *name;  // to store filename
+    int8_t    *cname;
     int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    space;
@@ -88,6 +89,7 @@ extern gamepad_t *gamepad;
 extern uint8_t    sys_reg_show;
 
 extern uint8_t    action;
+extern uint8_t    modeflag;
 extern uint8_t    biosasmdebugflag;
 extern uint8_t    bioscdebugflag;
 extern uint8_t    cartasmdebugflag;

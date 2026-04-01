@@ -186,6 +186,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
     FILE     *fptr                          = NULL;
     int32_t   index                         = 0;
     linked_l *ltmp                          = NULL;
+    linked_l *ltmp2                         = NULL;
     size_t    len                           = 0;
     size_t    size                          = 0;
     uint32_t  offset                        = 0;
@@ -352,37 +353,99 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                 // For label loading, we are specifically interested in the lines
                 // with a label in the last field (second example)
                 //
-                fprintf (debug, "             -------------------------------\n");
-                fprintf (debug, "[load_label] string:    '%s'\n", string);
-                input_string                = strtok (string, ","); // offset
-                fprintf (debug, "[load_label] input_string: '%s'\n", input_string);
-                offset                      = strtol (input_string, NULL, 16);
-                ltmp                        = listnode (page, offset);
-
-                input_string                = strtok (NULL, ",");  // filename
-                fprintf (debug, "[load_label] input_string: '%s'\n", input_string);
-                if (input_string           != NULL)
+                if ((flag & FLAG_ASM)       == FLAG_ASM)
                 {
-                    size                    = sizeof (int8_t);
-                    len                     = strlen (input_string);
-                    ltmp -> name            = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
-                    strncpy (ltmp -> name, input_string, len);
+                    fprintf (debug, "             -------------------------------\n");
+                    fprintf (debug, "[load_label] string:    '%s'\n", string);
+                    input_string             = strtok (string, ","); // offset
+                    fprintf (debug, "[load_label] input_string: '%s'\n", input_string);
+                    offset                   = strtol (input_string, NULL, 16);
+                    ltmp                     = listnode (page, offset);
+
+                    input_string             = strtok (NULL, ",");  // filename
+                    fprintf (debug, "[load_label] input_string: '%s'\n", input_string);
+                    if (input_string        != NULL)
+                    {
+                        size                 = sizeof (int8_t);
+                        len                  = strlen (input_string);
+                        ltmp -> name         = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
+                        strncpy (ltmp -> name, input_string, len);
+                    }
+
+                    input_string             = strtok (NULL, ",");  // line number
+                    line_number              = strtol (input_string, NULL, 10);
+                    ltmp -> number           = line_number;
+
+                    input_string             = strtok (NULL, ",");  // label, if present
+                    if (input_string        != NULL)
+                    {
+                        size                 = sizeof (int8_t);
+                        len                  = strlen (input_string) + 1;
+                        ltmp -> label        = (int8_t *) ralloc (size, len, FLAG_NONE);
+                        strcpy (ltmp -> label, input_string);
+                    }
+                    lpoint                   = list_add (lpoint, ltmp);
+                    tally                    = tally + 1;
                 }
-
-                input_string                = strtok (NULL, ",");  // line number
-                line_number                 = strtol (input_string, NULL, 10);
-                ltmp -> number              = line_number;
-
-                input_string                = strtok (NULL, ",");  // label, if present
-                if (input_string           != NULL)
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Vicon32 C Compiler .debug files are of the following format:
+                //
+                // obj/debuggerBIOS.asm,24,/PATH/TO/audio.h,40
+                // obj/debuggerBIOS.asm,31,/PATH/TO/audio.h,49,get_selected_sound
+                //
+                else if ((flag & FLAG_C)    == FLAG_C)
                 {
-                    size                    = sizeof (int8_t);
-                    len                     = strlen (input_string) + 1;
-                    ltmp -> label           = (int8_t *) ralloc (size, len, FLAG_NONE);
-                    strcpy (ltmp -> label, input_string);
+                    fprintf (debug, "             -------------------------------\n");
+                    fprintf (debug, "[load_label] string:    '%s'\n", string);
+                    input_string             = strtok (string, ","); // ASM file
+                    fprintf (debug, "[load_label] input_string: '%s'\n", input_string);
+                    offset                   = 0;
+                    ltmp                     = listnode (page, offset);
+                    if (input_string        != NULL)
+                    {
+                        size                 = sizeof (int8_t);
+                        len                  = strlen (input_string);
+                        ltmp -> name         = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
+                        strncpy (ltmp -> name, input_string, len);
+                    }
+
+                    input_string             = strtok (NULL, ",");  // ASM line number
+                    line_number              = strtol (input_string, NULL, 10);
+                    fprintf (debug, "[load_label] ASM line number: '%u'\n", line_number);
+                    ltmp -> number           = line_number;
+ 
+                    ltmp2                    = lpoint;
+                    while (ltmp2            != NULL)
+                    {
+                        if (ltmp2 -> number == line_number)
+                        {
+                            break;
+                        }
+                        ltmp2                = ltmp2 -> next;
+                    }
+
+                    if (ltmp2               != NULL)
+                    {
+                        ltmp -> data.raw     = ltmp2 -> data.raw; // copy offset
+                    }
+
+                    input_string             = strtok (NULL, ",");  // C file
+                    if (input_string        != NULL)
+                    {
+                        size                 = sizeof (int8_t);
+                        len                  = strlen (input_string);
+                        ltmp -> cname        = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
+                        strncpy (ltmp -> cname, input_string, len);
+                    }
+
+                    input_string             = strtok (NULL, ",");  // C line number
+                    line_number              = strtol (input_string, NULL, 10);
+                    ltmp -> line             = line_number;
+
+                    lpoint                   = list_add (lpoint, ltmp);
+                    tally                    = tally + 1;
                 }
-                lpoint                      = list_add (lpoint, ltmp);
-                tally                       = tally + 1;
             }
             fclose (fptr);
             rfree (string);

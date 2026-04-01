@@ -153,10 +153,17 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     count                  = 0;
                     while (ltmp           != NULL)
                     {
-                        if (ltmp -> label != NULL)
+                        if ((ltmp -> label != NULL) &&
+                            (modeflag      == FLAG_ASM))
                         {
                             fprintf (stdout, "[%u] %s -> 0x%.8X\n",
                                     count, ltmp -> label, ltmp -> data.raw);
+                        }
+                        else if ((ltmp -> cname != NULL) &&
+                                 (modeflag == FLAG_C))
+                        {
+                            fprintf (stdout, "[%u] ASM:%u -> C:%s:%u -> offset:0x%.8X\n",
+                                    count, ltmp -> number, ltmp -> cname, ltmp -> line, ltmp -> data.raw);
                         }
                         ltmp               = ltmp -> next;
                         count              = count + 1;
