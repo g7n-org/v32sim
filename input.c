@@ -239,7 +239,6 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                 len                         = strlen (input_string) + 16;
                 debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
                 sprintf (debugfile, "%s/%s.vbin.debug", path, input_string);
-                fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
             }
             else if ((flag & FLAG_C)       == FLAG_C)
             {
@@ -247,8 +246,8 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                 len                         = strlen (input_string) + 16;
                 debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
                 sprintf (debugfile, "%s/%s.asm.debug", path, input_string);
-                fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
             }
+            fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
         }
         else
         {
@@ -261,18 +260,36 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
             fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
             rfree (debugfile);
 
-            debugfile                       = (uint8_t *) ralloc (size, len, FLAG_NONE);
-            sprintf (debugfile, "obj/%s.vbin.debug", input_string);
+            if ((flag & FLAG_ASM)          == FLAG_ASM)
+            {
+                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                sprintf (debugfile, "obj/%s.vbin.debug", input_string);
+            }
+            else if ((flag & FLAG_C)       == FLAG_C)
+            {
+                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                sprintf (debugfile, "obj/%s.asm.debug", input_string);
+            }
             fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
+
             fptr                            = fopen (debugfile, "r");
             if (fptr                       == NULL)
             {
                 fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
                 rfree (debugfile);
 
-                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                sprintf (debugfile, "%s.vbin.debug", input_string);
+                if ((flag & FLAG_ASM)      == FLAG_ASM)
+                {
+                    debugfile               = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                    sprintf (debugfile, "%s.vbin.debug", input_string);
+                }
+                else if ((flag & FLAG_C)   == FLAG_C)
+                {
+                    debugfile               = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                    sprintf (debugfile, "%s.asm.debug", input_string);
+                }
                 fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
+
                 fptr                        = fopen (debugfile, "r");
                 if (fptr                   == NULL)
                 {

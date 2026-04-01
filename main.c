@@ -253,7 +253,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     if (biosasmdebug               != NULL)
     {
-        load_labels (biosasmdebug, 0, FLAG_NONE);
+        load_labels (biosasmdebug, 0, FLAG_NONE | FLAG_ASM);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -262,7 +262,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     if (bioscdebug                 != NULL)
     {
-        load_labels (bioscdebug,   0, FLAG_NONE);
+        load_labels (bioscdebug,   0, FLAG_NONE | FLAG_C);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +271,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     if (cartasmdebug               != NULL)
     {
-        load_labels (cartasmdebug, 0, FLAG_NONE);
+        load_labels (cartasmdebug, 0, FLAG_NONE | FLAG_ASM);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -280,7 +280,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     if (cartcdebug                 != NULL)
     {
-        load_labels (cartcdebug,   0, FLAG_NONE);
+        load_labels (cartcdebug,   0, FLAG_NONE | FLAG_C);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

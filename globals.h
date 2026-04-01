@@ -29,6 +29,7 @@ struct linked_list
     uint8_t    space;
     uint8_t    fmt;
     uint32_t   number;
+    uint32_t   line;
     void      *pointer;
     void     **dpointer;
     word_t     data;
