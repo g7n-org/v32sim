@@ -48,7 +48,7 @@ void  init_ioports  (void)
              count                    = count + 1)
         {
             iptr                      = (gamepad+index) -> button;
-            *(iptr+count)             = -1;
+            *(iptr+count)             = -3600; // apparent default
         }
     }
 
@@ -1097,6 +1097,18 @@ void  update_ioports (void)
                 if (*(iptr+button) <  0) // if button NOT pressed
                 {
                     *(iptr+button)  = *(iptr+button) - 1;
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // It was observed there may be some sort of -3600 lower bound
+                    // for buttonpress tracking (a minute), at which point it just
+                    // holds at that value. Also appears to be the initial value
+                    //
+                    if (*(iptr+button) <  -3600)
+                    {
+                        *(iptr+button)  = -3600;
+                    }
+
                 }
                 else
                 {
