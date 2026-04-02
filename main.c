@@ -488,7 +488,7 @@ int32_t   main (int32_t  argc, char **argv)
 
 				if (modeflag          == FLAG_C)
 				{
-					fprintf (stdout, "** MODEFLAG FLAG_C\n");
+					//fprintf (stdout, "** MODEFLAG FLAG_C\n");
 					tmp                = find_value (lpoint, REG(IP));
 					if (tmp           != NULL)
 					{
@@ -520,10 +520,12 @@ int32_t   main (int32_t  argc, char **argv)
 						}
 						line_number    = index;
 
+						/*
 						if (len       >  0)
 							fprintf (stdout, "%4u: %s\n", tmp -> line, line_input);
 						else
 							fprintf (stdout, "empty (line_number: %u, tmp->line: %u\n", line_number, tmp->line);
+							*/
 					}
 				}
                 if (sys_reg_show      == TRUE)

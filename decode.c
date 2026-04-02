@@ -114,7 +114,7 @@ void  decode_display (uint32_t  instruction,
     // "[RXX+0x12345678],\0" <- 17 bytes of string data + 1 NULL terminator
     // "0123456789ABCDEF10"
     //
-	/*
+    /*
     destination                     = (uint8_t *) ralloc (sizeof (uint8_t),
                                                           18,
                                                           FLAG_RETERR);
@@ -1258,15 +1258,20 @@ uint8_t  decode_check (uint32_t  instruction,
             break;
 
         case ATAN2:
-            // need to find how to instigate ATAN2 error
-            //FDSTREG         = atan2f (FDSTREG, FSRCREG);
+            if ((FDSTREG   == 0.0) &&
+                (FSRCREG   == 0.0))
+            {
+                result      = FALSE;
+                sys_error   = ERROR_ARC_TANGENT_2;
+            }
             break;
 
         case LOG:
             if (FDSTREG    == 0)
             {
                 result      = FALSE;
-                sys_error   = ERROR_DIVISION;
+                //sys_error   = ERROR_DIVISION;
+                sys_error   = ERROR_LOGARITHM;
             }
             
             if ((result    == TRUE) &&
@@ -1278,13 +1283,12 @@ uint8_t  decode_check (uint32_t  instruction,
             break;
 
         case POW:
-            if ((FDSTREG   == 0.0) &&
-                (FSRCREG   <  0.0))
+            if ((FDSTREG   <  0.0) &&
+                (FSRCREG   <  NAN))
             {
                 result      = FALSE;
-                sys_error   = ERROR_DIVISION;
+                sys_error   = ERROR_POWER;
             }
-            // there may be another error state
             break;
 
         default:
