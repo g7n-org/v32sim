@@ -654,7 +654,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case ILE:
-            fvalue          = (immflag == TRUE)   ? immediate  : SRCREG;
+            value           = (immflag == TRUE)   ? immediate  : SRCREG;
             DSTREG          = (DSTREG  <= value)  ? TRUE       : FALSE;
             break;
 
