@@ -64,6 +64,10 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
             sprintf (entry, "%s/D", addr);
             break;
 
+        case FORMAT_STRING:
+            sprintf (entry, "%s/s", addr);
+            break;
+
         case FORMAT_BINARY:
             sprintf (entry, "%s/b", addr);
             break;
@@ -220,6 +224,28 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
                 }
                 break;
 
+            case FORMAT_STRING:
+                if (flag         == TRUE)
+                {
+                    data          = IMEMGET(REG(id));
+                }
+                else
+                {
+                    data          = REG(id);
+                }
+
+                for (index        = 3;
+                     index       >= 0;
+                     index        = index - 1)
+                {
+                    entry[index]  = (data & 0x000000FF);
+                    fprintf (stdout, "%.2hhX ", entry[index]);
+                    data          = data >> 8;
+                }
+                entry[4]          = '\0';
+                fprintf (stdout, "\"%s\"", entry);
+                break;
+
             case FORMAT_BINARY:
                 if (flag         == TRUE)
                 {
@@ -315,6 +341,10 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
 
         case FORMAT_BOOLEAN:
             sprintf (entry, "%s/B", addr);
+            break;
+
+        case FORMAT_STRING:
+            sprintf (entry, "%s/s", addr);
             break;
 
         case FORMAT_BINARY:
@@ -473,6 +503,28 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 }
                 break;
 
+            case FORMAT_STRING:
+                if (flag         == TRUE)
+                {
+                    data          = IMEMGET(IMEMGET(value));
+                }
+                else
+                {
+                    data          = IMEMGET(value);
+                }
+
+                for (index        = 3;
+                     index       >= 0;
+                     index        = index - 1)
+                {
+                    entry[index]  = (data & 0x000000FF);
+                    fprintf (stdout, "%.2hhX ", entry[index]);
+                    data          = data >> 8;
+                }
+                entry[4]          = '\0';
+                fprintf (stdout, "\"%s\"", entry);
+                break;
+
             case FORMAT_BINARY:
                 if (flag         == TRUE)
                 {
@@ -538,6 +590,10 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
 
         case FORMAT_SIGNED:
             sprintf (entry, "%s/d", addr);
+            break;
+
+        case FORMAT_STRING:
+            sprintf (entry, "%s/s", addr);
             break;
 
         case FORMAT_BINARY:
@@ -615,6 +671,21 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
                 {
                     fprintf (stdout, "TRUE");
                 }
+                break;
+
+            case FORMAT_STRING:
+                data              = ISYSPORTGET(value);
+
+                for (index        = 3;
+                     index       >= 0;
+                     index        = index - 1)
+                {
+                    entry[index]  = (data & 0x000000FF);
+                    fprintf (stdout, "%.2hhX ", entry[index]);
+                    data          = data >> 8;
+                }
+                entry[4]          = '\0';
+                fprintf (stdout, "\"%s\"", entry);
                 break;
 
             case FORMAT_BINARY:

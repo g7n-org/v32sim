@@ -273,6 +273,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    /D    decode value as instruction data\n");
             fprintf (stdout, "    /f    display as floating point decimal\n");
             fprintf (stdout, "    /o    display as octal\n");
+            fprintf (stdout, "    /s    display as string\n");
             fprintf (stdout, "    /u    display as unsigned decimal\n");
             fprintf (stdout, "    /x    display as lowercase hexadecimal\n");
             fprintf (stdout, "    /X    display as uppercase hexadecimal (default)\n\n");

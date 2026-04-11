@@ -505,6 +505,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             fmt        = FORMAT_OCTAL;
                         }
+                        else if (*pos == 's')
+                        {
+                            fmt        = FORMAT_STRING;
+                        }
                         else if (*pos == 'u')
                         {
                             fmt        = FORMAT_UNSIGNED;
@@ -958,6 +962,10 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         else if (*pos     == 'o')
                         {
                             fmt            = FORMAT_OCTAL;
+                        }
+                        else if (*pos     == 's')
+                        {
+                            fmt            = FORMAT_STRING;
                         }
                         else if (*pos     == 'u')
                         {

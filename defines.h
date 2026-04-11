@@ -130,6 +130,7 @@
 #define  FORMAT_DECODE           7
 #define  FORMAT_LOWERHEX         8
 #define  FORMAT_DEFAULT          9
+#define  FORMAT_STRING           10
 
 #define  NUM_PORT_CATEGORIES     7
 #define  NUM_TIM_PORTS           4

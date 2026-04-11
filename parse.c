@@ -309,6 +309,11 @@ uint8_t  parse_imm (uint8_t *token, data_t *data)
                     fprintf (debug, "binary (0x%.8X)\n", data -> value.i32);
                     break;
 
+                case FORMAT_STRING:
+                    data -> value.i32  = strtol ((token+match[1].rm_so), NULL, 2);
+                    fprintf (debug, "string '%s' (0x%.8X)\n", (token+match[1].rm_so), data -> value.i32);
+                    break;
+
                 case FORMAT_OCTAL:
                     data -> value.i32  = strtol ((token+match[1].rm_so), NULL, 8);
                     fprintf (debug, "octal (0%o)\n", data -> value.i32);
@@ -368,7 +373,7 @@ uint8_t   parse_reg (uint8_t *token)
     uint8_t     result          = 0xFF;
     regex_t     regex;
     regmatch_t  match[2];
-	int8_t     *source          = NULL;
+    int8_t     *source          = NULL;
     uint8_t   **pattern         = NULL;
     uint8_t    *form0           = "^ *(R[0-9]|R1[0-5]) *$";           // reg
     uint8_t    *form1           = "^ *[[] *(R[0-9]|R1[0-5]) *[]] *$"; // reg ptr
@@ -545,7 +550,7 @@ uint8_t   parse_reg (uint8_t *token)
 
     fprintf (debug, "[parse_reg] register numberic ID: %hhu\n", result);
 
-	rfree (source);
+    rfree (source);
 
     return (result);
 }
