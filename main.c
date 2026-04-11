@@ -93,7 +93,7 @@ int32_t   main (int32_t  argc, char **argv)
     memcfile                        = NULL;
     commandfile                     = NULL;
     rom_offset                      = BIOS_START_OFFSET;
-    modeflag                        = FLAG_C;
+    modeflag                        = FLAG_ASM;
     branchflag                      = FALSE;
     biosasmdebugflag                = FALSE;
     bioscdebugflag                  = FALSE;
