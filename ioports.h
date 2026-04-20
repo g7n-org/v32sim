@@ -63,4 +63,19 @@
 #define  GPUCommand_DrawRegionRotated      0x13
 #define  GPUCommand_DrawRegionRotozoomed   0x14
 
+#define  GPUBlendingMode_Alpha             0x20
+#define  GPUBlendingMode_Add               0x21
+#define  GPUBlendingMode_Subtract          0x22
+
+#define  SPUCommand_PlaySelectedChannel    0x30
+#define  SPUCommand_PauseSelectedChannel   0x31
+#define  SPUCommand_StopSelectedChannel    0x32
+#define  SPUCommand_PauseAllChannels       0x33
+#define  SPUCommand_ResumeAllChannels      0x34
+#define  SPUCommand_StopAllChannels        0x35
+
+#define  SPUChannelState_Stopped           0x40
+#define  SPUChannelState_Paused            0x41
+#define  SPUChannelState_Playing           0x42
+
 #endif
