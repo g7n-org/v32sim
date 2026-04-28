@@ -772,20 +772,48 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
 //| `0x14` | `GPUCommand_DrawRegionRotozoomed` | draw region: rotation on , zoom on  |
                     
             case GPU_SelectedTexture:
-                if ((i32         <  -1) ||
-                    (i32         >= 256))
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // bounds check 1: ensure the specified  texture id falls  within
+                // the range indicated by the technical specifications  (possible
+                // technical limits);  exceeding these  bounds will  result  in a
+                // silent fail (transaction is ignored)
+                //
+                if ((i32              <  -1) ||
+                    (i32              >= 256))
                 {
                     fprintf (debug, "[ioports_set] invalid texture id %d\n", i32);
                     break;
                 }
 
-                if ((i32         != -1) &&
-                    (cart_vtex   == NULL))
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // sanity check: if the texture specified is a valid id, but CART
+                // either lacks textures or is not loaded, silently fail  (ignore
+                // the transaction)
+                //
+                if ((i32              >= 0) &&
+                    (cart_vtex        == NULL))
                 {
                     fprintf (debug, "[ioports_set] no CART textures present (%d)\n", i32);
                     break;
                 }
 
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // bounds check 2: ensure the (guaranteed now to be technically
+                // valid in-range according to specifications) texture id falls
+                // within the range of available textures. Deviations from this
+                // range will result in a silent fail (transaction is ignored)
+                //
+                if ((cart_vtex        != NULL) &&
+                    (i32              >= (cart_vtex)  -> qty))
+                {
+                    fprintf (debug, "[ioports_set] invalid CART texture id (%d)\n", i32);
+                    break;
+                }
+                
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // Back up current selected region data in current texture
@@ -794,19 +822,18 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 id                     = IPORTGET(GPU_SelectedRegion);
                 if (num               == -1)
                 {
-                    rptr               = bios_vtex       -> region;
+                    rptr               = bios_vtex -> region;
                 }
-                else if (num          != -2)
+                else if ((num         >= 0)   &&
+                         (num         <  256) &&
+                         (num         <= (cart_vtex) -> qty))
                 {
-                    if (num           >= (cart_vtex)     -> qty)
-                    {
-                        num            = 0;
-                    }
                     rptr               = (cart_vtex+num) -> region;
                 }
 
-                if ((num              != -2) &&
-                    (id               != -2))
+                if ((rptr             != NULL) &&
+                    (id               >= 0)    &&
+                    (id               <  4096))
                 {
                     (rptr+id) -> minX  = IPORTGET(GPU_RegionMinX);
                     (rptr+id) -> minY  = IPORTGET(GPU_RegionMinY);
@@ -821,7 +848,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 // Set the (texture) port
                 //
                 *iptr                  = i32;
-                num                    = IPORTGET(GPU_SelectedTexture);
+                num                    = i32;
 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -831,18 +858,19 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 {
                     rptr               = bios_vtex       -> region;
                 }
-                else if (num          != -2)
+                else
                 {
-                    if (num           >= (cart_vtex)     -> qty)
-                    {
-                        num            = 0;
-                    }
                     rptr               = (cart_vtex+num) -> region;
                 }
 
+                if (rptr              == NULL)
+                {
+                    fprintf (debug, "[ioports_set] region ptr is NULL\n");
+                    break;
+                }
 
-                if ((num              != -2) &&
-                    (id               != -2))
+                if ((id               >= 0) &&
+                    (id               <  4096))
                 {
                     PORTSET(GPU_RegionMinX,     (rptr+id) -> minX);
                     PORTSET(GPU_RegionMinY,     (rptr+id) -> minY);
@@ -854,8 +882,13 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 break;
 
             case GPU_SelectedRegion:
-                if ((i32         <  0) ||
-                    (i32         >= 4096))
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // region bounds check: ensure the region id falls with  the
+                // allowed range; if not, silently fail (ignore transaction)
+                //
+                if ((i32              <  0) ||
+                    (i32              >= 4096))
                 {
                     fprintf (debug, "[ioports_set] invalid region id %d\n", i32);
                     break;
@@ -863,32 +896,55 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
 
                 ////////////////////////////////////////////////////////////////////////
                 //
-                // Back up current selected region data in current texture
+                // ensure that the selected texture exists (especially if 
+                // referencing a CART-based one)
                 //
                 num                    = IPORTGET(GPU_SelectedTexture);
-
-                if ((num              != -1) &&
-                    (cart_vtex        == NULL))
+                if ((num              <= -2)   ||
+                    (num              >= 256))
                 {
+                    fprintf (debug, "[ioports_set] invalid texture id %d\n", num);
                     break;
                 }
 
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // if a CART texture, make sure there are CART textures to access
+                //
+                if ((num              >= 0) &&
+                    (cart_vtex        == NULL))
+                {
+                    fprintf (debug, "[ioports_set] no CART textures loaded\n");
+                    break;
+                }
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // if a CART texture, make sure the texture is valid based on CART
+                //
+                if ((num              >= 0)    &&
+                    (cart_vtex        != NULL) &&
+                    (num              >= cart_vtex -> qty))
+                {
+                    fprintf (debug, "[ioports_set] invalid texture id %d\n", num);
+                    break;
+                }
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Back up current selected region data in current texture
+                //
                 id                     = IPORTGET(GPU_SelectedRegion);
                 if (num               == -1)
                 {
                     rptr               = bios_vtex       -> region;
                 }
-                else if (num          != -2)
+                else
                 {
-                    if (num           >= (cart_vtex)     -> qty)
-                    {
-                        num            = 0;
-                    }
                     rptr               = (cart_vtex+num) -> region;
                 }
 
-                if ((num              != -2) &&
-                    (id               != -2))
+                if (rptr              != NULL)
                 {
                     (rptr+id) -> minX  = IPORTGET(GPU_RegionMinX);
                     (rptr+id) -> minY  = IPORTGET(GPU_RegionMinY);
@@ -903,7 +959,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 // Set the (region) port
                 //
                 *iptr                  = i32;
-                id                     = IPORTGET(GPU_SelectedRegion);
+                id                     = i32;
 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -913,13 +969,12 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 {
                     rptr               = bios_vtex       -> region;
                 }
-                else if (num          != -2)
+                else
                 {
                     rptr               = (cart_vtex+num) -> region;
                 }
 
-                if ((num              != -2) &&
-                    (id               != -2))
+                if (rptr              != NULL)
                 {
                     PORTSET(GPU_RegionMinX,     (rptr+id) -> minX);
                     PORTSET(GPU_RegionMinY,     (rptr+id) -> minY);
