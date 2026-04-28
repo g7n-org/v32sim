@@ -798,6 +798,10 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 }
                 else if (num          != -2)
                 {
+                    if (num           >= (cart_vtex)     -> qty)
+                    {
+                        num            = 0;
+                    }
                     rptr               = (cart_vtex+num) -> region;
                 }
 
@@ -829,8 +833,13 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 }
                 else if (num          != -2)
                 {
+                    if (num           >= (cart_vtex)     -> qty)
+                    {
+                        num            = 0;
+                    }
                     rptr               = (cart_vtex+num) -> region;
                 }
+
 
                 if ((num              != -2) &&
                     (id               != -2))
@@ -871,6 +880,10 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 }
                 else if (num          != -2)
                 {
+                    if (num           >= (cart_vtex)     -> qty)
+                    {
+                        num            = 0;
+                    }
                     rptr               = (cart_vtex+num) -> region;
                 }
 
