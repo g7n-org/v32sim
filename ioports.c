@@ -157,30 +157,33 @@ void  init_ioports  (void)
                 break;
 
             case GPU_RemainingPixels:
+                (pptr+index) -> value.i32  = 2073600;
                 (pptr+index) -> flag       = FLAG_READ;
                 sprintf (nptr, "GPU_RemainingPixels");
                 break;
 
             case GPU_ClearColor:
+                (pptr+index) -> value.i32  = 0x000000FF;
                 sprintf (nptr, "GPU_ClearColor");
                 (pptr+index) -> fmt        = FORMAT_HEX;
                 break;
 
             case GPU_MultiplyColor:
+                (pptr+index) -> value.i32  = 0xFFFFFFFF;
                 sprintf (nptr, "GPU_MultiplyColor");
                 break;
 
             case GPU_ActiveBlending:
+                (pptr+index) -> value.i32  = 0x20;
                 sprintf (nptr, "GPU_ActiveBlending");
                 break;
 
             case GPU_SelectedTexture:
-                (pptr+index) -> value.i32  = -2;
+                (pptr+index) -> value.i32  = -1;
                 sprintf (nptr, "GPU_SelectedTexture");
                 break;
 
             case GPU_SelectedRegion:
-                (pptr+index) -> value.i32  = -2;
                 sprintf (nptr, "GPU_SelectedRegion");
                 break;
 
@@ -193,16 +196,19 @@ void  init_ioports  (void)
                 break;
 
             case GPU_DrawingScaleX:
+                (pptr+index) -> value.f32  = 1.0;
                 (pptr+index) -> fmt        = FORMAT_FLOAT;
                 sprintf (nptr, "GPU_DrawingScaleX");
                 break;
 
             case GPU_DrawingScaleY:
+                (pptr+index) -> value.f32  = 1.0;
                 (pptr+index) -> fmt        = FORMAT_FLOAT;
                 sprintf (nptr, "GPU_DrawingScaleY");
                 break;
 
             case GPU_DrawingAngle:
+                (pptr+index) -> value.f32  = 0.0;
                 (pptr+index) -> fmt        = FORMAT_FLOAT;
                 sprintf (nptr, "GPU_DrawingAngle");
                 break;
