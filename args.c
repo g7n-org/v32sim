@@ -27,6 +27,7 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "memcfile",       required_argument, 0, 'M' },
        { "no-debug",       no_argument,       0, 'n' },
        { "run",            no_argument,       0, 'r' },
+       { "bios-start",     no_argument,       0, 'S' },
        { "watch-for",      required_argument, 0, 'w' },
        { "verbose",        no_argument,       0, 'v' },
        { "help",           no_argument,       0, 'h' },
@@ -38,7 +39,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:M:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:M:nrSw:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -135,6 +136,10 @@ void  process_args (int32_t  argc, int8_t **argv)
                 runflag            = TRUE;
                 break;
 
+            case 'S':
+                rom_offset         = BIOS_START_OFFSET;
+                break;
+
             case 'w':
                 runflag            = TRUE;
                 watch_word         = strtol (optarg, NULL, 16);
@@ -149,7 +154,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:M:nrw:vh", long_options,
+                                                  "B:b:C:cdDeE:M:nrSw:vh", long_options,
                                                   &option_index);
     }
 

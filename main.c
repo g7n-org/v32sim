@@ -120,6 +120,13 @@ int32_t   main (int32_t  argc, char **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // Set CART starting offset as a break point
+    //
+    //tmp                             = listnode (LIST_MEM, CART_START_OFFSET);
+    //tpoint                          = list_add (tpoint, tmp);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // Open /dev/null
     //
     devnull                         = fopen ("/dev/null", "w");
@@ -486,48 +493,48 @@ int32_t   main (int32_t  argc, char **argv)
             do
             {
 
-				if (modeflag          == FLAG_C)
-				{
-					//fprintf (stdout, "** MODEFLAG FLAG_C\n");
-					tmp                = find_value (lpoint, REG(IP));
-					if (tmp           != NULL)
-					{
-						if (filename  == NULL)
-						{
-							fptr       = fopen (tmp -> cname, "r");
-							line_number  = 1;
-						}
-						else if (strcmp (filename, tmp -> cname) == 0)
-						{
-							fclose (fptr);
-							fptr       = fopen (tmp -> cname, "r");
-							line_number  = 1;
-						}
+                if (modeflag          == FLAG_C)
+                {
+                    //fprintf (stdout, "** MODEFLAG FLAG_C\n");
+                    tmp                = find_value (lpoint, REG(IP));
+                    if (tmp           != NULL)
+                    {
+                        if (filename  == NULL)
+                        {
+                            fptr       = fopen (tmp -> cname, "r");
+                            line_number  = 1;
+                        }
+                        else if (strcmp (filename, tmp -> cname) == 0)
+                        {
+                            fclose (fptr);
+                            fptr       = fopen (tmp -> cname, "r");
+                            line_number  = 1;
+                        }
 
-						if (tmp -> line <  line_number)
-						{
-							if (fptr != NULL)
-								fclose (fptr);
-							fptr       = fopen (tmp -> cname, "r");
-							line_number  = 1;
-						}
+                        if (tmp -> line <  line_number)
+                        {
+                            if (fptr != NULL)
+                                fclose (fptr);
+                            fptr       = fopen (tmp -> cname, "r");
+                            line_number  = 1;
+                        }
 
-						for (index     = 1;
-							 index    <  tmp -> line;
-							 index     = index + 1)
-						{
-							len        = getline (&line_input, &buffer_size, fptr);
-						}
-						line_number    = index;
+                        for (index     = 1;
+                             index    <  tmp -> line;
+                             index     = index + 1)
+                        {
+                            len        = getline (&line_input, &buffer_size, fptr);
+                        }
+                        line_number    = index;
 
-						/*
-						if (len       >  0)
-							fprintf (stdout, "%4u: %s\n", tmp -> line, line_input);
-						else
-							fprintf (stdout, "empty (line_number: %u, tmp->line: %u\n", line_number, tmp->line);
-							*/
-					}
-				}
+                        /*
+                        if (len       >  0)
+                            fprintf (stdout, "%4u: %s\n", tmp -> line, line_input);
+                        else
+                            fprintf (stdout, "empty (line_number: %u, tmp->line: %u\n", line_number, tmp->line);
+                            */
+                    }
+                }
                 if (sys_reg_show      == TRUE)
                 {
                     show_sysregs ();

@@ -20,6 +20,7 @@ void  usage (int8_t *program)
     fprintf (stdout, " -M, --memcfile=FILE       load this file as a MEMCARD\n");
     fprintf (stdout, " -n, --no-debug            do not process any debug files\n");
     fprintf (stdout, " -r, --run                 do not enable single-step mode\n");
+    fprintf (stdout, " -S, --bios-start          break at BIOS code start\n");
     fprintf (stdout, " -w, --watch-for=OPCODE    run until OPCODE is encountered\n");
     fprintf (stdout, " -v, --verbose             enable more verbose output\n");
     fprintf (stdout, " -h, --help                display this information\n\n");
