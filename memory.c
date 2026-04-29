@@ -2,6 +2,10 @@
 
 void  init_memory (void)
 {
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Declare and initialize variables
+    //
     int32_t  page                           = 0;
     size_t   len                            = 0;
     uint8_t  chk                            = FALSE;
@@ -11,7 +15,8 @@ void  init_memory (void)
     // Allocate the memory device
     //
     len                                     = NUM_MEMORY_PAGES;
-    memory                                  = (mem_t *) ralloc (sizeof (mem_t), len, FLAG_RETERR);
+    memory                                  = (mem_t *) ralloc (sizeof (mem_t),
+                                                                len, FLAG_RETERR);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //

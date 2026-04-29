@@ -70,9 +70,9 @@ void *ralloc (size_t  size, size_t  number, uint8_t  flag)
 
 void  rfree (void *resource)
 {
-	/*
+    /*
     linked_l *mptr                   = NULL;
-	
+    
     if (resource                    != NULL)
     {
         mptr                         = find_ptr  (mpoint,  resource);
@@ -92,6 +92,6 @@ void  rfree (void *resource)
             }
         }
     }*/
-	if (resource != NULL)
-		free (resource);
+    if (resource != NULL)
+        free (resource);
 }

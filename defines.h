@@ -16,7 +16,7 @@
 #include "gamepad.h"
 #include "globals.h"
 
-#define  BIOS_DEFAULT_PATH       "/usr/local/Vircon32/Emulator/Bios/StandardBios.v32"
+#define  DEFAULT_BIOS            "/usr/local/Vircon32/Emulator/Bios/StandardBios.v32"
 
 #define  NUM_MEMORY_PAGES        4
 #define  V32_PAGE_RAM            0

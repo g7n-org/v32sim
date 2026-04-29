@@ -249,6 +249,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                 sprintf (debugfile, "%s/%s.asm.debug", path, input_string);
             }
             fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
+            //rfree   (path);
         }
         else
         {
@@ -299,7 +300,6 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
             }
         }
 
-        rfree (path);
         rfree (debugfile);
         rfree (token);
 

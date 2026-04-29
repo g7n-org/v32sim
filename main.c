@@ -168,16 +168,16 @@ int32_t   main (int32_t  argc, char **argv)
     //
     if (biosfile                   == NULL)
     {
-        len                         = strlen (BIOS_DEFAULT_PATH) + 1;
+        len                         = strlen (DEFAULT_BIOS) + 1;
         biosfile                    = (int8_t *) ralloc (sizeof (int8_t),
-                                                         strlen (BIOS_DEFAULT_PATH) + 1,
+                                                         strlen (DEFAULT_BIOS) + 1,
                                                          FLAG_NONE);
         if (biosfile               == NULL)
         {
             fprintf (stderr, "[ERROR] Allocation for '%s' failed\n", "biosfile");
             exit (STRING_ALLOC_FAIL);
         }
-        strcpy (biosfile, BIOS_DEFAULT_PATH);
+        strcpy (biosfile, DEFAULT_BIOS);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -208,7 +208,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // load any debug file labels pertaining to page being loaded
     //
-    if ((biosasmdebugflag          == FALSE) &&
+    if ((biosasmdebugflag          == TRUE)  &&
         (chk                       == TRUE)  &&
         (biosfile                  != NULL))
     {
@@ -219,7 +219,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // load any debug file labels pertaining to page being loaded
     //
-    if ((bioscdebugflag            == FALSE) &&
+    if ((bioscdebugflag            == TRUE)  &&
         (chk                       == TRUE)  &&
         (biosfile                  != NULL))
     {
