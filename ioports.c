@@ -270,10 +270,12 @@ void  init_ioports  (void)
                 break;
 
             case SPU_GlobalVolume:
+                (pptr+index) -> value.f32  = 1.0;
                 sprintf (nptr, "SPU_GlobalVolume");
                 break;
 
             case SPU_SelectedSound:
+                (pptr+index) -> value.i32  = -1;
                 sprintf (nptr, "SPU_SelectedSound");
                 break;
 
@@ -298,18 +300,22 @@ void  init_ioports  (void)
                 break;
 
             case SPU_ChannelState:
+                (pptr+index) -> value.i32  = 0x40;
                 sprintf (nptr, "SPU_ChannelState");
                 break;
 
             case SPU_ChannelAssignedSound:
+                (pptr+index) -> value.i32  = -1;
                 sprintf (nptr, "SPU_ChannelAssignedSound");
                 break;
 
             case SPU_ChannelVolume:
+                (pptr+index) -> value.f32  = 0.5;
                 sprintf (nptr, "SPU_ChannelVolume");
                 break;
 
             case SPU_ChannelSpeed:
+                (pptr+index) -> value.f32  = 1.0;
                 sprintf (nptr, "SPU_ChannelSpeed");
                 break;
 
@@ -318,6 +324,7 @@ void  init_ioports  (void)
                 break;
 
             case SPU_ChannelPosition:
+                (pptr+index) -> value.f32  = 0.0;
                 sprintf (nptr, "SPU_ChannelPosition");
                 break;
         }
@@ -337,7 +344,7 @@ void  init_ioports  (void)
          index                            <  NUM_INP_PORTS;
          index                             = index + 1)
     {
-        (pptr+index) -> value.i32          = -1; // not pressed, negative value
+        (pptr+index) -> value.i32          = -3600; // not pressed, negative value
         (pptr+index) -> flag               = FLAG_READ;
         (pptr+index) -> fmt                = FORMAT_SIGNED;
         len                                = 32;
