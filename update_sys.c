@@ -77,6 +77,7 @@ void      update_frame (void)
     value              = IPORTGET(TIM_FrameCounter);
     value              = value + 1;
     SYSPORTSET(TIM_FrameCounter, value);
+    waitflag           = FALSE;                  // reset waitflag
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
