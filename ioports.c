@@ -355,6 +355,7 @@ void  init_ioports  (void)
         switch (INP_SelectedGamepad | index)
         {
             case INP_SelectedGamepad:
+                (pptr+index) -> value.i32  = 0;
                 (pptr+index) -> flag       = FLAG_READ | FLAG_WRITE;
                 sprintf (nptr, "INP_SelectedGamepad");
                 break;
