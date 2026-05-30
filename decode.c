@@ -458,7 +458,7 @@ void  decode_display (uint32_t  instruction,
             }
             else
             {
-                sprintf (source,  "R%u",     dst);
+                sprintf (source,  "R%u",     src);
             }
             fprintf (display,     "%*s %*s %s",
                                   space,   lookup[opcode].name,
