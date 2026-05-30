@@ -768,7 +768,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case OUT:
-            value           = (immflag == TRUE)  ? immediate  : DSTREG;
+            value           = (immflag == TRUE)  ? immediate  : SRCREG;
             fprintf (debug, "[decode_process] OUT: ioports_set (0x%.3X, 0x%.8X)\n",
                             port, value);
             PORTSET(port, value);
