@@ -58,6 +58,7 @@ void  decode_display (uint32_t  instruction,
     //
     // Declare and initialize variables
     //
+    data_t   *dtmp                 = NULL;
     linked_l *ltmp                 = NULL;
     int8_t    sign                 = '+';
     int8_t    space                = -5;
@@ -443,7 +444,10 @@ void  decode_display (uint32_t  instruction,
 
         case IN:
             sprintf (destination, "R%u,",    dst);
-            sprintf (source,      "0x%.3X",  port);
+            //sprintf (source,      "0x%.3X",  port);
+            dtmp                         = ioports_ptr (port);
+            token_label                  = dtmp -> name;
+            sprintf (source, "%s", dtmp -> name);
             fprintf (display,     "%*s %*s %s",
                                   space,   lookup[opcode].name,
                                   spacing, destination,
@@ -451,7 +455,10 @@ void  decode_display (uint32_t  instruction,
             break;
 
         case OUT:
-            sprintf (destination, "0x%.3X,", port);
+            dtmp                         = ioports_ptr (port);
+            token_label                  = dtmp -> name;
+            //sprintf (destination, "0x%.3X,", port);
+            sprintf (destination, "%s,", dtmp -> name);
             if (immflag                 == TRUE)
             {
                 sprintf (source,  "0x%.3X",  immediate);
