@@ -535,6 +535,7 @@ int32_t   main (int32_t  argc, char **argv)
                             */
                     }
                 }
+
                 if (sys_reg_show      == TRUE)
                 {
                     show_sysregs ();
@@ -600,7 +601,7 @@ int32_t   main (int32_t  argc, char **argv)
                     }
                     else
                     {
-                        put_word (REG(IV), FLAG_DISPLAY);
+                        put_word (REG(IV), FLAG_DISPLAY | FLAG_IMMEDIATE);
                     }
                     fprintf  (stdout, "\n");
                 }

@@ -63,30 +63,36 @@ void      put_word (uint32_t  word, uint8_t  flag)
     //
     // Declare and initialize local variables
     //
-    int32_t   index   = 0;
-    uint32_t  mask    = 0xFF000000;
+    int32_t   index     = 0;
+    uint8_t   value     = REG(IP);
+    uint32_t  mask      = 0xFF000000;
+
+    if (FLAG_IMMEDIATE == (flag & FLAG_IMMEDIATE))
+    {
+        value           = value + 1;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Check `flag` to see if we will display the current offset
     //
-    if (flag         == FLAG_DISPLAY)
+    if (FLAG_DISPLAY   == (flag & FLAG_DISPLAY))
     {
-        fprintf (stdout, "[%.8X] ", REG(IP));
+        fprintf (stdout, "[%.8X] ", value);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Check `flag` to see if we will display the current byte
     //
-    if (flag         == FLAG_DISPLAY)
+    if (FLAG_DISPLAY   == (flag & FLAG_DISPLAY))
     {
-        for (index    = (wordsize - 1);
-             index   >= 0;
-             index    = index - 1)
+        for (index      = (wordsize - 1);
+             index     >= 0;
+             index      = index - 1)
         {
             fprintf (stdout, "%.2hhX ", ((word & mask) >> (8 * index)));
-            mask      = mask >> 8;
+            mask        = mask >> 8;
         }
     }
 }

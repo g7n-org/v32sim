@@ -180,6 +180,7 @@ void  decode_display (uint32_t  instruction,
 
         case JMP:
         case CALL:
+            value                    = -1;
             if (immflag             == TRUE)
             {
                 ltmp                 = find_value (lpoint, immediate);
@@ -191,19 +192,39 @@ void  decode_display (uint32_t  instruction,
                 else
                 {
                     sprintf (destination, "%s",     ltmp -> label);
+                    value            = immediate;
                 }
             }
             else
             {
                 sprintf (destination, "R%u",    dst);
+                value                = DSTREG;
             }
-            fprintf (display,         "%*s %*s",
+
+            fprintf (display,         "%*s %*s ",
                                       space,   lookup[opcode].name,
                                       spacing, destination);
+
+            if ((derefaddr          == TRUE) &&
+                (value              != -1))
+            {
+                if (colorflag       == TRUE)
+                {
+                    fprintf (stdout, "\e[1;35m");
+                }
+
+                fprintf (display,     "(addr: 0x%.8X)", value);
+
+                if (colorflag       == TRUE)
+                {
+                    fprintf (stdout, "\e[m");
+                }
+            }
             break;
 
         case JT:
         case JF:
+            value                    = -1;
             sprintf (destination, "R%u,", dst);
             if (immflag             == TRUE)
             {
@@ -216,16 +237,35 @@ void  decode_display (uint32_t  instruction,
                 else
                 {
                     sprintf (source, "%s",     ltmp -> label);
+                    value            = immediate;
                 }
             }
             else
             {
                 sprintf (source, "R%u",        src);
+                value                = SRCREG;
             }
-            fprintf (display,    "%*s %*s %s",
+
+            fprintf (display,    "%*s %*s %s ",
                                  space,   lookup[opcode].name,
                                  spacing, destination,
                                  source);
+            
+            if ((derefaddr          == TRUE) &&
+                (value              != -1))
+            {
+                if (colorflag       == TRUE)
+                {
+                    fprintf (stdout, "\e[1;35m");
+                }
+
+                fprintf (display,     "(addr: 0x%.8X)", value);
+
+                if (colorflag       == TRUE)
+                {
+                    fprintf (stdout, "\e[m");
+                }
+            }
             break;
 
         case IEQ:
@@ -444,14 +484,28 @@ void  decode_display (uint32_t  instruction,
 
         case IN:
             sprintf (destination, "R%u,",    dst);
-            //sprintf (source,      "0x%.3X",  port);
             dtmp                         = ioports_ptr (port);
             token_label                  = dtmp -> name;
             sprintf (source, "%s", dtmp -> name);
-            fprintf (display,     "%*s %*s %s",
+            fprintf (display,     "%*s %*s %s ",
                                   space,   lookup[opcode].name,
                                   spacing, destination,
                                   source);
+
+            if (derefaddr               == TRUE)
+            {
+                if (colorflag           == TRUE)
+                {
+                    fprintf (stdout, "\e[1;35m");
+                }
+
+                fprintf (display,     "(port: 0x%.3X)", port);
+
+                if (colorflag           == TRUE)
+                {
+                    fprintf (stdout, "\e[m");
+                }
+            }
             break;
 
         case OUT:
@@ -461,16 +515,212 @@ void  decode_display (uint32_t  instruction,
             sprintf (destination, "%s,", dtmp -> name);
             if (immflag                 == TRUE)
             {
-                sprintf (source,  "0x%.3X",  immediate);
+                switch (port)
+                {
+                    case GPU_Command:
+                        switch (immediate)
+                        {
+                            case GPUCommand_ClearScreen:
+                                sprintf (source,  "GPUCommand_ClearScreen");
+                                break;
+
+                            case GPUCommand_DrawRegion:
+                                sprintf (source,  "GPUCommand_DrawRegion");
+                                break;
+
+                            case GPUCommand_DrawRegionZoomed:
+                                sprintf (source,  "GPUCommand_DrawRegionZoomed");
+                                break;
+
+                            case GPUCommand_DrawRegionRotated:
+                                sprintf (source,  "GPUCommand_DrawRegionRotated");
+                                break;
+
+                            case GPUCommand_DrawRegionRotozoomed:
+                                sprintf (source,  "GPUCommand_DrawRegionRotozoomed");
+                                break;
+
+                            default:
+                                sprintf (source,  "0x%.8X",  immediate);
+                                break;
+                        }
+                        break;
+
+                    case GPU_ActiveBlending:
+                        switch (immediate)
+                        {
+                            case GPUBlendingMode_Alpha:
+                                sprintf (source,  "GPUBlendingMode_Alpha");
+                                break;
+
+                            case GPUBlendingMode_Add:
+                                sprintf (source,  "GPUBlendingMode_Add");
+                                break;
+
+                            case GPUBlendingMode_Subtract:
+                                sprintf (source,  "GPUBlendingMode_Subtract");
+                                break;
+
+                            default:
+                                sprintf (source,  "0x%.8X",  immediate);
+                                break;
+                        }
+                        break;
+
+                    case SPU_Command:
+                        switch (immediate)
+                        {
+                            case SPUCommand_PlaySelectedChannel:
+                                sprintf (source,  "SPUCommand_PlaySelectedChannel");
+                                break;
+
+                            case SPUCommand_PauseSelectedChannel:
+                                sprintf (source,  "SPUCommand_PauseSelectedChannel");
+                                break;
+
+                            case SPUCommand_StopSelectedChannel:
+                                sprintf (source,  "SPUCommand_StopSelectedChannel");
+                                break;
+
+                            case SPUCommand_PauseAllChannels:
+                                sprintf (source,  "SPUCommand_PauseAllChannels");
+                                break;
+
+                            case SPUCommand_ResumeAllChannels:
+                                sprintf (source,  "SPUCommand_ResumeAllChannels");
+                                break;
+
+                            case SPUCommand_StopAllChannels:
+                                sprintf (source,  "SPUCommand_StopAllChannels");
+                                break;
+
+                            default:
+                                sprintf (source,  "0x%.8X",  immediate);
+                                break;
+                        }
+                        break;
+
+                    default:
+                        sprintf (source,  "0x%.8X",  immediate);
+                        break;
+                }
             }
             else
             {
                 sprintf (source,  "R%u",     src);
             }
-            fprintf (display,     "%*s %*s %s",
+
+            fprintf (display,     "%*s %*s %s ",
                                   space,   lookup[opcode].name,
                                   spacing, destination,
                                   source);
+
+            if ((derefaddr              == TRUE) &&
+                (immflag                == FALSE))
+            {
+                if (colorflag           == TRUE)
+                {
+                    fprintf (stdout, "\e[1;35m");
+                }
+
+                fprintf (display,     "(value: ");
+
+                switch (port)
+                {
+                    case GPU_Command:
+                        switch (SRCREG)
+                        {
+                            case GPUCommand_ClearScreen:
+                                fprintf (display,  "GPUCommand_ClearScreen");
+                                break;
+
+                            case GPUCommand_DrawRegion:
+                                fprintf (display,  "GPUCommand_DrawRegion");
+                                break;
+
+                            case GPUCommand_DrawRegionZoomed:
+                                fprintf (display,  "GPUCommand_DrawRegionZoomed");
+                                break;
+
+                            case GPUCommand_DrawRegionRotated:
+                                fprintf (display,  "GPUCommand_DrawRegionRotated");
+                                break;
+
+                            case GPUCommand_DrawRegionRotozoomed:
+                                fprintf (display,  "GPUCommand_DrawRegionRotozoomed");
+                                break;
+
+                            default:
+                                fprintf (display,  "0x%.8X",  SRCREG);
+                                break;
+                        }
+                        break;
+
+                    case GPU_ActiveBlending:
+                        switch (SRCREG)
+                        {
+                            case GPUBlendingMode_Alpha:
+                                fprintf (display,  "GPUBlendingMode_Alpha");
+                                break;
+
+                            case GPUBlendingMode_Add:
+                                fprintf (display,  "GPUBlendingMode_Add");
+                                break;
+
+                            case GPUBlendingMode_Subtract:
+                                fprintf (display,  "GPUBlendingMode_Subtract");
+                                break;
+
+                            default:
+                                fprintf (display,  "0x%.8X",  SRCREG);
+                                break;
+                        }
+                        break;
+
+                    case SPU_Command:
+                        switch (SRCREG)
+                        {
+                            case SPUCommand_PlaySelectedChannel:
+                                fprintf (display,  "SPUCommand_PlaySelectedChannel");
+                                break;
+
+                            case SPUCommand_PauseSelectedChannel:
+                                fprintf (display,  "SPUCommand_PauseSelectedChannel");
+                                break;
+
+                            case SPUCommand_StopSelectedChannel:
+                                fprintf (display,  "SPUCommand_StopSelectedChannel");
+                                break;
+
+                            case SPUCommand_PauseAllChannels:
+                                fprintf (display,  "SPUCommand_PauseAllChannels");
+                                break;
+
+                            case SPUCommand_ResumeAllChannels:
+                                fprintf (display,  "SPUCommand_ResumeAllChannels");
+                                break;
+
+                            case SPUCommand_StopAllChannels:
+                                fprintf (display,  "SPUCommand_StopAllChannels");
+                                break;
+
+                            default:
+                                fprintf (display,  "0x%.8X",  SRCREG);
+                                break;
+                        }
+                        break;
+
+                    default:
+                        fprintf (display,  "0x%.8X",  SRCREG);
+                        break;
+                }
+                fprintf (display,     ")");
+
+                if (colorflag           == TRUE)
+                {
+                    fprintf (stdout, "\e[m");
+                }
+            }
             break;
 
         default:
@@ -478,7 +728,7 @@ void  decode_display (uint32_t  instruction,
             break;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
     //
     // If errorflag is tripped, display visual warning indicator
     //
@@ -488,6 +738,7 @@ void  decode_display (uint32_t  instruction,
         {
             fprintf (stdout, "\e[1;31m");
         }
+
         switch (sys_error)
         {
             case ERROR_MEMORY_READ:
