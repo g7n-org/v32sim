@@ -64,7 +64,7 @@ void      put_word (uint32_t  word, uint8_t  flag)
     // Declare and initialize local variables
     //
     int32_t   index     = 0;
-    uint8_t   value     = REG(IP);
+    uint32_t  value     = REG(IP);
     uint32_t  mask      = 0xFF000000;
 
     if (FLAG_IMMEDIATE == (flag & FLAG_IMMEDIATE))
