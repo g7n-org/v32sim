@@ -223,6 +223,15 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    a CART once the simulator is running\n\n");
             break;
 
+        case INPUT_PROFILE:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    profile\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Display current profiling report for instructions and\n");
+            fprintf (stdout, "    subroutines called. Only works if profiling has  been\n");
+            fprintf (stdout, "    enabled.\n\n");
+            break;
+
         case INPUT_PRINT:
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    print/fmt REGISTER\n");

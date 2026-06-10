@@ -72,35 +72,11 @@ void  decode_display (uint32_t  instruction,
     uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port                 = (instruction & IOPORT_MASK);
-    int8_t    destination[18];
-    int8_t    source[18];
+    int8_t    destination[32];
+    int8_t    source[32];
     //int8_t   *destination          = NULL;
     //int8_t   *source               = NULL;
     uint32_t  value                = 0;
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // initialize our opcodes array with the available instructions
-    //
-    opcode_t  lookup[64]           =
-    {
-        { "HLT"  }, { "WAIT"  }, { "JMP"   }, { "CALL" },
-        { "RET"  }, { "JT"    }, { "JF"    }, { "IEQ"  },
-        { "INE"  }, { "IGT"   }, { "IGE"   }, { "ILT"  },
-        { "ILE"  }, { "FEQ"   }, { "FNE"   }, { "FGT"  },
-        { "FGE"  }, { "FLT"   }, { "FLE"   }, { "MOV"  },
-        { "LEA"  }, { "PUSH"  }, { "POP"   }, { "IN"   },
-        { "OUT"  }, { "MOVS"  }, { "SETS"  }, { "CMPS" },
-        { "CIF"  }, { "CFI"   }, { "CIB"   }, { "CFB"  },
-        { "NOT"  }, { "AND"   }, { "OR"    }, { "XOR"  },
-        { "BNOT" }, { "SHL"   }, { "IADD"  }, { "ISUB" },
-        { "IMUL" }, { "IDIV"  }, { "IMOD"  }, { "ISGN" },
-        { "IMIN" }, { "IMAX"  }, { "IABS"  }, { "FADD" },
-        { "FSUB" }, { "FMUL"  }, { "FDIV"  }, { "FMOD" },
-        { "FSGN" }, { "FMIN"  }, { "FMAX"  }, { "FABS" },
-        { "FLR"  }, { "CEIL"  }, { "ROUND" }, { "SIN"  },
-        { "ACOS" }, { "ATAN2" }, { "LOG"   }, { "POW"  }
-    };
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -830,6 +806,8 @@ void  decode_process (uint32_t  instruction,
     uint32_t  src           = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr          = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port          = (instruction & IOPORT_MASK);
+    linked_l *dtmp          = NULL;
+    linked_l *ptmp          = NULL;
 
     if (profileflag        == TRUE)
     {
@@ -858,15 +836,35 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case CALL:
-            REG(SP)           = REG(SP) - 1;   // PUSH REG(IP) value to stack
-            value             = (immflag == TRUE)   ? 2          : 1;
+            REG(SP)                    = REG(SP) - 1;   // PUSH REG(IP) value to stack
+            value                      = (immflag == TRUE)   ? 2          : 1;
             memory_set (REG(SP), (REG(IP) + value), FALSE);
-            REG(IP)           = (immflag == TRUE)   ? immediate  : DSTREG;
-            rom_offset        = REG(IP);
-            branchflag        = TRUE;
-            if (profileflag  == TRUE)
+            REG(IP)                    = (immflag == TRUE)   ? immediate  : DSTREG;
+            rom_offset                 = REG(IP);
+            branchflag                 = TRUE;
+            if (profileflag           == TRUE)
             {
-                profcountsub  = profcountsub + 1;
+                profcountsub           = profcountsub + 1;
+                ptmp                   = find_value (ppoint, REG(IP));
+                if (ptmp              == NULL) // no existing entry in list
+                {
+                    ptmp               = listnode (LIST_MEM, REG(IP));
+                    ptmp -> number     = 1;
+                    dtmp               = find_value (lpoint, REG(IP));
+                    if (dtmp != NULL) // subroutine has an associated label
+                    {
+                        value          = strlen (dtmp -> label);
+                        ptmp -> label  = (int8_t *) ralloc (sizeof  (int8_t),
+                                                            strlen (dtmp -> label) + 1,
+                                                            FLAG_NONE);
+                        strncpy (ptmp -> label, dtmp -> label, strlen (dtmp -> label));
+                    }
+                    ppoint             = list_add (ppoint, ptmp);
+                }
+                else                  // existing entry in list
+                {
+                    ptmp -> number     = ptmp -> number + 1;
+                }
             }
             break;
 

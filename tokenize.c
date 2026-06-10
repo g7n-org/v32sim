@@ -177,10 +177,45 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 }
                 else if (byte             == 'p')   // profiler
                 {
-					if (profileflag       == TRUE)
-					{
-						fprintf
-                    action                 = INPUT_PROFILE;
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // if enabled, display the profile count
+                    //
+                    if (profileflag          == TRUE)
+                    {
+                        fprintf (stdout, "profiling report\n");
+                        fprintf (stdout, "================\n");
+                        for (value            = 0;
+                             value           <  64;
+                             value            = value + 1)
+                        {
+                            if ((value % 4)  == 0)
+                            {
+                                fprintf (stdout, "\n");
+                            }
+                            fprintf (stdout, "    %5s: %8u", lookup[value].name, profcountopcode[value]);
+                        }
+                        fprintf (stdout, "\n----------------------------------------------------------------------------\n");
+                        tmp                   = ppoint;
+                        while (tmp           != NULL)
+                        {
+                            if (tmp -> label != NULL)
+                            {
+                                fprintf (stdout, "%s: %u\n", tmp -> label,    tmp -> number);
+                            }
+                            else
+                            {
+                                fprintf (stdout, "0x%.8X: %u\n", tmp -> data.raw, tmp -> number);
+                            }
+
+                            tmp               = tmp -> next;
+                        }
+                    }
+                    else
+                    {
+                        fprintf (stdout, "profiling not enabled\n");
+                    }
+                    action                    = INPUT_PROFILE;
                 }
                 else if (byte             == 's')   // step
                 {
@@ -879,6 +914,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     else if (0        == strncasecmp (token, "p", 1))
                     {
                         help (INPUT_PRINT);
+                        action         = INPUT_INIT;
+                    }
+                    else if (0        == strncasecmp (token, "pro", 1))
+                    {
+                        help (INPUT_PROFILE);
                         action         = INPUT_INIT;
                     }
                     else if (0        == strncasecmp (token, "r", 1))

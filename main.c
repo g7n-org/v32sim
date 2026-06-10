@@ -61,7 +61,32 @@ linked_l *bpoint;
 linked_l *dpoint;
 linked_l *lpoint;
 linked_l *mpoint; // tracking allocated memory
+linked_l *ppoint; // subroutine profiling list
 linked_l *tpoint;
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// initialize our opcodes array with the available instructions
+//
+opcode_t  lookup[64]                =
+{
+    { "HLT"  }, { "WAIT"  }, { "JMP"   }, { "CALL" },
+    { "RET"  }, { "JT"    }, { "JF"    }, { "IEQ"  },
+    { "INE"  }, { "IGT"   }, { "IGE"   }, { "ILT"  },
+    { "ILE"  }, { "FEQ"   }, { "FNE"   }, { "FGT"  },
+    { "FGE"  }, { "FLT"   }, { "FLE"   }, { "MOV"  },
+    { "LEA"  }, { "PUSH"  }, { "POP"   }, { "IN"   },
+    { "OUT"  }, { "MOVS"  }, { "SETS"  }, { "CMPS" },
+    { "CIF"  }, { "CFI"   }, { "CIB"   }, { "CFB"  },
+    { "NOT"  }, { "AND"   }, { "OR"    }, { "XOR"  },
+    { "BNOT" }, { "SHL"   }, { "IADD"  }, { "ISUB" },
+    { "IMUL" }, { "IDIV"  }, { "IMOD"  }, { "ISGN" },
+    { "IMIN" }, { "IMAX"  }, { "IABS"  }, { "FADD" },
+    { "FSUB" }, { "FMUL"  }, { "FDIV"  }, { "FMOD" },
+    { "FSGN" }, { "FMIN"  }, { "FMAX"  }, { "FABS" },
+    { "FLR"  }, { "CEIL"  }, { "ROUND" }, { "SIN"  },
+    { "ACOS" }, { "ATAN2" }, { "LOG"   }, { "POW"  }
+};
 
 int32_t   main (int32_t  argc, char **argv)
 {
@@ -121,6 +146,7 @@ int32_t   main (int32_t  argc, char **argv)
     dpoint                          = NULL;
     lpoint                          = NULL;
     mpoint                          = NULL;
+    ppoint                          = NULL;
     tpoint                          = NULL;
     profcount                       = 0;
     profcountsub                    = 0;

@@ -114,7 +114,9 @@ extern linked_l  *bpoint;
 extern linked_l  *dpoint;
 extern linked_l  *lpoint;
 extern linked_l  *mpoint; // tracking allocated memory
+extern linked_l  *ppoint; // subroutine profiling list
 extern linked_l  *tpoint;
+extern opcode_t   lookup[64];
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
