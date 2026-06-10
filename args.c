@@ -26,6 +26,7 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "errorcheck",     no_argument,       0, 'e' },
        { "memcfile",       required_argument, 0, 'M' },
        { "no-debug",       no_argument,       0, 'n' },
+       { "profile",        no_argument,       0, 'p' },
        { "run",            no_argument,       0, 'r' },
        { "bios-start",     no_argument,       0, 'S' },
        { "watch-for",      required_argument, 0, 'w' },
@@ -39,7 +40,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:M:nrSw:vh", long_options,
+                                                  "B:b:C:cdDeE:M:nprSw:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -132,6 +133,10 @@ void  process_args (int32_t  argc, int8_t **argv)
                 cartcdebugflag     = MU;
                 break;
 
+            case 'p':
+                profileflag        = TRUE;
+                break;
+
             case 'r':
                 runflag            = TRUE;
                 break;
@@ -154,7 +159,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:M:nrSw:vh", long_options,
+                                                  "B:b:C:cdDeE:M:nprSw:vh", long_options,
                                                   &option_index);
     }
 

@@ -19,6 +19,7 @@ void  usage (int8_t *program)
     fprintf (stdout, " -E, --entry-point=OFFSET  set simulator entry point\n");
     fprintf (stdout, " -M, --memcfile=FILE       load this file as a MEMCARD\n");
     fprintf (stdout, " -n, --no-debug            do not process any debug files\n");
+    fprintf (stdout, " -p, --profile             enable instruction profiling\n");
     fprintf (stdout, " -r, --run                 do not enable single-step mode\n");
     fprintf (stdout, " -S, --bios-start          break at BIOS code start\n");
     fprintf (stdout, " -w, --watch-for=OPCODE    run until OPCODE is encountered\n");
@@ -137,6 +138,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "SETTINGS:\n");
             fprintf (stdout, "    color    true/false    set color output\n");
             fprintf (stdout, "    deref    true/false    set deref addr\n");
+            fprintf (stdout, "    profile  true/false    set instruction profiling\n");
             fprintf (stdout, "    debug    true/false    set simulator debug mode\n");
             fprintf (stdout, "    errorchk true/false    set simulator error checking\n");
             fprintf (stdout, "    verbose  true/false    set simulator verbosity\n\n");

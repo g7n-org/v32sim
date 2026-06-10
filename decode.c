@@ -831,6 +831,11 @@ void  decode_process (uint32_t  instruction,
     uint8_t   addr          = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port          = (instruction & IOPORT_MASK);
 
+    if (profileflag        == TRUE)
+    {
+        profcountopcode[opcode]  = profcountopcode[opcode] + 1;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Determine opcode and perform needed processing, based on flags
@@ -853,12 +858,16 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case CALL:
-            REG(SP)         = REG(SP) - 1;   // PUSH REG(IP) value to stack
-            value           = (immflag == TRUE)   ? 2          : 1;
+            REG(SP)           = REG(SP) - 1;   // PUSH REG(IP) value to stack
+            value             = (immflag == TRUE)   ? 2          : 1;
             memory_set (REG(SP), (REG(IP) + value), FALSE);
-            REG(IP)         = (immflag == TRUE)   ? immediate  : DSTREG;
-            rom_offset      = REG(IP);
-            branchflag      = TRUE;
+            REG(IP)           = (immflag == TRUE)   ? immediate  : DSTREG;
+            rom_offset        = REG(IP);
+            branchflag        = TRUE;
+            if (profileflag  == TRUE)
+            {
+                profcountsub  = profcountsub + 1;
+            }
             break;
 
         case RET:

@@ -41,6 +41,7 @@ uint8_t   biosasmdebugflag;
 uint8_t   bioscdebugflag;
 uint8_t   cartasmdebugflag;
 uint8_t   cartcdebugflag;
+uint8_t   profileflag;
 uint8_t   runflag;
 uint8_t   colorflag;
 uint8_t   branchflag;
@@ -50,6 +51,9 @@ uint8_t   errorcheck;
 uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
+uint32_t  profcount;
+uint32_t  profcountsub;
+uint32_t  profcountopcode[64];
 uint32_t  rom_offset;
 uint32_t  seek_word;
 uint32_t  watch_word;
@@ -99,6 +103,7 @@ int32_t   main (int32_t  argc, char **argv)
     bioscdebugflag                  = FALSE;
     cartasmdebugflag                = FALSE;
     cartcdebugflag                  = FALSE;
+    profileflag                     = FALSE;
     runflag                         = FALSE;
     colorflag                       = FALSE;
     seek_word                       = 0xFFFFFFFF;
@@ -117,6 +122,8 @@ int32_t   main (int32_t  argc, char **argv)
     lpoint                          = NULL;
     mpoint                          = NULL;
     tpoint                          = NULL;
+    profcount                       = 0;
+    profcountsub                    = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -488,6 +495,24 @@ int32_t   main (int32_t  argc, char **argv)
         {
             ////////////////////////////////////////////////////////////////////////////
             //
+            // if enabled, display the profile count
+            //
+            if (profileflag           == TRUE)
+            {
+                if (colorflag         == TRUE)
+                {
+                    fprintf (stdout, "\e[1;34m");
+                }
+                fprintf (stdout, "[profiling] instruction count: %u\n", profcount);
+                fprintf (stdout, "[profiling] subroutine count:  %u\n", profcountsub);
+                if (colorflag         == TRUE)
+                {
+                    fprintf (stdout, "\e[m");
+                }
+            }
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
             // Display the prompt
             //
             do
@@ -710,6 +735,15 @@ int32_t   main (int32_t  argc, char **argv)
         if (ignoreflag                == FALSE)
         {
             update_cycle ();
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // update profcount if CPU instruction profiling is enabled
+        //
+        if (profileflag               == TRUE)
+        {
+            profcount                  = profcount + 1;
         }
 
         ////////////////////////////////////////////////////////////////////////////////

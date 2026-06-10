@@ -175,6 +175,13 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 {
                     action                 = INPUT_NEXT;
                 }
+                else if (byte             == 'p')   // profiler
+                {
+					if (profileflag       == TRUE)
+					{
+						fprintf
+                    action                 = INPUT_PROFILE;
+                }
                 else if (byte             == 's')   // step
                 {
                     token                  = (string + match[1].rm_so);
@@ -407,6 +414,25 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             derefaddr      = FALSE;
                             fprintf (debug, "[set] derefaddr DISABLED!\n");
+                        }
+                    }
+                }
+                else if ((lval[0]         == 'P') ||
+                         (lval[0]         == 'p'))
+                {
+                    check                  = strncasecmp (lval,  "prof", 4);
+                    if (check             == 0)
+                    {
+                        check              = strncasecmp (entry, "true", 4);
+                        if (check         == 0)
+                        {    
+                            profileflag    = TRUE;
+                            fprintf (verbose, "instruction profiling ENABLED!\n");
+                        }
+                        else
+                        {
+                            fprintf (verbose, "disabling instruction profiling!\n");
+                            profileflag    = FALSE;
                         }
                     }
                 }

@@ -111,6 +111,7 @@
 #define  INPUT_INVENTORY         22
 #define  INPUT_SCREENSHOT        23
 #define  INPUT_GAMEPAD           24
+#define  INPUT_PROFILE           25
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A
