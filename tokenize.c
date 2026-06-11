@@ -185,6 +185,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     {
                         fprintf (stdout, "profiling report\n");
                         fprintf (stdout, "================\n");
+                        fprintf (stdout, "total number of instructions: %u\n", profcount);
+                        fprintf (stdout, "per-instruction breakdown:");
                         for (value            = 0;
                              value           <  64;
                              value            = value + 1)
@@ -196,6 +198,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             fprintf (stdout, "    %5s: %8u", lookup[value].name, profcountopcode[value]);
                         }
                         fprintf (stdout, "\n----------------------------------------------------------------------------\n");
+                        fprintf (stdout, "total number of subroutine calls: %u\n", profcountsub);
+                        fprintf (stdout, "per-subroutine breakdown:\n\n");
                         tmp                   = ppoint;
                         while (tmp           != NULL)
                         {
@@ -210,6 +214,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
                             tmp               = tmp -> next;
                         }
+                        fprintf (stdout, "\n----------------------------------------------------------------------------\n");
                     }
                     else
                     {

@@ -46,6 +46,7 @@ uint8_t   runflag;
 uint8_t   colorflag;
 uint8_t   branchflag;
 uint8_t   ignoreflag;
+uint8_t   retflag;
 uint8_t   derefaddr;
 uint8_t   errorcheck;
 uint8_t   haltflag;
@@ -57,12 +58,13 @@ uint32_t  profcountopcode[64];
 uint32_t  rom_offset;
 uint32_t  seek_word;
 uint32_t  watch_word;
-linked_l *bpoint;
-linked_l *dpoint;
-linked_l *lpoint;
+linked_l *bpoint; // breakpoint list
+linked_l *dpoint; // display list
+linked_l *lpoint; // label list
 linked_l *mpoint; // tracking allocated memory
 linked_l *ppoint; // subroutine profiling list
-linked_l *tpoint;
+linked_l *spoint; // localize subroutine profiling list
+linked_l *tpoint; // breakpoint waitlist, then backtrace list
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -147,6 +149,7 @@ int32_t   main (int32_t  argc, char **argv)
     lpoint                          = NULL;
     mpoint                          = NULL;
     ppoint                          = NULL;
+    spoint                          = NULL;
     tpoint                          = NULL;
     profcount                       = 0;
     profcountsub                    = 0;
@@ -386,6 +389,7 @@ int32_t   main (int32_t  argc, char **argv)
 
             tmp                     = tmp -> next;
         }
+        tpoint                      = NULL;
     }
 
     /*
@@ -529,8 +533,14 @@ int32_t   main (int32_t  argc, char **argv)
                 {
                     fprintf (stdout, "\e[1;34m");
                 }
-                fprintf (stdout, "[profiling] instruction count: %u\n", profcount);
-                fprintf (stdout, "[profiling] subroutine count:  %u\n", profcountsub);
+
+                if (IMEMGET(REG(IP)-1) == RET)
+                {
+                    fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - spoint -> end -> number);
+                //fprintf (stdout, "[profiling] instruction count: %u\n", profcount);
+                //fprintf (stdout, "[profiling] subroutine count:  %u\n", profcountsub);
+                }
+
                 if (colorflag         == TRUE)
                 {
                     fprintf (stdout, "\e[m");
@@ -779,6 +789,32 @@ int32_t   main (int32_t  argc, char **argv)
         if (branchflag                == TRUE)
         {
             branchflag                 = FALSE;
+            if (retflag               == TRUE)
+            {
+                retflag                = FALSE;
+
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // if profiling is enabled, remove entry from subroutine profile list
+                //
+                if (profileflag       == TRUE)
+                {
+                    if (colorflag     == TRUE)
+                    {
+                        fprintf (stdout, "\e[1;34m");
+                    }
+
+                    fprintf (display, "[profiling] subroutine instructions: %u\n", profcount - spoint -> end -> number);
+
+                    if (colorflag     == TRUE)
+                    {
+                        fprintf (stdout, "\e[m");
+                    }
+
+                    tmp                = spoint -> end;
+                    tmp                = list_grab (&spoint, tmp);
+                }
+            }
         }
         else
         {

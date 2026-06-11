@@ -146,11 +146,30 @@ void  decode_display (uint32_t  instruction,
             }
             break;
 
-        case WAIT:
         case RET:
+            fprintf (display,         "%*s",
+                                      space, lookup[opcode].name);
+
+            if (profileflag         == TRUE)
+            {
+                if (colorflag       == TRUE)
+                {
+                    fprintf (stdout, "\e[1;34m");
+                }
+
+                fprintf (display,     "(subroutine instructions: %u)", profcount - spoint -> end -> number);
+
+                if (colorflag       == TRUE)
+                {
+                    fprintf (stdout, "\e[m");
+                }
+            }
+            break;
+
+        case WAIT:
         case MOVS:
         case SETS:
-            fprintf (display,         "%*s",
+            fprintf (display,         "%*s ",
                                       space, lookup[opcode].name);
             break;
 
@@ -860,19 +879,53 @@ void  decode_process (uint32_t  instruction,
                         strncpy (ptmp -> label, dtmp -> label, strlen (dtmp -> label));
                     }
                     ppoint             = list_add (ppoint, ptmp);
+
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // spoint is the localized profiling list for the subroutine
+                    //
+                    dtmp               = listnode (LIST_MEM, REG(IP));
+                    dtmp -> number     = profcount;
+                    spoint             = list_add (spoint, dtmp);
                 }
                 else                  // existing entry in list
                 {
                     ptmp -> number     = ptmp -> number + 1;
                 }
             }
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // add entry to beginning of backtrace list (tpoint)
+            //
+            ptmp                       = listnode (LIST_MEM, REG(IP));
+            dtmp                       = find_value (lpoint, REG(IP));
+            if (dtmp                  != NULL) // subroutine has an associated label
+            {
+                value                  = strlen (dtmp -> label);
+                ptmp -> label          = (int8_t *) ralloc (sizeof (int8_t),
+                                                            strlen (dtmp -> label) + 1,
+                                                            FLAG_NONE);
+                strncpy (ptmp -> label, dtmp -> label, strlen (dtmp -> label));
+            }
+            tpoint                     = add_list (tpoint, ptmp);
+
             break;
 
         case RET:
-            REG(IP)         = IMEMGET(REG(SP));
-            rom_offset      = REG(IP);  // POP REG(IP) off stack
-            REG(SP)         = REG(SP) + 1;
-            branchflag      = TRUE;
+            REG(IP)          = IMEMGET(REG(SP));
+            rom_offset       = REG(IP);  // POP REG(IP) off stack
+            REG(SP)          = REG(SP) + 1;
+            branchflag       = TRUE;
+            retflag          = TRUE;
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // remove entry from beginning of backtrace list (tpoint)
+            //
+            ptmp             = tpoint;
+            tpoint           = tpoint -> next;
+            ptmp -> next     = NULL;
             break;
 
         case JT:

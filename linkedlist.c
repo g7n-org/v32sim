@@ -18,12 +18,17 @@ linked_l *listnode (uint8_t  type, uint32_t  value)
     newnode -> dpointer  = NULL;
     newnode -> data.raw  = value;
     newnode -> next      = NULL;
+    newnode -> end       = NULL;
 
     fprintf (debug, "[listnode] type: %hhu, value: %u\n", newnode -> type, value);
 
     return (newnode);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// list_add(): function to append a node to the end of the indicated list
+//
 linked_l *list_add (linked_l *list, linked_l *node)
 {
     linked_l *tmp               = NULL;
@@ -45,6 +50,29 @@ linked_l *list_add (linked_l *list, linked_l *node)
         {
             list                = node;
         }
+
+        list -> end             = node;
+    }
+
+    return (list);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// add_list(): function to insert a node to the start of the indicated list
+//
+linked_l *add_list (linked_l *list, linked_l *node)
+{
+    if (node             != NULL)
+    {
+        node -> next      = NULL;
+        if (list         != NULL)
+        {
+            node -> next  = list;
+            node -> end   = list -> end;
+            list -> end   = NULL;
+        }
+        list              = node;
     }
 
     return (list);
@@ -68,6 +96,12 @@ linked_l *list_grab (linked_l **list, linked_l *node)
                 {
                     tmp             = tmp    -> next;
                 }
+
+                if (tmp -> next    == (*list) -> end)
+                {
+                    (*list) -> end  = tmp;
+                }
+
                 tmp -> next         = node   -> next;
             }
             node -> next            = NULL;

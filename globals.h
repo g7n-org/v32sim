@@ -35,6 +35,7 @@ struct linked_list
     void     **dpointer;
     word_t     data;
     linked_l  *next;
+    linked_l  *end;
 };
 
 struct data_type
@@ -99,6 +100,7 @@ extern uint8_t    runflag;
 extern uint8_t    colorflag;
 extern uint8_t    branchflag;
 extern uint8_t    ignoreflag;
+extern uint8_t    retflag;
 extern uint8_t    derefaddr;
 extern uint8_t    errorcheck;
 extern uint8_t    haltflag;
@@ -110,11 +112,12 @@ extern uint32_t   profcountopcode[64];
 extern uint32_t   rom_offset;
 extern uint32_t   seek_word;
 extern uint32_t   watch_word;
-extern linked_l  *bpoint;
-extern linked_l  *dpoint;
-extern linked_l  *lpoint;
+extern linked_l  *bpoint; // breakpoint list
+extern linked_l  *dpoint; // display list
+extern linked_l  *lpoint; // label list
 extern linked_l  *mpoint; // tracking allocated memory
 extern linked_l  *ppoint; // subroutine profiling list
+extern linked_l  *spoint; // localize subroutine profiling list
 extern linked_l  *tpoint;
 extern opcode_t   lookup[64];
 
@@ -162,6 +165,7 @@ uint32_t  word2int       (word_t *);
 float     word2float     (word_t *);
 linked_l *listnode       (uint8_t,     uint32_t);
 linked_l *list_add       (linked_l *,  linked_l *);
+linked_l *add_list       (linked_l *,  linked_l *);
 linked_l *list_grab      (linked_l **, linked_l *);
 void      displayshow    (linked_l *,  uint8_t);
 void      show_sysregs   (void);

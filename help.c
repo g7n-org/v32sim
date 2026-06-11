@@ -48,6 +48,8 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  unload memory           unload component from memory\n");
             fprintf (stdout, "  next                    next (skip subroutines)\n");
             fprintf (stdout, "  step                    step to next instruction\n");
+            fprintf (stdout, "  backtrace               display list of calls\n");
+            fprintf (stdout, "  profile                 show profiling report\n");
             fprintf (stdout, "  inventory               system resource inventory\n");
             fprintf (stdout, "  ignore                  ignore this instruction\n");
             fprintf (stdout, "  replace X Y Z           replace:\n");
@@ -105,6 +107,13 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    This is typically some BIOS or CART offset that would align with\n");
             fprintf (stdout, "    an instruction to process. It can also be used to break when a\n");
             fprintf (stdout, "    subroutine is called, based on its label, which exists at an offset\n\n");
+            break;
+
+        case INPUT_BTRACE:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    backtrace\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+			fprintf (stdout, "    Display a most recent to least recent list of subroutine calls\n\n");
             break;
 
         case INPUT_LABEL:
