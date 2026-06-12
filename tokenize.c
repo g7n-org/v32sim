@@ -94,8 +94,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution: make sure input conforms to provided pattern
         //
-        check                              = regexec (&regex, string, 5, match, 0);
-        if (check                         == REG_NOMATCH)
+        check                                 = regexec (&regex, string, 5, match, 0);
+        if (check                            == REG_NOMATCH)
         {
             continue;
             fprintf (stderr, "ERROR: malformed input\n");
@@ -105,23 +105,46 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         //
         // RegEx execution success! Display the results
         //
-        else if (check                    == 0)
+        else if (check                       == 0)
         {
             fprintf (debug, "[tokenize_input] MATCH on form %u\n", index);
-            if (index                     == 0) // single-word command
+            if (index                        == 0) // single-word command
             {
-                byte                       = *(string + match[1].rm_so);
-                if (byte                  == 'b')   // break
+                byte                          = *(string + match[1].rm_so);
+                if (byte                     == 'b')   // break
                 {
-                    tmp                    = bpoint;
-                    count                  = 0;
-                    while (tmp            != NULL)
+                    if ((0                   == strncasecmp ((string+match[1].rm_so), "ba", 2)) ||
+                        (0                   == strncasecmp ((string+match[1].rm_so), "bt", 2)))
                     {
-                        fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> data.raw);
-                        tmp                = tmp -> next;
-                        count              = count + 1;
+                        tmp                   = tpoint;
+                        count                 = 0;
+                        while (tmp           != NULL)
+                        {
+                            if (tmp -> label != NULL)
+                            {
+                                fprintf (stdout, "#%u  %s\n",     count, tmp -> label);
+                            }
+                            else
+                            {
+                                fprintf (stdout, "#%u  0x%.8X\n", count, tmp -> data.raw);
+                            }
+                            tmp               = tmp -> next;
+                            count             = count + 1;
+                        }
+                        action                = INPUT_BTRACE;
                     }
-                    action                 = INPUT_BREAK;
+                    else
+                    {
+                        tmp                   = bpoint;
+                        count                 = 0;
+                        while (tmp           != NULL)
+                        {
+                            fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> data.raw);
+                            tmp               = tmp -> next;
+                            count             = count + 1;
+                        }
+                        action                = INPUT_BREAK;
+                    }
                 }
                 else if (byte             == 'c')   // continue
                 {

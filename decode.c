@@ -926,6 +926,8 @@ void  decode_process (uint32_t  instruction,
             ptmp             = tpoint;
             tpoint           = tpoint -> next;
             ptmp -> next     = NULL;
+            rfree (ptmp);
+            ptmp             = NULL;
             break;
 
         case JT:

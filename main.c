@@ -820,6 +820,8 @@ int32_t   main (int32_t  argc, char **argv)
 
                     tmp                = spoint -> end;
                     tmp                = list_grab (&spoint, tmp);
+                    rfree (tmp);
+                    tmp                = NULL;
                 }
             }
         }
