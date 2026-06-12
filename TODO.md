@@ -4,10 +4,6 @@
 
 Should default entry point be at `CART` start of `0x20000000`?
 
-## SIGNALS (SIGINT)
-
-Trap SIGINT (breaks when in runmode)
-
 ## SIGNALS (SIGSEGV)
 
 Display some simulator variables
