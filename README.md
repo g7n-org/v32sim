@@ -83,25 +83,28 @@ filesize as indicated in the Vircon32 specifications.
 ## USAGE
 
 ```
-Usage: v32sim [OPTION]... [CARTFILE.v32]
+Usage: /home/wedge/bin/bin.x86_64/v32sim [OPTION]... [CARTFILE.v32]
 Debugger/Simulator for Vircon32 Fantasy Console
-
 Mandatory arguments to long options are mandatory for short options too.
-
  -B, --biosfile=FILE       load this BIOS V32 file as BIOS
  -b, --break=OFFSET|LABEL  set breakpoint at OFFSET/LABEL
  -C, --command-file=FILE   load this file with sim commands
  -c, --colors              enable colorized output
  -d, --deref-addr          output address of dereference
- -E, --entry-point=OFFSET  set simulator entry point
  -e, --errorcheck          enable runtime error checking
+     --bios-asm-debug=FILE load BIOS asm labels from FILE
+     --bios-c-debug=FILE   load BIOS C labels from FILE
+     --cart-asm-debug=FILE load CART asm labels from FILE
+     --cart-c-debug=FILE   load CART C labels from FILE
+ -E, --entry-point=OFFSET  set simulator entry point
  -M, --memcfile=FILE       load this file as a MEMCARD
  -n, --no-debug            do not process any debug files
+ -p, --profile             enable instruction profiling
  -r, --run                 do not enable single-step mode
+ -S, --bios-start          break at BIOS code start
  -w, --watch-for=OPCODE    run until OPCODE is encountered
  -v, --verbose             enable more verbose output
  -h, --help                display this information
-
 FILE   is any path plus the filename desired
 OFFSET is the full 32-bit/4-byte memory addres (hex)
 OPCODE is the full 32-bit/4-byte instruction hex
@@ -187,6 +190,23 @@ resource-legitimate transaction. If it detects a problem, it will provide
 notification on instruction rendering (if  colors are enabled, it will be
 in red vs the normal yellow),  and between exclamation points the type of
 system error that is about to occur (if you execute the instruction).
+
+### PROFILE
+
+Enable  instruction and  subroutine profiling.  The simulator  will do  a
+global tally  of instructions  executed (and which  ones, how  many times
+each  one has  been  executed), along  with  what and  how  many times  a
+subroutine has been called.
+
+Additionally,  localized  instruction  tallies  per  subroutine  will  be
+reported at subroutine  return (especially for nexting  over a subroutine
+call).
+
+At the  single-step prompt,  running `profile`  will display  the current
+profiling report, breaking down the global tallies of everything.
+
+This processing only happens when profiling is enabled. It CAN be toggled
+during runtime as well via the prompt's `set` command.
 
 ### RUN
 

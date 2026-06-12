@@ -190,5 +190,6 @@ slli      timediff_ns    (TimeSpec *,  TimeSpec *);
 void      gamepad_io     (uint16_t);
 void     *ralloc         (size_t,      size_t,      uint8_t);
 void      rfree          (void     *);
+void      sigint         (int32_t);
 
 #endif

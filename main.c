@@ -392,6 +392,13 @@ int32_t   main (int32_t  argc, char **argv)
         tpoint                      = NULL;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // arm the signal handler to trap SIGINT signals (useful for getting out of
+    // run mode or continues
+    //
+    signal (SIGINT, sigint);
+
     /*
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     */

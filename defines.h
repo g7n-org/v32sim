@@ -9,6 +9,7 @@
 #include <libgen.h>
 #include <math.h>
 #include <getopt.h>
+#include <signal.h>
 #include <time.h>
 #include <unistd.h>
 #include "ioports.h"
