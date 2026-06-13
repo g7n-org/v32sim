@@ -63,7 +63,7 @@ linked_l *dpoint; // display list
 linked_l *lpoint; // label list
 linked_l *mpoint; // tracking allocated memory
 linked_l *ppoint; // subroutine profiling list
-linked_l *spoint; // localize subroutine profiling list
+linked_l *csub;   // current subroutine
 linked_l *tpoint; // breakpoint waitlist, then backtrace list
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +149,7 @@ int32_t   main (int32_t  argc, char **argv)
     lpoint                          = NULL;
     mpoint                          = NULL;
     ppoint                          = NULL;
-    spoint                          = NULL;
+    csub                            = NULL;
     tpoint                          = NULL;
     profcount                       = 0;
     profcountsub                    = 0;
@@ -543,7 +543,8 @@ int32_t   main (int32_t  argc, char **argv)
 
                 if (IMEMGET(REG(IP)-1) == RET)
                 {
-                    fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - spoint -> end -> COUNT);
+                    //fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - ppoint -> end -> COUNT);
+                    fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - csub -> COUNT);
                 //fprintf (stdout, "[profiling] instruction count: %u\n", profcount);
                 //fprintf (stdout, "[profiling] subroutine count:  %u\n", profcountsub);
                 }
@@ -784,9 +785,13 @@ int32_t   main (int32_t  argc, char **argv)
         //
         // update profcount if CPU instruction profiling is enabled
         //
-        if (profileflag               == TRUE)
+        if (profileflag                == TRUE)
         {
-            profcount                  = profcount + 1;
+            profcount                   = profcount + 1;
+            if (csub                   != NULL)
+            {
+                csub -> COUNT           = csub -> COUNT + 1;
+            }
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -804,25 +809,24 @@ int32_t   main (int32_t  argc, char **argv)
                 //
                 // if profiling is enabled, remove entry from subroutine profile list
                 //
-                if (profileflag       == TRUE)
+                if ((profileflag      == TRUE) &&
+                    (runflag          == FALSE))
                 {
                     if (colorflag     == TRUE)
                     {
                         fprintf (stdout, "\e[1;34m");
                     }
 
-                    fprintf (display, "[profiling] subroutine instructions: %u\n", profcount - spoint -> end -> COUNT);
+                    fprintf (display, "[profiling] subroutine instructions: %u\n", profcount - csub -> COUNT);
+                    fprintf (display, "[profiling] subroutine runtime:      %.3fs\n", csub -> time);
 
                     if (colorflag     == TRUE)
                     {
                         fprintf (stdout, "\e[m");
                     }
-
-                    tmp                = spoint -> end;
-                    tmp                = list_grab (&spoint, tmp);
-                    rfree (tmp);
-                    tmp                = NULL;
                 }
+
+                csub                   = tpoint; // current subroutine via backtrace
             }
         }
         else

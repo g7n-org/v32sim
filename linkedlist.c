@@ -18,6 +18,7 @@ linked_l *listnode (uint8_t  type, uint32_t  value)
     newnode -> space     = 7;
     newnode -> pointer   = NULL;
     newnode -> dpointer  = NULL;
+    newnode -> time      = -1.0;
     newnode -> RAW       = value;
     newnode -> next      = NULL;
     newnode -> end       = NULL;
@@ -138,12 +139,9 @@ linked_l *find_value (linked_l *list, uint32_t  value)
 {
     linked_l *tmp               = list;
 
-    while (tmp                 != NULL)
+    while ((tmp                != NULL) &&
+           (tmp -> RAW         != value))
     {
-        if (tmp -> RAW         == value)
-        {
-            break;
-        }
         tmp                     = tmp -> next;
     }
 
@@ -154,12 +152,9 @@ linked_l *find_ptr (linked_l *list, void *pointer)
 {
     linked_l *tmp               = list;
 
-    while (tmp                 != NULL)
+    while ((tmp                != NULL) &&
+           (tmp -> pointer     != pointer))
     {
-        if (tmp -> pointer     == pointer)
-        {
-            break;
-        }
         tmp                     = tmp -> next;
     }
 

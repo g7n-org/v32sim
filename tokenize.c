@@ -226,13 +226,34 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         tmp                   = ppoint;
                         while (tmp           != NULL)
                         {
-                            if (tmp -> label != NULL)
+                            if (tmp -> time  != -1.0) // if not the subroutine we are currently in
                             {
-                                fprintf (stdout, "%s: %u\n",     tmp -> label, tmp -> COUNT);
+                                if (tmp -> label != NULL)
+                                {
+                                    fprintf (stdout, "%30s: calls: %4u, instructions: %4u, frames: %4u, cycles: %6u, runtime: %.3fs\n",     tmp -> label, tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
+                                }
+                                else
+                                {
+                                    fprintf (stdout, "0x%.8X: calls: %4u, instructions: %4u, frames: %4u, cycles: %6u, runtime: %.3fs\n", tmp -> RAW, tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
+                                }
                             }
                             else
                             {
-                                fprintf (stdout, "0x%.8X: %u\n", tmp -> RAW,   tmp -> COUNT);
+                                if (tmp -> label != NULL)
+                                {
+                                    if (tmp      != csub)
+                                    {
+                                        fprintf (stdout, "%30s: current subroutine\n",     tmp -> label);
+                                    }
+                                    else
+                                    {
+                                        fprintf (stdout, "%30s: unfinished subroutine\n",     tmp -> label);
+                                    }
+                                }
+                                else
+                                {
+                                    fprintf (stdout, "0x%.8X: current subroutine\n", tmp -> RAW);
+                                }
                             }
 
                             tmp               = tmp -> next;

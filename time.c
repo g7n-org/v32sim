@@ -15,9 +15,30 @@ slli  timediff_ns (TimeSpec *start, TimeSpec *end)
     return (result);
 }
 
-void prof_time (linked_l *node)
+linked_l *prof_time (linked_l *node)
 {
-    uint32_t  frames  = IPORTGET(TIM_FrameCounter) - node -> FRAMES;
-    uint32_t  cycles  = IPORTGET(TIM_CycleCounter) - node -> CYCLES;
-    uint32_t  tally   = 0;
+    uint32_t  frames     = 0;
+    uint32_t  cycles     = 0;
+
+    if (node            != NULL)
+    {
+        frames           = IPORTGET(TIM_FrameCounter) - node -> FRAMES;
+        node  -> FRAMES  = frames;
+    ////////////if (node -> time == 0.0)
+    ////////////{
+        if (frames      == 0) // time duration falls within the same frame
+        {
+            cycles       = IPORTGET(TIM_CycleCounter) - node -> CYCLES;
+        }
+        else
+        {
+            cycles       = frames * V32_CYCLES_PER_FRAME; // convert frames to cycles
+            cycles       = cycles - node  -> CYCLES;       // remove non-inclusive cycles
+        }
+        node  -> time    = (float) cycles / (V32_FRAMES_PER_SECOND * V32_CYCLES_PER_FRAME);
+        node  -> CYCLES  = cycles - (frames * V32_CYCLES_PER_FRAME);
+////////////    }
+    }
+
+    return (node);
 }

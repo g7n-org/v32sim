@@ -25,6 +25,8 @@
 #define  V32_PAGE_CART           2
 #define  V32_PAGE_MEMC           3
 #define  V32_PAGE_MASK           0x30000000
+#define  V32_FRAMES_PER_SECOND   60
+#define  V32_CYCLES_PER_FRAME    250000
 
 #define  V32_BIOS_TEXTURES       1
 #define  V32_CART_TEXTURES       256
@@ -202,6 +204,7 @@
 #define  CYCLES                  item2.cycles
 #define  LINE                    item2.line
 #define  COUNT                   item3.count
+#define  SUBCALL                 item4.subcall
 #define  RAW                     data.raw
 #define  I32                     data.i32
 #define  F32                     data.f32

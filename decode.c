@@ -157,11 +157,6 @@ void  decode_display (uint32_t  instruction,
                     fprintf (stdout, "\e[1;34m");
                 }
 
-                prof_time (spoint);
-                fprintf (display,     "(subroutine instructions: %u, time: %.3f)",
-                                      profcount - spoint -> end -> COUNT,
-                                      spoint -> time);
-
                 if (colorflag       == TRUE)
                 {
                     fprintf (stdout, "\e[m");
@@ -864,6 +859,7 @@ void  decode_process (uint32_t  instruction,
             REG(IP)                    = (immflag == TRUE)   ? immediate  : DSTREG;
             rom_offset                 = REG(IP);
             branchflag                 = TRUE;
+
             if (profileflag           == TRUE)
             {
                 profcountsub           = profcountsub + 1;
@@ -871,7 +867,7 @@ void  decode_process (uint32_t  instruction,
                 if (ptmp              == NULL) // no existing entry in list
                 {
                     ptmp               = listnode (LIST_MEM, REG(IP));
-                    ptmp -> COUNT      = 1;
+                    ptmp -> SUBCALL    = 1;
                     dtmp               = find_value (lpoint, REG(IP));
                     if (dtmp != NULL) // subroutine has an associated label
                     {
@@ -882,21 +878,15 @@ void  decode_process (uint32_t  instruction,
                         strncpy (ptmp -> label, dtmp -> label, strlen (dtmp -> label));
                     }
                     ppoint             = list_add (ppoint, ptmp);
-
-                    ////////////////////////////////////////////////////////////////////
-                    //
-                    // spoint is the localized profiling list for the subroutine
-                    //
-                    dtmp               = listnode (LIST_MEM, REG(IP));
-                    dtmp -> COUNT      = profcount;
-                    spoint             = list_add (spoint, dtmp);
                 }
                 else                  // existing entry in list
                 {
-                    ptmp -> COUNT      = ptmp -> COUNT  + 1;
+                    ptmp -> SUBCALL    = ptmp -> SUBCALL + 1;
                 }
-                ptmp -> FRAMES         = IPORTGET(TIM_FrameCounter);
-                ptmp -> CYCLES         = IPORTGET(TIM_CycleCounter);
+                csub                   = ptmp;
+                csub -> COUNT          = -1;
+                csub -> FRAMES         = IPORTGET(TIM_FrameCounter);
+                csub -> CYCLES         = IPORTGET(TIM_CycleCounter);
             }
 
             ////////////////////////////////////////////////////////////////////////////
@@ -918,21 +908,26 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case RET:
-            REG(IP)          = IMEMGET(REG(SP));
-            rom_offset       = REG(IP);  // POP REG(IP) off stack
-            REG(SP)          = REG(SP) + 1;
-            branchflag       = TRUE;
-            retflag          = TRUE;
+            REG(IP)                    = IMEMGET(REG(SP));
+            rom_offset                 = REG(IP);  // POP REG(IP) off stack
+            REG(SP)                    = REG(SP) + 1;
+            branchflag                 = TRUE;
+            retflag                    = TRUE;
+
+            if (profileflag           == TRUE)
+            {
+                csub                   = prof_time (csub);
+            }
 
             ////////////////////////////////////////////////////////////////////////////
             //
             // remove entry from beginning of backtrace list (tpoint)
             //
-            ptmp             = tpoint;
-            tpoint           = tpoint -> next;
-            ptmp -> next     = NULL;
+            ptmp                       = tpoint;
+            tpoint                     = tpoint -> next;
+            ptmp -> next               = NULL;
             rfree (ptmp);
-            ptmp             = NULL;
+            ptmp                       = NULL;
             break;
 
         case JT:

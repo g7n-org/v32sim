@@ -55,6 +55,17 @@ union  data3
 };
 typedef union data3     d3_t;
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// data4: shorthand union to "overload" member elements in the linked_list
+// struct (subcall vs ???)
+//
+union  data4
+{
+    uint32_t  subcall;
+};
+typedef union data4     d4_t;
+
 typedef struct linked_list linked_l;
 struct linked_list
 {
@@ -67,6 +78,7 @@ struct linked_list
     d1_t       item1;
     d2_t       item2;
     d3_t       item3;
+    d4_t       item4;
     float      time;
     void      *pointer;
     void     **dpointer;
@@ -154,7 +166,7 @@ extern linked_l  *dpoint; // display list
 extern linked_l  *lpoint; // label list
 extern linked_l  *mpoint; // tracking allocated memory
 extern linked_l  *ppoint; // subroutine profiling list
-extern linked_l  *spoint; // localize subroutine profiling list
+extern linked_l  *csub;   // current subroutine
 extern linked_l  *tpoint;
 extern opcode_t   lookup[64];
 
@@ -228,5 +240,6 @@ void      gamepad_io     (uint16_t);
 void     *ralloc         (size_t,      size_t,      uint8_t);
 void      rfree          (void     *);
 void      sigint         (int32_t);
+linked_l *prof_time      (linked_l *);
 
 #endif
