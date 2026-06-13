@@ -230,7 +230,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             {
                                 if (tmp -> label != NULL)
                                 {
-                                    fprintf (stdout, "%30s: calls: %4u, instructions: %4u, frames: %4u, cycles: %6u, runtime: %.3fs\n",     tmp -> label, tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
+                                    fprintf (stdout, "%32s: calls: %4u, instructions: %4u, frames: %4u, cycles: %6u, runtime: %.3fs\n",     tmp -> label, tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
                                 }
                                 else
                                 {
@@ -243,11 +243,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 {
                                     if (tmp      != csub)
                                     {
-                                        fprintf (stdout, "%30s: current subroutine\n",     tmp -> label);
+                                        fprintf (stdout, "%32s: current subroutine\n",     tmp -> label);
                                     }
                                     else
                                     {
-                                        fprintf (stdout, "%30s: unfinished subroutine\n",     tmp -> label);
+                                        fprintf (stdout, "%32s: unfinished subroutine\n",     tmp -> label);
                                     }
                                 }
                                 else
@@ -711,7 +711,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 if (token_label   != NULL)
                                 {
                                     tmp -> label   = (int8_t *) ralloc (sizeof  (int8_t),
-                                                                        strlen (token_label) + 1,
+                                                                        strlen (token_label),
                                                                         FLAG_NONE);
                                     strcpy (tmp -> label, token_label);
                                 }
@@ -734,7 +734,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             if (token_label   != NULL)
                             {
                                 tmp -> label   = (int8_t *) ralloc (sizeof (int8_t),
-                                                                    strlen (token_label) + 1,
+                                                                    strlen (token_label),
                                                                     FLAG_NONE);
                                 strcpy (tmp -> label, token_label);
                             }
@@ -773,7 +773,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             if (token_label   != NULL)
                             {
                                 tmp -> label   = (int8_t *) ralloc (sizeof (int8_t),
-                                                                    strlen (token_label) + 1,
+                                                                    strlen (token_label),
                                                                     FLAG_NONE);
                                 strcpy (tmp -> label, token_label);
                             }
@@ -809,7 +809,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             }
 
                             tmp -> label       = (int8_t *) ralloc (sizeof (int8_t),
-                                                                    strlen (token_label) + 1,
+                                                                    strlen (token_label),
                                                                      FLAG_NONE);
                             strcpy (tmp -> label, token_label);
                             dpoint             = list_add (dpoint, tmp);
@@ -1007,7 +1007,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         ltmp           = listnode (LIST_MEM, value);
                         token_label    = strtok ((string + match[3].rm_so), " ");
                         ltmp -> label  = (int8_t *) ralloc (sizeof (int8_t),
-                                                              strlen (token_label) + 1,
+                                                              strlen (token_label),
                                                             FLAG_NONE);
                         strcpy (ltmp -> label, token_label);
                         lpoint         = list_add (lpoint, ltmp);
