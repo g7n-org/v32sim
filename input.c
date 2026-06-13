@@ -375,7 +375,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
 
                     input_string             = strtok (NULL, ",");  // line number
                     line_number              = strtol (input_string, NULL, 10);
-                    ltmp -> number           = line_number;
+                    ltmp -> NUMBER           = line_number;
 
                     input_string             = strtok (NULL, ",");  // label, if present
                     if (input_string        != NULL)
@@ -414,12 +414,12 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                     input_string             = strtok (NULL, ",");  // ASM line number
                     line_number              = strtol (input_string, NULL, 10);
                     fprintf (debug, "[load_label] ASM line number: '%u'\n", line_number);
-                    ltmp -> number           = line_number;
+                    ltmp -> NUMBER           = line_number;
  
                     ltmp2                    = lpoint;
                     while (ltmp2            != NULL)
                     {
-                        if (ltmp2 -> number == line_number)
+                        if (ltmp2 -> NUMBER == line_number)
                         {
                             break;
                         }
@@ -428,7 +428,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
 
                     if (ltmp2               != NULL)
                     {
-                        ltmp -> data.raw     = ltmp2 -> data.raw; // copy offset
+                        ltmp -> RAW          = ltmp2 -> RAW; // copy offset
                     }
 
                     input_string             = strtok (NULL, ",");  // C file
@@ -442,7 +442,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
 
                     input_string             = strtok (NULL, ",");  // C line number
                     line_number              = strtol (input_string, NULL, 10);
-                    ltmp -> line             = line_number;
+                    ltmp -> LINE             = line_number;
 
                     lpoint                   = list_add (lpoint, ltmp);
                     tally                    = tally + 1;

@@ -12,11 +12,13 @@ linked_l *listnode (uint8_t  type, uint32_t  value)
 
     newnode -> label     = NULL;
     newnode -> type      = type;
-    newnode -> number    = 0;
+    newnode -> NUMBER    = 0;
+    newnode -> LINE      = 0;
+    newnode -> COUNT     = 0;
     newnode -> space     = 7;
     newnode -> pointer   = NULL;
     newnode -> dpointer  = NULL;
-    newnode -> data.raw  = value;
+    newnode -> RAW       = value;
     newnode -> next      = NULL;
     newnode -> end       = NULL;
 
@@ -138,7 +140,7 @@ linked_l *find_value (linked_l *list, uint32_t  value)
 
     while (tmp                 != NULL)
     {
-        if (tmp -> data.raw    == value)
+        if (tmp -> RAW         == value)
         {
             break;
         }

@@ -14,3 +14,10 @@ slli  timediff_ns (TimeSpec *start, TimeSpec *end)
 
     return (result);
 }
+
+void prof_time (linked_l *node)
+{
+    uint32_t  frames  = IPORTGET(TIM_FrameCounter) - node -> FRAMES;
+    uint32_t  cycles  = IPORTGET(TIM_CycleCounter) - node -> CYCLES;
+    uint32_t  tally   = 0;
+}

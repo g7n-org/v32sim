@@ -105,14 +105,14 @@ void  decode_display (uint32_t  instruction,
         exit (STRING_ALLOC_FAIL);
     }*/
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
     //
     // If colors are enabled, highlight the decoded instruction
     //
-    if ((colorflag                == TRUE) &&
-        (dataflag                 == FALSE))
+    if ((colorflag                  == TRUE) &&
+        (dataflag                   == FALSE))
     {
-        if (errorflag             == FALSE)
+        if (errorflag               == FALSE)
         {
             fprintf (stdout, "\e[1;33m");
         }
@@ -122,17 +122,17 @@ void  decode_display (uint32_t  instruction,
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
     //
     // If decoding is in secondary form, eliminate pretty spacing
     //
-    if (dataflag                  == TRUE)
+    if (dataflag                    == TRUE)
     {
         space                        = 1;
         spacing                      = 1;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
     //
     // Determine opcode and perform needed processing, based on flags
     //
@@ -157,7 +157,10 @@ void  decode_display (uint32_t  instruction,
                     fprintf (stdout, "\e[1;34m");
                 }
 
-                fprintf (display,     "(subroutine instructions: %u)", profcount - spoint -> end -> number);
+                prof_time (spoint);
+                fprintf (display,     "(subroutine instructions: %u, time: %.3f)",
+                                      profcount - spoint -> end -> COUNT,
+                                      spoint -> time);
 
                 if (colorflag       == TRUE)
                 {
@@ -868,7 +871,7 @@ void  decode_process (uint32_t  instruction,
                 if (ptmp              == NULL) // no existing entry in list
                 {
                     ptmp               = listnode (LIST_MEM, REG(IP));
-                    ptmp -> number     = 1;
+                    ptmp -> COUNT      = 1;
                     dtmp               = find_value (lpoint, REG(IP));
                     if (dtmp != NULL) // subroutine has an associated label
                     {
@@ -885,13 +888,15 @@ void  decode_process (uint32_t  instruction,
                     // spoint is the localized profiling list for the subroutine
                     //
                     dtmp               = listnode (LIST_MEM, REG(IP));
-                    dtmp -> number     = profcount;
+                    dtmp -> COUNT      = profcount;
                     spoint             = list_add (spoint, dtmp);
                 }
                 else                  // existing entry in list
                 {
-                    ptmp -> number     = ptmp -> number + 1;
+                    ptmp -> COUNT      = ptmp -> COUNT  + 1;
                 }
+                ptmp -> FRAMES         = IPORTGET(TIM_FrameCounter);
+                ptmp -> CYCLES         = IPORTGET(TIM_CycleCounter);
             }
 
             ////////////////////////////////////////////////////////////////////////////

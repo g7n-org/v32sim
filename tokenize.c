@@ -126,7 +126,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             }
                             else
                             {
-                                fprintf (stdout, "#%u  0x%.8X\n", count, tmp -> data.raw);
+                                fprintf (stdout, "#%u  0x%.8X\n", count, tmp -> RAW);
                             }
                             tmp               = tmp -> next;
                             count             = count + 1;
@@ -139,7 +139,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         count                 = 0;
                         while (tmp           != NULL)
                         {
-                            fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> data.raw);
+                            fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> RAW);
                             tmp               = tmp -> next;
                             count             = count + 1;
                         }
@@ -181,13 +181,13 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             (modeflag      == FLAG_ASM))
                         {
                             fprintf (stdout, "[%u] %s -> 0x%.8X\n",
-                                    count, ltmp -> label, ltmp -> data.raw);
+                                    count, ltmp -> label, ltmp -> RAW);
                         }
                         else if ((ltmp -> cname != NULL) &&
                                  (modeflag == FLAG_C))
                         {
                             fprintf (stdout, "[%u] ASM:%u -> C:%s:%u -> offset:0x%.8X\n",
-                                    count, ltmp -> number, ltmp -> cname, ltmp -> line, ltmp -> data.raw);
+                                    count, ltmp -> NUMBER, ltmp -> cname, ltmp -> LINE, ltmp -> RAW);
                         }
                         ltmp               = ltmp -> next;
                         count              = count + 1;
@@ -228,11 +228,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             if (tmp -> label != NULL)
                             {
-                                fprintf (stdout, "%s: %u\n", tmp -> label,    tmp -> number);
+                                fprintf (stdout, "%s: %u\n",     tmp -> label, tmp -> COUNT);
                             }
                             else
                             {
-                                fprintf (stdout, "0x%.8X: %u\n", tmp -> data.raw, tmp -> number);
+                                fprintf (stdout, "0x%.8X: %u\n", tmp -> RAW,   tmp -> COUNT);
                             }
 
                             tmp               = tmp -> next;
@@ -547,8 +547,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 if (check     == 0) // existing label found in list
                                 {
                                     fprintf (debug, "BREAK adding the label '%s'\n", ltmp -> label);
-                                    fprintf (debug, "adding 0x%.8X to the list\n", ltmp -> data.i32);
-                                    tmp        = listnode (LIST_MEM, ltmp -> data.i32);
+                                    fprintf (debug, "adding 0x%.8X to the list\n", ltmp -> I32);
+                                    tmp        = listnode (LIST_MEM, ltmp -> I32);
                                     bpoint     = list_add (bpoint, tmp);
                                 }
                             }

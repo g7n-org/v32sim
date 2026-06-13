@@ -360,7 +360,7 @@ int32_t   main (int32_t  argc, char **argv)
         {
             if (tmp -> label       == NULL) // not a label: offset
             {
-                value               = tmp -> data.raw;
+                value               = tmp -> RAW;
                 btmp                = find_value (bpoint, value);
                 if (btmp           == NULL) // not an existing breakpoint
                 {
@@ -374,14 +374,14 @@ int32_t   main (int32_t  argc, char **argv)
                 btmp                = find_label (lpoint, tmp  -> label);
                 if (btmp           != NULL) // yes, match for label in label list
                 {
-                    value           = btmp -> data.raw;
+                    value           = btmp -> RAW;
                     btmp            = find_value (bpoint, value); // check offset in breaklist
                     if (btmp       == NULL) // not an existing breakpoint in breaklist
                     {
                         btmp        = list_grab (&tpoint, tmp);
-                        btmp -> data.raw  = value;
+                        btmp -> RAW = value;
                         fprintf (debug, "[main] BREAKing at label: '%s'\n", btmp -> label);
-                        fprintf (debug, "[main] BREAKing at offset 0x%.8X\n", btmp -> data.raw);
+                        fprintf (debug, "[main] BREAKing at offset 0x%.8X\n", btmp -> RAW);
                         bpoint      = list_add (bpoint, btmp);
                     }
                 }
@@ -416,7 +416,7 @@ int32_t   main (int32_t  argc, char **argv)
         btmp                           = bpoint;
         while (btmp                   != NULL)
         {
-            value                      = btmp -> data.raw;
+            value                      = btmp -> RAW;
             if (rom_offset            == value)
             {
                 if (colorflag         == TRUE)
@@ -543,7 +543,7 @@ int32_t   main (int32_t  argc, char **argv)
 
                 if (IMEMGET(REG(IP)-1) == RET)
                 {
-                    fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - spoint -> end -> number);
+                    fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - spoint -> end -> COUNT);
                 //fprintf (stdout, "[profiling] instruction count: %u\n", profcount);
                 //fprintf (stdout, "[profiling] subroutine count:  %u\n", profcountsub);
                 }
@@ -579,7 +579,7 @@ int32_t   main (int32_t  argc, char **argv)
                             line_number  = 1;
                         }
 
-                        if (tmp -> line <  line_number)
+                        if (tmp -> LINE <  line_number)
                         {
                             if (fptr != NULL)
                                 fclose (fptr);
@@ -588,7 +588,7 @@ int32_t   main (int32_t  argc, char **argv)
                         }
 
                         for (index     = 1;
-                             index    <  tmp -> line;
+                             index    <  tmp -> LINE;
                              index     = index + 1)
                         {
                             len        = getline (&line_input, &buffer_size, fptr);
@@ -597,9 +597,9 @@ int32_t   main (int32_t  argc, char **argv)
 
                         /*
                         if (len       >  0)
-                            fprintf (stdout, "%4u: %s\n", tmp -> line, line_input);
+                            fprintf (stdout, "%4u: %s\n", tmp -> LINE, line_input);
                         else
-                            fprintf (stdout, "empty (line_number: %u, tmp->line: %u\n", line_number, tmp->line);
+                            fprintf (stdout, "empty (line_number: %u, tmp->LINE: %u\n", line_number, tmp->LINE);
                             */
                     }
                 }
@@ -811,7 +811,7 @@ int32_t   main (int32_t  argc, char **argv)
                         fprintf (stdout, "\e[1;34m");
                     }
 
-                    fprintf (display, "[profiling] subroutine instructions: %u\n", profcount - spoint -> end -> number);
+                    fprintf (display, "[profiling] subroutine instructions: %u\n", profcount - spoint -> end -> COUNT);
 
                     if (colorflag     == TRUE)
                     {

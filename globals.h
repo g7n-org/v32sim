@@ -20,6 +20,41 @@ union  word_type
 };
 typedef union word_type word_t;
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// data1: shorthand union to "overload" member elements in the linked_list
+// struct (number vs frames)
+//
+union  data1
+{
+    uint32_t  number;
+    uint32_t  frames;
+};
+typedef union data1     d1_t;
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// data2: shorthand union to "overload" member elements in the linked_list
+// struct (line vs cycles)
+//
+union  data2
+{
+    uint32_t  line;
+    uint32_t  cycles;
+};
+typedef union data2     d2_t;
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// data3: shorthand union to "overload" member elements in the linked_list
+// struct (count vs ???)
+//
+union  data3
+{
+    uint32_t  count;
+};
+typedef union data3     d3_t;
+
 typedef struct linked_list linked_l;
 struct linked_list
 {
@@ -29,8 +64,10 @@ struct linked_list
     uint8_t    type;
     uint8_t    space;
     uint8_t    fmt;
-    uint32_t   number;
-    uint32_t   line;
+    d1_t       item1;
+    d2_t       item2;
+    d3_t       item3;
+    float      time;
     void      *pointer;
     void     **dpointer;
     word_t     data;

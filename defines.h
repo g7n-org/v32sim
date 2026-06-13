@@ -197,6 +197,15 @@
 #define  IR                      17
 #define  IV                      18
 
+#define  FRAMES                  item1.frames
+#define  NUMBER                  item1.number
+#define  CYCLES                  item2.cycles
+#define  LINE                    item2.line
+#define  COUNT                   item3.count
+#define  RAW                     data.raw
+#define  I32                     data.i32
+#define  F32                     data.f32
+
 #define  REGNAME(x)              (reg+x)   -> name
 #define  REGALIAS(x)             (reg+x)   -> alias
 #define  REGMODE(x)              (reg+x)   -> mode
