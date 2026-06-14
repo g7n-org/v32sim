@@ -17,12 +17,16 @@ slli  timediff_ns (TimeSpec *start, TimeSpec *end)
 
 linked_l *prof_time (linked_l *node)
 {
-    uint32_t  frames     = 0;
-    uint32_t  cycles     = 0;
+    int32_t  frames      = 0;
+    int32_t  cycles      = 0;
 
     if (node            != NULL)
     {
         frames           = IPORTGET(TIM_FrameCounter) - node -> FRAMES;
+        if (frames      <  0)
+        {
+            frames       = 0;
+        }
         node  -> FRAMES  = frames;
     ////////////if (node -> time == 0.0)
     ////////////{
@@ -34,6 +38,11 @@ linked_l *prof_time (linked_l *node)
         {
             cycles       = frames * V32_CYCLES_PER_FRAME; // convert frames to cycles
             cycles       = cycles - node  -> CYCLES;       // remove non-inclusive cycles
+        }
+
+        if (cycles      <  0)
+        {
+            cycles       = 0;
         }
         node  -> time    = (float) cycles / (V32_FRAMES_PER_SECOND * V32_CYCLES_PER_FRAME);
         node  -> CYCLES  = cycles - (frames * V32_CYCLES_PER_FRAME);
