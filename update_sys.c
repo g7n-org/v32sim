@@ -77,7 +77,7 @@ void      update_frame (void)
     if ((profileflag   == TRUE) &&
         (csub          != NULL))
     {
-        csub -> CYCLES  = csub -> CYCLES + V32_CYCLES_PER_FRAME;
+        csub -> CYCLES  = csub -> CYCLES + (V32_CYCLES_PER_FRAME - csub -> COUNT);
         csub -> FRAMES  = csub -> CYCLES / V32_CYCLES_PER_FRAME;
     }
 
