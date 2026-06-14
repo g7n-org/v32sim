@@ -810,13 +810,6 @@ int32_t   main (int32_t  argc, char **argv)
                 {
                     runflag            = FALSE;
                 }
-                    
-                /*
-                if (profileflag       == TRUE)
-                {
-                    prof_time ();
-                }
-                */
 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -834,8 +827,19 @@ int32_t   main (int32_t  argc, char **argv)
                     //
                     // display stats of recently returned subroutine
                     //
-                    fprintf (display, "[profiling] subroutine cycles:  %u\n",    csub -> COUNT);
-                    fprintf (display, "[profiling] subroutine runtime: %.3fs\n", csub -> time);
+                    csub -> CYCLES     = csub -> CYCLES + csub -> COUNT;
+                    csub -> FRAMES     = csub -> CYCLES / V32_CYCLES_PER_FRAME;
+                    csub -> time       = (float) csub -> CYCLES / (float) (V32_FRAMES_PER_SECOND * V32_CYCLES_PER_FRAME);
+                    csub -> CYCLES     = csub -> CYCLES % V32_CYCLES_PER_FRAME;
+                    if (csub -> label != NULL)
+                    {
+                        fprintf (display, "[profiling subroutine %s] ", csub -> label);
+                    }
+                    else
+                    {
+                        fprintf (display, "[profiling subroutine 0x%.8X] ", csub -> RAW);
+                    }
+                    fprintf (display, "total cycles: %u, frames: %u, overall runtime: %.3fs\n",    csub -> CYCLES, csub -> FRAMES, csub -> time);
 
                     if (colorflag     == TRUE)
                     {
@@ -851,7 +855,8 @@ int32_t   main (int32_t  argc, char **argv)
                 // old_count stores the number of cycles used in the returned
                 // subroutine: we add these to the parent subroutine cycles
                 //
-                if (tpoint            != NULL)
+                if ((tpoint           != NULL) &&
+                    (csub             != NULL))
                 {
                     csub -> ACTIVE     = FALSE;
                     old_count          = csub -> COUNT;

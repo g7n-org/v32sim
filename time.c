@@ -14,14 +14,3 @@ slli  timediff_ns (TimeSpec *start, TimeSpec *end)
 
     return (result);
 }
-
-void  prof_time (void)
-{
-    if (csub               != NULL)
-    {
-        csub -> CYCLES      = csub -> CYCLES + csub -> COUNT;
-        csub -> FRAMES      = csub -> CYCLES / V32_CYCLES_PER_FRAME;
-        csub -> time        = (float) csub -> CYCLES / (float) (V32_FRAMES_PER_SECOND * V32_CYCLES_PER_FRAME);
-        csub -> CYCLES      = csub -> CYCLES % V32_CYCLES_PER_FRAME;
-    }
-}
