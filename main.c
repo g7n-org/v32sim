@@ -112,6 +112,7 @@ int32_t   main (int32_t  argc, char **argv)
     uint8_t  *filename              = NULL;
     uint32_t  value                 = 0;
     uint32_t  line_number           = 0;
+    uint32_t  old_count             = 0;
     uint8_t  *line_input            = NULL;
     int32_t   index                 = 0;
     size_t    buffer_size           = 0;
@@ -536,6 +537,7 @@ int32_t   main (int32_t  argc, char **argv)
             //
             // if enabled, display the profile count
             //
+                /*
             if (profileflag           == TRUE)
             {
                 if (colorflag         == TRUE)
@@ -553,6 +555,7 @@ int32_t   main (int32_t  argc, char **argv)
                     fprintf (stdout, "\e[m");
                 }
             }
+                */
 
             ////////////////////////////////////////////////////////////////////////////
             //
@@ -560,7 +563,6 @@ int32_t   main (int32_t  argc, char **argv)
             //
             do
             {
-
                 if (modeflag          == FLAG_C)
                 {
                     //fprintf (stdout, "** MODEFLAG FLAG_C\n");
@@ -808,6 +810,13 @@ int32_t   main (int32_t  argc, char **argv)
                 {
                     runflag            = FALSE;
                 }
+                    
+                /*
+                if (profileflag       == TRUE)
+                {
+                    prof_time ();
+                }
+                */
 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -821,8 +830,12 @@ int32_t   main (int32_t  argc, char **argv)
                         fprintf (stdout, "\e[1;34m");
                     }
 
-                    fprintf (display, "[profiling] subroutine instructions: %u\n",    csub -> COUNT);
-                    fprintf (display, "[profiling] subroutine runtime:      %.3fs\n", csub -> time);
+                    ////////////////////////////////////////////////////////////////////
+                    //
+                    // display stats of recently returned subroutine
+                    //
+                    fprintf (display, "[profiling] subroutine cycles:  %u\n",    csub -> COUNT);
+                    fprintf (display, "[profiling] subroutine runtime: %.3fs\n", csub -> time);
 
                     if (colorflag     == TRUE)
                     {
@@ -830,7 +843,21 @@ int32_t   main (int32_t  argc, char **argv)
                     }
                 }
 
-                csub                   = tpoint; // current subroutine via backtrace
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // csub: revert pointer to previous function (obtain offset from
+                // the backtrace list)
+                //
+                // old_count stores the number of cycles used in the returned
+                // subroutine: we add these to the parent subroutine cycles
+                //
+                if (tpoint            != NULL)
+                {
+                    csub -> ACTIVE     = FALSE;
+                    old_count          = csub -> COUNT;
+                    csub               = find_value (ppoint, tpoint -> RAW);
+                    csub -> COUNT      = csub -> COUNT + old_count;
+                }
             }
         }
         else

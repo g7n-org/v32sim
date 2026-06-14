@@ -130,6 +130,7 @@ uint8_t  prompt (uint32_t  word)
         case INPUT_IGNORE:
             processflag                 = TRUE;
             runflag                     = TRUE;
+            nextflag                    = FALSE;
             break;
 
         case INPUT_PRINT:

@@ -12,6 +12,7 @@ linked_l *listnode (uint8_t  type, uint32_t  value)
 
     newnode -> label     = NULL;
     newnode -> type      = type;
+    newnode -> FMT       = FORMAT_DEFAULT;
     newnode -> NUMBER    = 0;
     newnode -> LINE      = 0;
     newnode -> COUNT     = 0;

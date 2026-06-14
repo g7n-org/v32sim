@@ -884,9 +884,9 @@ void  decode_process (uint32_t  instruction,
                     ptmp -> SUBCALL    = ptmp -> SUBCALL + 1;
                 }
                 csub                   = ptmp;
-                csub -> COUNT          = -1;
-                csub -> FRAMES         = IPORTGET(TIM_FrameCounter);
-                csub -> CYCLES         = IPORTGET(TIM_CycleCounter);
+                csub -> ACTIVE         = TRUE;
+                csub -> COUNT          = 0; // include the CALL
+                csub -> CYCLES         = 0;
             }
 
             ////////////////////////////////////////////////////////////////////////////
@@ -913,11 +913,6 @@ void  decode_process (uint32_t  instruction,
             REG(SP)                    = REG(SP) + 1;
             branchflag                 = TRUE;
             retflag                    = TRUE;
-
-            if (profileflag           == TRUE)
-            {
-                csub                   = prof_time (csub);
-            }
 
             ////////////////////////////////////////////////////////////////////////////
             //

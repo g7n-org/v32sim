@@ -200,6 +200,8 @@
 #define  IR                      17
 #define  IV                      18
 
+#define  FMT                     item0.fmt
+#define  ACTIVE                  item0.active
 #define  FRAMES                  item1.frames
 #define  NUMBER                  item1.number
 #define  CYCLES                  item2.cycles

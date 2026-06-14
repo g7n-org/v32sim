@@ -22,6 +22,18 @@ typedef union word_type word_t;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
+// data0: shorthand union to "overload" member elements in the linked_list
+// struct (fmt vs active)
+//
+union  data0
+{
+    uint8_t   fmt;
+    uint8_t   active;
+};
+typedef union data0     d0_t;
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
 // data1: shorthand union to "overload" member elements in the linked_list
 // struct (number vs frames)
 //
@@ -74,7 +86,7 @@ struct linked_list
     int8_t    *label; // to label display points
     uint8_t    type;
     uint8_t    space;
-    uint8_t    fmt;
+    d0_t       item0;
     d1_t       item1;
     d2_t       item2;
     d3_t       item3;
@@ -241,6 +253,7 @@ void      gamepad_io     (uint16_t);
 void     *ralloc         (size_t,      size_t,      uint8_t);
 void      rfree          (void     *);
 void      sigint         (int32_t);
-linked_l *prof_time      (linked_l *);
+//linked_l *prof_time      (linked_l *);
+void      prof_time      (void);
 
 #endif

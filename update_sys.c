@@ -7,21 +7,21 @@ void      update_cycle (void)
     // Declare and initialize variables
     //
     TimeSpec  delay;
-    uint32_t  cycles   = 0;
+    uint32_t  cycles        = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Obtain the current number of cycles from the system's cycle counter port
     //
-    cycles             = IPORTGET(TIM_CycleCounter);
+    cycles                  = IPORTGET(TIM_CycleCounter);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // If we are not WAITing, increment TIM_CycleCounter
     //
-    if (waitflag      == FALSE)
+    if (waitflag           == FALSE)
     {
-        cycles         = cycles + 1;
+        cycles              = cycles + 1;
     }
     else // wait out the current frame
     {
@@ -37,21 +37,21 @@ void      update_cycle (void)
         // So, if we are WAITing out the frame, we figure out how many cycles are
         // remaining for the frame, and wait the requisite amount of time.
         //
-        delay.tv_sec   = 0;                      // 0 seconds
-        delay.tv_nsec  = 66 * (250000 - cycles); // 66 nanoseconds per instruction
+        delay.tv_sec        = 0;                      // 0 seconds
+        delay.tv_nsec       = 66 * (250000 - cycles); // 66 nanoseconds per instruction
 
         fprintf (debug, "[update_cycle] WAIT: delaying for %ld ns\n", delay.tv_nsec);
         nanosleep (&delay, NULL);
 
-        cycles         = 250000;                 // max out our cycle count
-        waitflag       = FALSE;                  // reset waitflag
+        cycles              = 250000;                 // max out our cycle count
+        waitflag            = FALSE;                  // reset waitflag
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Check for frame roll-over
     //
-    if (cycles        >= 250000)
+    if (cycles             >= 250000)
     {
         update_frame ();
     }
@@ -67,8 +67,19 @@ void      update_frame (void)
     //
     // Declare and initialize variables
     //
-    uint32_t  value    = 0;
-    uint32_t  upper    = 0;
+    uint32_t  value     = 0;
+    uint32_t  upper     = 0;
+    
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // profiler stats update
+    //
+    if ((profileflag   == TRUE) &&
+        (csub          != NULL))
+    {
+        csub -> CYCLES  = csub -> CYCLES + V32_CYCLES_PER_FRAME;
+        csub -> FRAMES  = csub -> CYCLES / V32_CYCLES_PER_FRAME;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //

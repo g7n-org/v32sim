@@ -222,30 +222,35 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         }
                         fprintf (stdout, "\n----------------------------------------------------------------------------\n");
                         fprintf (stdout, "total number of subroutine calls: %u\n", profcountsub);
-                        fprintf (stdout, "per-subroutine breakdown ('nan' for time means active call):\n\n");
-                        fprintf (stdout, "%-37s %6s %6s %6s %6s %8s\n", "subroutine", "calls", "opcode", "frames", "cycles", "time(s)");
-                        fprintf (stdout, "===================================== ====== ====== ====== ====== ========\n");
+                        fprintf (stdout, "per-subroutine breakdown:\n\n");
+                        fprintf (stdout, "%-37s %6s %6s  %6s %6s %8s\n", "subroutine", "active", "calls", "cycles", "frames", "time(s)");
+                        fprintf (stdout, "===================================== ====== ====== ======= ====== ========\n");
                         tmp                   = ppoint;
                         while (tmp           != NULL)
                         {
-							switch ((tmp -> RAW & V32_PAGE_MASK) >> 28)
-							{
-								case V32_PAGE_RAM:
-									fprintf (stdout, " RAM:");
-									break;
+                            tmp -> CYCLES     = tmp -> CYCLES + tmp -> COUNT;
+                            tmp -> FRAMES     = tmp -> CYCLES / V32_CYCLES_PER_FRAME;
+                            tmp -> time       = (float) tmp -> CYCLES / (float) (V32_FRAMES_PER_SECOND * V32_CYCLES_PER_FRAME);
+                            tmp -> CYCLES     = tmp -> CYCLES % V32_CYCLES_PER_FRAME;
 
-								case V32_PAGE_BIOS:
-									fprintf (stdout, "BIOS:");
-									break;
+                            switch ((tmp -> RAW & V32_PAGE_MASK) >> 28)
+                            {
+                                case V32_PAGE_RAM:
+                                    fprintf (stdout, " RAM:");
+                                    break;
 
-								case V32_PAGE_CART:
-									fprintf (stdout, "CART:");
-									break;
+                                case V32_PAGE_BIOS:
+                                    fprintf (stdout, "BIOS:");
+                                    break;
 
-								case V32_PAGE_MEMC:
-									fprintf (stdout, "MEMC:");
-									break;
-							}
+                                case V32_PAGE_CART:
+                                    fprintf (stdout, "CART:");
+                                    break;
+
+                                case V32_PAGE_MEMC:
+                                    fprintf (stdout, "MEMC:");
+                                    break;
+                            }
 
                             if (tmp -> time  != -1.0) // if not an uncompleted subroutine (such the one we are currently in)
                             {
@@ -259,7 +264,16 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                     fprintf (stdout, "0x%-30.8X ", tmp -> RAW);
                                 }
 
-                                fprintf (stdout, "%6u %6u %6u %6u %8.4f\n", tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
+                                if (tmp -> ACTIVE == TRUE)
+                                {
+                                    fprintf (stdout, "%6s ", "*");
+                                }
+                                else
+                                {
+                                    fprintf (stdout, "%6s ", " ");
+                                }
+
+                                fprintf (stdout, "%6u %7u %6u %8.4f\n", tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> time);
                             }
                             else
                             {
@@ -272,7 +286,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                     fprintf (stdout, "0x%-30.8X ", tmp -> RAW);
                                 }
 
-                                fprintf (stdout, "%6u %6u %22s\n", tmp -> SUBCALL, tmp -> COUNT, "[in progress]");
+                                fprintf (stdout, "%6u %7u %6u %8s\n", tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, "active");
                             }
 
                             tmp                   = tmp -> next;
@@ -734,7 +748,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                                                         FLAG_NONE);
                                     strncpy (tmp -> label, token_label, strlen (token_label));
                                 }
-                                tmp -> fmt         = fmt;
+                                tmp -> FMT         = fmt;
                                 dpoint             = list_add (dpoint, tmp);
                             }
                             break;
@@ -757,7 +771,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                                                     FLAG_NONE);
                                 strncpy (tmp -> label, token_label, strlen (token_label));
                             }
-                            tmp -> fmt         = fmt;
+                            tmp -> FMT         = fmt;
                             dpoint             = list_add (dpoint, tmp);
                             break;
 
@@ -767,7 +781,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                  index         = index + 1)
                             {
                                 tmp            = listnode (LIST_REG, index);
-                                tmp -> fmt     = fmt;
+                                tmp -> FMT     = fmt;
                                 dpoint         = list_add (dpoint, tmp);
                             }
                             break;
@@ -796,7 +810,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                                                     FLAG_NONE);
                                 strncpy (tmp -> label, token_label, strlen (token_label));
                             }
-                            tmp -> fmt         = fmt;
+                            tmp -> FMT         = fmt;
                             dpoint             = list_add (dpoint, tmp);
                             break;
 
@@ -819,11 +833,11 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 token_label    = dtmp -> name;
                                 if (fmt       != FORMAT_DEFAULT)
                                 {
-                                    tmp -> fmt = fmt;
+                                    tmp -> FMT = fmt;
                                 }
                                 else
                                 {
-                                    tmp -> fmt = dtmp -> fmt;
+                                    tmp -> FMT = dtmp -> fmt;
                                 }
                             }
 

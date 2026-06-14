@@ -18,23 +18,23 @@ void  displayshow (linked_l *list, uint8_t  flag)
         switch (dtmp -> type)
         {
             case LIST_REG_DEREF:
-                output_reg (wtmp -> i32, dtmp -> fmt, TRUE,  dtmp -> label);
+                output_reg (wtmp -> i32, dtmp -> FMT, TRUE,  dtmp -> label);
                 break;
 
             case LIST_REG:
-                output_reg (wtmp -> i32, dtmp -> fmt, FALSE, dtmp -> label);
+                output_reg (wtmp -> i32, dtmp -> FMT, FALSE, dtmp -> label);
                 break;
 
             case LIST_MEM_DEREF:
-                output_mem (wtmp -> i32, dtmp -> fmt, TRUE,  dtmp -> label);
+                output_mem (wtmp -> i32, dtmp -> FMT, TRUE,  dtmp -> label);
                 break;
 
             case LIST_MEM:
-                output_mem (wtmp -> i32, dtmp -> fmt, FALSE, dtmp -> label);
+                output_mem (wtmp -> i32, dtmp -> FMT, FALSE, dtmp -> label);
                 break;
 
             case LIST_IOP:
-                output_iop (wtmp -> i32, dtmp -> fmt, dtmp -> label);
+                output_iop (wtmp -> i32, dtmp -> FMT, dtmp -> label);
                 break;
         }
 
