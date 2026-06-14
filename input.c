@@ -170,6 +170,7 @@ uint8_t  prompt (uint32_t  word)
                 }
             }
             processflag                = TRUE;
+            nextflag                   = TRUE;
             break;
 
         case INPUT_HELP:

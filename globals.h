@@ -152,6 +152,7 @@ extern uint8_t    ignoreflag;
 extern uint8_t    retflag;
 extern uint8_t    derefaddr;
 extern uint8_t    errorcheck;
+extern uint8_t    nextflag;
 extern uint8_t    haltflag;
 extern uint8_t    waitflag;
 extern uint8_t    wordsize;

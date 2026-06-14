@@ -47,6 +47,7 @@ uint8_t   colorflag;
 uint8_t   branchflag;
 uint8_t   ignoreflag;
 uint8_t   retflag;
+uint8_t   nextflag;
 uint8_t   derefaddr;
 uint8_t   errorcheck;
 uint8_t   haltflag;
@@ -133,6 +134,7 @@ int32_t   main (int32_t  argc, char **argv)
     profileflag                     = FALSE;
     runflag                         = FALSE;
     colorflag                       = FALSE;
+    nextflag                        = FALSE;
     seek_word                       = 0xFFFFFFFF;
     watch_word                      = 0x00000000;
     wordsize                        = 4;
@@ -543,7 +545,7 @@ int32_t   main (int32_t  argc, char **argv)
 
                 if (IMEMGET(REG(IP)-1) == RET)
                 {
-                    fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - csub -> COUNT);
+                    fprintf (stdout, "[profiling] subroutine instruction count: %u\n", csub -> COUNT);
                 }
 
                 if (colorflag         == TRUE)
@@ -802,6 +804,11 @@ int32_t   main (int32_t  argc, char **argv)
             {
                 retflag                = FALSE;
 
+                if (nextflag          == TRUE)
+                {
+                    runflag            = FALSE;
+                }
+
                 ////////////////////////////////////////////////////////////////////////
                 //
                 // if profiling is enabled, remove entry from subroutine profile list
@@ -814,7 +821,7 @@ int32_t   main (int32_t  argc, char **argv)
                         fprintf (stdout, "\e[1;34m");
                     }
 
-                    fprintf (display, "[profiling] subroutine instructions: %u\n", profcount - csub -> COUNT);
+                    fprintf (display, "[profiling] subroutine instructions: %u\n",    csub -> COUNT);
                     fprintf (display, "[profiling] subroutine runtime:      %.3fs\n", csub -> time);
 
                     if (colorflag     == TRUE)

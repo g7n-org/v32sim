@@ -168,6 +168,7 @@
 #define  SRCREGSHIFT             17
 #define  MOVADRSHIFT             14
 
+#define  ENABLED                 2
 #define  TRUE                    1
 #define  FALSE                   0
 #define  MU                      255 // not applicable
