@@ -18,7 +18,7 @@ linked_l *listnode (uint8_t  type, uint32_t  value)
     newnode -> space     = 7;
     newnode -> pointer   = NULL;
     newnode -> dpointer  = NULL;
-    newnode -> time      = NAN;
+    newnode -> time      = -1.0;
     newnode -> RAW       = value;
     newnode -> next      = NULL;
     newnode -> end       = NULL;

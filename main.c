@@ -543,10 +543,7 @@ int32_t   main (int32_t  argc, char **argv)
 
                 if (IMEMGET(REG(IP)-1) == RET)
                 {
-                    //fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - ppoint -> end -> COUNT);
                     fprintf (stdout, "[profiling] subroutine instruction count: %u\n", profcount - csub -> COUNT);
-                //fprintf (stdout, "[profiling] instruction count: %u\n", profcount);
-                //fprintf (stdout, "[profiling] subroutine count:  %u\n", profcountsub);
                 }
 
                 if (colorflag         == TRUE)

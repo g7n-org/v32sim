@@ -228,26 +228,27 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         tmp                   = ppoint;
                         while (tmp           != NULL)
                         {
-                            //if (tmp -> time  != -1.0) // if not the subroutine we are currently in
-                           // {
-                                switch ((tmp -> RAW & V32_PAGE_MASK) >> 28)
-                                {
-                                    case V32_PAGE_RAM:
-                                        fprintf (stdout, " RAM:");
-                                        break;
+							switch ((tmp -> RAW & V32_PAGE_MASK) >> 28)
+							{
+								case V32_PAGE_RAM:
+									fprintf (stdout, " RAM:");
+									break;
 
-                                    case V32_PAGE_BIOS:
-                                        fprintf (stdout, "BIOS:");
-                                        break;
+								case V32_PAGE_BIOS:
+									fprintf (stdout, "BIOS:");
+									break;
 
-                                    case V32_PAGE_CART:
-                                        fprintf (stdout, "CART:");
-                                        break;
+								case V32_PAGE_CART:
+									fprintf (stdout, "CART:");
+									break;
 
-                                    case V32_PAGE_MEMC:
-                                        fprintf (stdout, "MEMC:");
-                                        break;
-                                }
+								case V32_PAGE_MEMC:
+									fprintf (stdout, "MEMC:");
+									break;
+							}
+
+                            if (tmp -> time  != -1.0) // if not an uncompleted subroutine (such the one we are currently in)
+                            {
 
                                 if (tmp -> label != NULL)
                                 {
@@ -259,29 +260,24 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 }
 
                                 fprintf (stdout, "%6u %6u %6u %6u %8.4f\n", tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
-                           // }
-                           // else
-                           // {
-                           //     if (tmp -> label != NULL)
-                           //     {
-                           //         if (tmp      != csub)
-                           //         {
-                           //             fprintf (stdout, "%32s: current subroutine\n",     tmp -> label);
-                           //         }
-                           //         else
-                           //         {
-                           //             fprintf (stdout, "%32s: unfinished subroutine\n",     tmp -> label);
-                           //         }
-                           //     }
-                           //     else
-                           //     {
-                           //         fprintf (stdout, "0x%30.8X: current subroutine\n", tmp -> RAW);
-                           //     }
-                           // }
+                            }
+                            else
+                            {
+                                if (tmp -> label != NULL)
+                                {
+                                    fprintf (stdout, "%-32s ",     tmp -> label);
+                                }
+                                else
+                                {
+                                    fprintf (stdout, "0x%-30.8X ", tmp -> RAW);
+                                }
 
-                                tmp               = tmp -> next;
+                                fprintf (stdout, "%6u %6u %22s\n", tmp -> SUBCALL, tmp -> COUNT, "[in progress]");
+                            }
+
+                            tmp                   = tmp -> next;
                         }
-                        fprintf (stdout, "\n----------------------------------------------------------------------------\n");
+                        fprintf (stdout, "----------------------------------------------------------------------------\n");
                     }
                     else
                     {

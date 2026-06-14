@@ -43,8 +43,9 @@ linked_l *prof_time (linked_l *node)
         {
             cycles       = 0;
         }
-        node  -> time    = (float) cycles / (V32_FRAMES_PER_SECOND * V32_CYCLES_PER_FRAME);
         node  -> CYCLES  = cycles - (frames * V32_CYCLES_PER_FRAME);
+
+        node  -> time    = (float) cycles / (float) (V32_FRAMES_PER_SECOND * V32_CYCLES_PER_FRAME);
     }
 
     return (node);
