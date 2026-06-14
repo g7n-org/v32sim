@@ -28,8 +28,7 @@ linked_l *prof_time (linked_l *node)
             frames       = 0;
         }
         node  -> FRAMES  = frames;
-    ////////////if (node -> time == 0.0)
-    ////////////{
+
         if (frames      == 0) // time duration falls within the same frame
         {
             cycles       = IPORTGET(TIM_CycleCounter) - node -> CYCLES;
@@ -46,7 +45,6 @@ linked_l *prof_time (linked_l *node)
         }
         node  -> time    = (float) cycles / (V32_FRAMES_PER_SECOND * V32_CYCLES_PER_FRAME);
         node  -> CYCLES  = cycles - (frames * V32_CYCLES_PER_FRAME);
-////////////    }
     }
 
     return (node);

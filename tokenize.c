@@ -223,9 +223,9 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         fprintf (stdout, "\n----------------------------------------------------------------------------\n");
                         fprintf (stdout, "total number of subroutine calls: %u\n", profcountsub);
                         fprintf (stdout, "per-subroutine breakdown ('nan' for time means active call):\n\n");
-                        tmp                   = ppoint;
                         fprintf (stdout, "%-37s %6s %6s %6s %6s %8s\n", "subroutine", "calls", "opcode", "frames", "cycles", "time(s)");
                         fprintf (stdout, "===================================== ====== ====== ====== ====== ========\n");
+                        tmp                   = ppoint;
                         while (tmp           != NULL)
                         {
                             //if (tmp -> time  != -1.0) // if not the subroutine we are currently in
@@ -251,12 +251,14 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
                                 if (tmp -> label != NULL)
                                 {
-                                    fprintf (stdout, "%-32s %6u %6u %6u %6u %8.4f\n", tmp -> label, tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
+                                    fprintf (stdout, "%-32s ",     tmp -> label);
                                 }
                                 else
                                 {
-                                    fprintf (stdout, "0x%-30.8X %6u %6u %6u %6u %8.4f\n", tmp -> RAW, tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
+                                    fprintf (stdout, "0x%-30.8X ", tmp -> RAW);
                                 }
+
+                                fprintf (stdout, "%6u %6u %6u %6u %8.4f\n", tmp -> SUBCALL, tmp -> COUNT, tmp -> FRAMES, tmp -> CYCLES, tmp -> time);
                            // }
                            // else
                            // {
