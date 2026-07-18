@@ -876,6 +876,12 @@ int32_t   main (int32_t  argc, char **argv)
         }
     }
 
+    fprintf (stdout, "------------------------------------\n");
+    fprintf (stdout, "IP: 0x%.8X\n", REG(IP));
+    fprintf (stdout, "IR: 0x%.8X\n", REG(IR));
+    fprintf (stdout, "IV: 0x%.8X\n", REG(IV));
+    fprintf (stdout, "SYSTEM HALTED\n");
+
     rfree (reg);
     rfree (memory);
     rfree (ioports);
@@ -891,8 +897,6 @@ int32_t   main (int32_t  argc, char **argv)
     {
         fclose (verbose);
     }
-
-    fprintf (stdout, "SYSTEM HALTED\n");
 
     return (0);
 }
