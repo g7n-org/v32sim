@@ -72,8 +72,8 @@ void  decode_display (uint32_t  instruction,
     uint32_t  src                  = (instruction & SRCREG_MASK) >> SRCREGSHIFT;
     uint8_t   addr                 = (instruction & MOVADR_MASK) >> MOVADRSHIFT;
     uint16_t  port                 = (instruction & IOPORT_MASK);
-    int8_t    destination[32];
-    int8_t    source[32];
+    int8_t    destination[64];
+    int8_t    source[64];
     //int8_t   *destination          = NULL;
     //int8_t   *source               = NULL;
     uint32_t  value                = 0;
