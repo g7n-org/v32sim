@@ -880,6 +880,9 @@ int32_t   main (int32_t  argc, char **argv)
     fprintf (stdout, "IP: 0x%.8X\n", REG(IP));
     fprintf (stdout, "IR: 0x%.8X\n", REG(IR));
     fprintf (stdout, "IV: 0x%.8X\n", REG(IV));
+    fprintf (stdout, "------------------------------------\n");
+	displayshow  (dpoint, 0);
+    fprintf (stdout, "------------------------------------\n");
     fprintf (stdout, "SYSTEM HALTED\n");
 
     rfree (reg);
