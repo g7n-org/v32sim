@@ -975,32 +975,32 @@ void  decode_process (uint32_t  instruction,
 
         case FEQ:
             fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
-            FDSTREG         = (FDSTREG == fvalue) ? TRUE       : FALSE;
+            DSTREG          = (FDSTREG == fvalue) ? TRUE       : FALSE;
             break;
 
         case FNE:
             fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
-            FDSTREG         = (FDSTREG != fvalue) ? TRUE       : FALSE;
+            DSTREG          = (FDSTREG != fvalue) ? TRUE       : FALSE;
             break;
 
         case FGT:
             fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
-            FDSTREG         = (FDSTREG >  fvalue) ? TRUE       : FALSE;
+            DSTREG          = (FDSTREG >  fvalue) ? TRUE       : FALSE;
             break;
 
         case FGE:
             fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
-            FDSTREG         = (FDSTREG >= fvalue) ? TRUE       : FALSE;
+            DSTREG          = (FDSTREG >= fvalue) ? TRUE       : FALSE;
             break;
 
         case FLT:
             fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
-            FDSTREG         = (FDSTREG <  fvalue) ? TRUE       : FALSE;
+            DSTREG          = (FDSTREG <  fvalue) ? TRUE       : FALSE;
             break;
 
         case FLE:
             fvalue          = (immflag == TRUE)   ? fimmediate : FSRCREG;
-            FDSTREG         = (FDSTREG <= fvalue) ? TRUE       : FALSE;
+            DSTREG          = (FDSTREG <= fvalue) ? TRUE       : FALSE;
             break;
 
         case LEA:
