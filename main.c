@@ -114,7 +114,7 @@ int32_t   main (int32_t  argc, char **argv)
     uint32_t  value                 = 0;
     uint32_t  line_number           = 0;
     uint32_t  old_count             = 0;
-    char     *line_input            = NULL;
+    uint8_t  *line_input            = NULL;
     int32_t   index                 = 0;
     size_t    buffer_size           = 0;
 
@@ -595,7 +595,7 @@ int32_t   main (int32_t  argc, char **argv)
                              index    <  tmp -> LINE;
                              index     = index + 1)
                         {
-                            len        = getline (&line_input, &buffer_size, fptr);
+                            len        = getline ((char **)&line_input, &buffer_size, fptr);
                         }
                         line_number    = index;
 
