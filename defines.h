@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
+#include "watchpoint.h"
 #include "ioports.h"
 #include "vtex.h"
 #include "gamepad.h"
@@ -116,6 +117,9 @@
 #define  INPUT_GAMEPAD           24
 #define  INPUT_PROFILE           25
 #define  INPUT_BTRACE            26
+#define  INPUT_WATCH             27
+#define  INPUT_WATCHLIST         28
+#define  INPUT_UNWATCH           29
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A

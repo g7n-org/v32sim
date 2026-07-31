@@ -174,6 +174,21 @@ uint8_t  prompt (uint32_t  word)
             nextflag                   = TRUE;
             break;
 
+		case INPUT_WATCH:
+			// Already handled in tokenize_input
+			action = INPUT_INIT;
+			break;
+
+		case INPUT_WATCHLIST:
+			wpoint_display();
+			action = INPUT_INIT;
+			break;
+
+		case INPUT_UNWATCH:
+			// Already handled in tokenize_input
+			action = INPUT_INIT;
+			break;
+
         case INPUT_HELP:
             help (INPUT_HELP);
             action                     = INPUT_INIT;

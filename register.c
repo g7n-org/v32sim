@@ -110,7 +110,7 @@ word_t *reg_get (uint8_t  id, uint8_t  sys_force)
     return (wptr);
 }
 
-int8_t *reg_get_name (uint8_t  id, uint8_t  sys_force)
+int8_t *reg_get_name (uint8_t  id)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //

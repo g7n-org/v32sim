@@ -316,5 +316,39 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    Remove indicated list item (by index number). Remaining list items\n");
             fprintf (stdout, "    will be re-indexed\n\n");
             break;
+
+		case INPUT_WATCH:
+			fprintf (stdout, "SYNOPSIS:\n");
+			fprintf (stdout, "    watch REG OP VALUE [LABEL]\n\n");
+			fprintf (stdout, "DESCRIPTION:\n");
+			fprintf (stdout, "    Set a watchpoint on a register. When the register's value\n");
+			fprintf (stdout, "    meets the condition, execution will break and notify you.\n\n");
+			fprintf (stdout, "    REG:  Any register (R0-R15, BP, SP, CR, SR, DR, IP, IR, IV)\n");
+			fprintf (stdout, "    OP:   =, !=, <, >, <=, >=\n");
+			fprintf (stdout, "    VALUE: Hex value (0x00000000-0xFFFFFFFF)\n");
+			fprintf (stdout, "    LABEL: Optional label for the watchpoint\n\n");
+			fprintf (stdout, "EXAMPLES:\n");
+			fprintf (stdout, "    watch SP <= 0x20000000 stack_underflow\n");
+			fprintf (stdout, "    watch R0 != 0x00000000\n");
+			fprintf (stdout, "    watch BP > 0x2000FFFF stack_overflow\n\n");
+			break;
+
+		case INPUT_WATCHLIST:
+			fprintf (stdout, "SYNOPSIS:\n");
+			fprintf (stdout, "    watchlist\n\n");
+			fprintf (stdout, "DESCRIPTION:\n");
+			fprintf (stdout, "    Display all active watchpoints with their current status.\n\n");
+			break;
+
+		case INPUT_UNWATCH:
+			fprintf (stdout, "SYNOPSIS:\n");
+			fprintf (stdout, "    unwatch INDEX\n");
+			fprintf (stdout, "    unwatch LABEL\n\n");
+			fprintf (stdout, "DESCRIPTION:\n");
+			fprintf (stdout, "    Remove a watchpoint by its index (from watchlist) or label.\n\n");
+			fprintf (stdout, "EXAMPLES:\n");
+			fprintf (stdout, "    unwatch 0\n");
+			fprintf (stdout, "    unwatch stack_underflow\n\n");
+			break;
     }
 }

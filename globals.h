@@ -139,6 +139,7 @@ extern int8_t     sys_error;
 extern mem_t     *memory;
 extern data_t    *reg;
 extern int8_t    *token_label;
+extern wpoint_t  *wpoint;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -213,7 +214,7 @@ void      memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to me
 void      fmemory_set    (uint32_t,    float,       uint8_t);
 void      init_registers (void);
 word_t   *reg_get        (uint8_t,     uint8_t);
-int8_t   *reg_get_name   (uint8_t,     uint8_t);
+int8_t   *reg_get_name   (uint8_t);
 void      reg_set        (uint8_t,     uint32_t,    uint8_t);
 word_t   *reg_get        (uint8_t,     uint8_t);
 void      reg_set        (uint8_t,     uint32_t,    uint8_t);

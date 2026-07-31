@@ -66,6 +66,7 @@ linked_l *mpoint; // tracking allocated memory
 linked_l *ppoint; // subroutine profiling list
 linked_l *csub;   // current subroutine
 linked_l *tpoint; // breakpoint waitlist, then backtrace list
+wpoint_t *wpoint; // watchpoint list
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -156,6 +157,7 @@ int32_t   main (int32_t  argc, char **argv)
     tpoint                          = NULL;
     profcount                       = 0;
     profcountsub                    = 0;
+	wpoint                          = NULL;  // Watchpoint list
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -874,6 +876,15 @@ int32_t   main (int32_t  argc, char **argv)
             }
             ignoreflag                 = FALSE;
         }
+
+		////////////////////////////////////////////////////////////////////////////////
+		//
+		// Check watchpoints after register updates
+		//
+		if (wpoint_check() == TRUE)
+		{
+			runflag = FALSE;
+		}
     }
 
     fprintf (stdout, "------------------------------------\n");
