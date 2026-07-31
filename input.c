@@ -175,11 +175,13 @@ uint8_t  prompt (uint32_t  word)
             break;
 
 		case INPUT_WATCH:
+			fprintf (stderr, "[INPUT] WATCH]\n");
 			// Already handled in tokenize_input
 			action = INPUT_INIT;
 			break;
 
 		case INPUT_WATCHLIST:
+			fprintf (stderr, "[INPUT] WATCHLIST]\n");
 			wpoint_display();
 			action = INPUT_INIT;
 			break;

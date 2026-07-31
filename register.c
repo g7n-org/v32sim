@@ -120,7 +120,11 @@ int8_t *reg_get_name (uint8_t  id)
 
     if (id                 <  NUM_REGISTERS)
     {
-        name                = (int8_t *) &(reg+id) -> name;
+        name                = REGALIAS(id);
+		if (name           == NULL)
+		{
+			name            = REGNAME(id);
+		}
     }
 
     return (name);

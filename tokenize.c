@@ -35,6 +35,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     uint8_t    *form1              = "^ *([a-z]+) *(IP:0x[0-9A-F]{8})? *(IR:0x[0-9A-F]{8})? *(IV:0x[0-9A-F]{8})? *$";
     uint8_t    *form2              = "^ *([a-z]+) *([^ ]+) *= *([^ ]+) *$";
     uint8_t    *form3              = "^ *([a-z/]+) *([^ ]+) *([^ ]+)? *$";
+    uint8_t    *form4              = "^ *([a-z]+) *(.+)$";  // Catch-all for commands with many args
     //uint8_t    *form3              = "^ *([a-z/]+) *([^ ]+) *([A-Z_*][A-Z0-9_+-]*)? *$";
 
     uint8_t   **pattern            = NULL;
@@ -56,11 +57,12 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     //
     // allocate and populate form array
     //
-    form                           = (uint8_t **) ralloc (sizeof (uint8_t *), 4, FLAG_NONE);
+    form                           = (uint8_t **) ralloc (sizeof (uint8_t *), 5, FLAG_NONE);
     *(form+0)                      = form0;
     *(form+1)                      = form1;
     *(form+2)                      = form2;
     *(form+3)                      = form3;
+    *(form+4)                      = form4;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -75,7 +77,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     *(pattern+5)                   = pattern5;
 
     for (index                             = 0;
-         index                            <  4;
+         index                            <  5;
          index                             = index + 1)
     {
         ////////////////////////////////////////////////////////////////////////////////
@@ -199,22 +201,15 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                 {
                     action                 = INPUT_NEXT;
                 }
-				else if (byte == 'w')   // watch
-				{
-					token = (string + match[1].rm_so);
-					if (0 == strncasecmp(token, "watch", 5))
-					{
-						action = INPUT_WATCH;
-					}
-					else if (0 == strncasecmp(token, "watchlist", 9))
-					{
-						action = INPUT_WATCHLIST;
-					}
-					else if (0 == strncasecmp(token, "unwatch", 7))
-					{
-						action = INPUT_UNWATCH;
-					}
-				}
+                else if (byte == 'w')   // watch
+                {
+                    //token = (string + match[1].rm_so);
+                //    if (0 == strncasecmp(token, "watch", 5))
+                //    {
+                        wpoint_display();
+                        action = INPUT_INIT;
+                //    }
+                }
                 else if (byte             == 'p')   // profiler
                 {
                     ////////////////////////////////////////////////////////////////////
@@ -1245,86 +1240,6 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             break;
                     }
                 }
-				else if (byte == 'w') // watch
-				{
-					action = INPUT_WATCH;
-					token = strtok((string + match[2].rm_so), " ");
-
-					// Parse: watch REG OP VALUE [LABEL]
-					uint8_t reg_id = parse_reg(token);
-					if (reg_id == 0xFF)
-					{
-						fprintf(stderr, "[ERROR] Invalid register: %s\n", token);
-						action = INPUT_INIT;
-						break;
-					}
-
-					token = strtok(NULL, " ");
-					uint8_t op = 0xFF;
-					if (token != NULL)
-					{
-						if (strcmp(token, "=") == 0 || strcmp(token, "==") == 0) op = WATCH_OP_EQUAL;
-						else if (strcmp(token, "!=") == 0) op = WATCH_OP_NOT_EQUAL;
-						else if (strcmp(token, "<") == 0) op = WATCH_OP_LESS;
-						else if (strcmp(token, ">") == 0) op = WATCH_OP_GREATER;
-						else if (strcmp(token, "<=") == 0) op = WATCH_OP_LESS_EQUAL;
-						else if (strcmp(token, ">=") == 0) op = WATCH_OP_GREATER_EQUAL;
-						else
-						{
-							fprintf(stderr, "[ERROR] Invalid operator: %s\n", token);
-							action = INPUT_INIT;
-							break;
-						}
-					}
-					else
-					{
-						fprintf(stderr, "[ERROR] Missing operator for wpoint\n");
-						action = INPUT_INIT;
-						break;
-					}
-
-					token = strtok(NULL, " ");
-					uint32_t value = 0;
-					if (token != NULL)
-					{
-						value = strtol(token, NULL, 16);
-					}
-					else
-					{
-						fprintf(stderr, "[ERROR] Missing value for wpoint\n");
-						action = INPUT_INIT;
-						break;
-					}
-
-					// Optional label
-					int8_t *label = NULL;
-					token = strtok(NULL, " ");
-					if (token != NULL)
-					{
-						label = (int8_t *)ralloc(sizeof(int8_t), strlen((const char *)token) + 1, FLAG_NONE);
-						strcpy((char *)label, (const char *)token);
-					}
-
-					// Create and add the wpoint
-					wpoint_t *wp = wpoint_new(reg_id, op, value);
-					if (label != NULL)
-					{
-						wp->label = label;
-					}
-					wpoint_add(&wpoint, wp);
-
-					fprintf(stdout, "Watchpoint set: %s %s 0x%.8X",
-							reg_get_name(reg_id),
-							wpoint_op_to_string(op),
-							value);
-					if (label != NULL)
-					{
-						fprintf(stdout, " (%s)", label);
-					}
-					fprintf(stdout, "\n");
-
-					action = INPUT_INIT;
-				}
                 else if (byte         == 'u') // un-something
                 {
                     if (0             == strncasecmp ((string+match[1].rm_so), "unlo", 4))
@@ -1352,30 +1267,30 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             fprintf (debug, "[unload] OTHER: '%s'\n", token);
                         }
                     }
-					else if (0        == strncasecmp (token, "unwatch", 7)) // unwatch
-					{
-						action = INPUT_UNWATCH;
-						token = strtok((string + match[2].rm_so), " ");
+                    else if (0        == strncasecmp (token, "unwatch", 7)) // unwatch
+                    {
+                        action = INPUT_UNWATCH;
+                        token = strtok((string + match[2].rm_so), " ");
 
-						// Parse: unwatch INDEX or unwatch LABEL
-						char *endptr;
-						long index = strtol((const char *)token, &endptr, 10);
+                        // Parse: unwatch INDEX or unwatch LABEL
+                        char *endptr;
+                        long index = strtol((const char *)token, &endptr, 10);
 
-						if (endptr != (const char *)token && *endptr == '\0')
-						{
-							// It's a numeric index
-							wpoint_remove(&wpoint, (int)index);
-							fprintf(stdout, "Watchpoint #%ld removed.\n", index);
-						}
-						else
-						{
-							// It's a label
-							wpoint_remove_by_label(&wpoint, token);
-							fprintf(stdout, "Watchpoint '%s' removed.\n", token);
-						}
+                        if (endptr != (const char *)token && *endptr == '\0')
+                        {
+                            // It's a numeric index
+                            wpoint_remove(&wpoint, (int)index);
+                            fprintf(stdout, "Watchpoint #%ld removed.\n", index);
+                        }
+                        else
+                        {
+                            // It's a label
+                            wpoint_remove_by_label(&wpoint, token);
+                            fprintf(stdout, "Watchpoint '%s' removed.\n", token);
+                        }
 
-						action = INPUT_INIT;
-					}
+                        action = INPUT_INIT;
+                    }
                     else
                     {
                         action         = INPUT_UNDO;
@@ -1415,6 +1330,88 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             tmp        = NULL;
                         }
                     }
+                }
+            }
+            else if (index == 4) // Multi-argument command
+            {
+                byte = *(string + match[1].rm_so);
+                if (byte            == 'w') // watch
+                {
+                    action           = INPUT_WATCH;
+                    token            = strtok((string + match[2].rm_so), " ");
+
+                    // Parse: watch REG OP VALUE [LABEL]
+                    uint8_t  reg_id  = parse_reg (token);
+                    if (reg_id      == 0xFF)
+                    {
+                        fprintf(stderr, "[ERROR] Invalid register: %s\n", token);
+                        action = INPUT_INIT;
+                        break;
+                    }
+
+                    token = strtok(NULL, " ");
+                    uint8_t op = 0xFF;
+                    if (token != NULL)
+                    {
+                        if (strcmp(token, "=") == 0 || strcmp(token, "==") == 0) op = WATCH_OP_EQUAL;
+                        else if (strcmp(token, "!=") == 0) op = WATCH_OP_NOT_EQUAL;
+                        else if (strcmp(token, "<") == 0) op = WATCH_OP_LESS;
+                        else if (strcmp(token, ">") == 0) op = WATCH_OP_GREATER;
+                        else if (strcmp(token, "<=") == 0) op = WATCH_OP_LESS_EQUAL;
+                        else if (strcmp(token, ">=") == 0) op = WATCH_OP_GREATER_EQUAL;
+                        else
+                        {
+                            fprintf(stderr, "[ERROR] Invalid operator: %s\n", token);
+                            action = INPUT_INIT;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        fprintf(stderr, "[ERROR] Missing operator for watchpoint\n");
+                        action = INPUT_INIT;
+                        break;
+                    }
+
+                    token = strtok(NULL, " ");
+                    uint32_t value = 0;
+                    if (token != NULL)
+                    {
+                        value = strtol(token, NULL, 16);
+                    }
+                    else
+                    {
+                        fprintf(stderr, "[ERROR] Missing value for watchpoint\n");
+                        action = INPUT_INIT;
+                        break;
+                    }
+
+                    int8_t *label = NULL;
+                    token = strtok(NULL, " ");
+                    if (token != NULL)
+                    {
+                        label = (int8_t *)ralloc(sizeof(int8_t), strlen((const char *)token) + 1, FLAG_NONE);
+                        strcpy((char *)label, (const char *)token);
+                    }
+
+                    wpoint_t *wp = wpoint_new(reg_id, op, value);
+                    if (label != NULL)
+                    {
+                        wp->label = label;
+                    }
+                    wpoint_add(&wpoint, wp);
+
+                    fprintf(stdout, "Watchpoint set: %s %s 0x%.8X",
+                            reg_get_name(reg_id),
+                            wpoint_op_to_string(op),
+                            value);
+                    if (label != NULL)
+                    {
+                        fprintf(stdout, " (%s)", label);
+                    }
+                    fprintf(stdout, "\n");
+
+                    action = INPUT_INIT;
                 }
             }
 
