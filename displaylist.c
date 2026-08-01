@@ -46,7 +46,7 @@ uint32_t  displayshow (linked_l *list, uint8_t  flag)
             fprintf (stdout, "\e[m");
         }
     }
-	return (count);
+    return (count);
 }
 
 void  show_sysregs (void)
@@ -60,7 +60,7 @@ void  show_sysregs (void)
         {
             fprintf (stdout, "\e[0;36m");
         }
-        fprintf (stdout, "%*s: ", (dpoint -> space + 5), REGNAME(index));
+        fprintf (stdout, "%*s: ", (dpoint != NULL ? (dpoint -> space + 5) : 0), REGNAME(index));
         if (colorflag     == TRUE)
         {
             fprintf (stdout, "\e[m");
