@@ -85,7 +85,8 @@ linked_l *add_list (linked_l *list, linked_l *node)
 linked_l *list_grab (linked_l **list, linked_l *node)
 {
     linked_l *tmp                   = NULL;
-    if (list                       != NULL)
+    if ((list                      != NULL) &&
+        (node                      != NULL))
     {
         if ((*list)                != NULL)
         {
