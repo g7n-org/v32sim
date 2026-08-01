@@ -156,40 +156,46 @@ uint8_t  prompt (uint32_t  word)
         case INPUT_NEXT:
             ////////////////////////////////////////////////////////////////////////////
             //
+            // Save the current backtrace depth
+            //
+            next_tpoint                = tpoint;  // Save the current backtrace list
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
             // if the instruction is a CALL, set seek_word and then
             // set runflag to TRUE; otherwise, should behave like step
             //
             value                      = (word & OPCODE_MASK) >> OPCODESHIFT;
-            if (value                 == 0x03)
+            if (value                 == CALL)  // nexting over a CALL instruction
             {
                 runflag                = TRUE;
                 seek_word              = REG(IP) + 1;
                 value                  = (word & IMMVAL_MASK);
                 if (value             >  0)
                 {
-                    seek_word          = seek_word  + 1; // if immediate value
+                    seek_word          = seek_word + 1;  // Adjust for immediate value
                 }
             }
             processflag                = TRUE;
             nextflag                   = TRUE;
             break;
 
-		case INPUT_WATCH:
-			fprintf (stderr, "[INPUT] WATCH]\n");
-			// Already handled in tokenize_input
-			action = INPUT_INIT;
-			break;
+        case INPUT_WATCH:
+            fprintf (stderr, "[INPUT] WATCH]\n");
+            // Already handled in tokenize_input
+            action = INPUT_INIT;
+            break;
 
-		case INPUT_WATCHLIST:
-			fprintf (stderr, "[INPUT] WATCHLIST]\n");
-			wpoint_display();
-			action = INPUT_INIT;
-			break;
+        case INPUT_WATCHLIST:
+            fprintf (stderr, "[INPUT] WATCHLIST]\n");
+            wpoint_display();
+            action = INPUT_INIT;
+            break;
 
-		case INPUT_UNWATCH:
-			// Already handled in tokenize_input
-			action = INPUT_INIT;
-			break;
+        case INPUT_UNWATCH:
+            // Already handled in tokenize_input
+            action = INPUT_INIT;
+            break;
 
         case INPUT_HELP:
             help (INPUT_HELP);

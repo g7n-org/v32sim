@@ -183,6 +183,7 @@ extern linked_l  *ppoint; // subroutine profiling list
 extern linked_l  *csub;   // current subroutine
 extern linked_l  *tpoint;
 extern opcode_t   lookup[64];
+extern linked_l  *next_tpoint;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //

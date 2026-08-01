@@ -53,6 +53,7 @@ uint8_t   errorcheck;
 uint8_t   haltflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
+uint32_t  next_bt_lvl;
 uint32_t  profcount;
 uint32_t  profcountsub;
 uint32_t  profcountopcode[64];
@@ -66,6 +67,7 @@ linked_l *mpoint; // tracking allocated memory
 linked_l *ppoint; // subroutine profiling list
 linked_l *csub;   // current subroutine
 linked_l *tpoint; // breakpoint waitlist, then backtrace list
+linked_l *next_tpoint;  // position for next (when nexting over subroutine)
 wpoint_t *wpoint; // watchpoint list
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -155,6 +157,7 @@ int32_t   main (int32_t  argc, char **argv)
     ppoint                          = NULL;
     csub                            = NULL;
     tpoint                          = NULL;
+    next_tpoint                     = NULL;
     profcount                       = 0;
     profcountsub                    = 0;
     wpoint                          = NULL;  // Watchpoint list
@@ -814,7 +817,9 @@ int32_t   main (int32_t  argc, char **argv)
             {
                 retflag                = FALSE;
 
-                if (nextflag          == TRUE)
+                // Only stop if the backtrace depth matches the saved depth
+                if ((nextflag         == TRUE) &&
+                    (tpoint           == next_tpoint))
                 {
                     runflag            = FALSE;
                 }
