@@ -157,7 +157,7 @@ int32_t   main (int32_t  argc, char **argv)
     tpoint                          = NULL;
     profcount                       = 0;
     profcountsub                    = 0;
-	wpoint                          = NULL;  // Watchpoint list
+    wpoint                          = NULL;  // Watchpoint list
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -717,6 +717,12 @@ int32_t   main (int32_t  argc, char **argv)
             //
             decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_PROCESS);
 
+            // Check for watchpoint triggers
+            if (wpoint_check ()       == TRUE)
+            {
+                runflag                = FALSE;
+            }
+
             ////////////////////////////////////////////////////////////////////////////
             //
             // Obtain the current time (post execution), for instruction timing
@@ -876,15 +882,6 @@ int32_t   main (int32_t  argc, char **argv)
             }
             ignoreflag                 = FALSE;
         }
-
-		////////////////////////////////////////////////////////////////////////////////
-		//
-		// Check watchpoints after register updates
-		//
-		if (wpoint_check() == TRUE)
-		{
-			runflag = FALSE;
-		}
     }
 
     fprintf (stdout, "------------------------------------\n");
@@ -892,8 +889,10 @@ int32_t   main (int32_t  argc, char **argv)
     fprintf (stdout, "IR: 0x%.8X\n", REG(IR));
     fprintf (stdout, "IV: 0x%.8X\n", REG(IV));
     fprintf (stdout, "------------------------------------\n");
-	displayshow  (dpoint, 0);
-    fprintf (stdout, "------------------------------------\n");
+    if (displayshow  (dpoint, 0)      != 0)
+    {
+        fprintf (stdout, "------------------------------------\n");
+    }
     fprintf (stdout, "SYSTEM HALTED\n");
 
     rfree (reg);

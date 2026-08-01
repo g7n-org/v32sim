@@ -1,6 +1,6 @@
 #include "defines.h"
 
-void  displayshow (linked_l *list, uint8_t  flag)
+uint32_t  displayshow (linked_l *list, uint8_t  flag)
 {
     linked_l *dtmp                 = NULL;
     uint32_t  count                = 0;
@@ -46,6 +46,7 @@ void  displayshow (linked_l *list, uint8_t  flag)
             fprintf (stdout, "\e[m");
         }
     }
+	return (count);
 }
 
 void  show_sysregs (void)
