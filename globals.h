@@ -123,6 +123,22 @@ struct memory_type
 };
 typedef struct memory_type mem_t;
 
+/* Command data union for different command types */
+typedef struct {
+    union {
+        struct { uint32_t addr; uint8_t *label; } breakpoint;
+        struct { uint8_t reg; uint32_t addr; uint8_t all_regs; } display;
+        struct { uint8_t *option; uint32_t value; } set;
+        struct { uint32_t ip; uint32_t ir; uint32_t iv; } replace;
+        struct { uint8_t reg; wpoint_t op; uint32_t value; uint8_t *label; } watch;
+        struct { uint32_t index; uint8_t *label; } unwatch;
+        struct { uint32_t index; uint8_t *label; } undo;
+        struct { uint8_t *name; } label;
+    };
+} v32cmd_t;
+
+extern uint8_t    action;   // command state
+extern v32cmd_t   cmd_data;
 extern FILE      *display;
 extern FILE      *devnull;
 extern FILE      *debug;
@@ -189,6 +205,12 @@ extern linked_l  *next_tpoint;
 //
 // Function prototypes
 //
+void      parser_init    (void);      // initialize the parser
+int       parse_command  (uint8_t *); // parse a command string
+void      parser_cleanup (void);      // clean up parser state
+uint8_t   v32_get_action (void);      // get the current action
+v32cmd_t *v32cmd_get     (void);      // get command data
+
 size_t    get_filesize   (int8_t *);
 uint32_t  get_word       (FILE *);
 void      put_word       (uint32_t,    uint8_t);

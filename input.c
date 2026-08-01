@@ -522,7 +522,13 @@ void load_command (void)
                 break;
             }
             //token_type                 = tokenize_input (input, &deref_flag);
-            tokenize_input (input, &deref_flag);
+            //tokenize_input (input, &deref_flag);
+			parser_init ();
+			if (parse_command (input) == 0) {
+			    action = v32_get_action ();
+			    // Process cmd_data as needed
+			}
+			parser_cleanup ();
         }
         commandfile                    = NULL;
         fclose (fptr);
