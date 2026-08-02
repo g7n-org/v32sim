@@ -28,13 +28,24 @@ debug: $(SRC) $(OBJ) $(TARGET)
 $(TARGET): $(OBJ)
 	$(CC) $(INC) $(CFLAGS)    $^ -o $@ $(LIBS)
 
-install:
-	@mkdir -p /home/$(USER)/bin
-	@if [ -d "/home/$(USER)/bin/bin.$(ARCH)/" ]; then cp -av $(TARGET) /home/$(USER)/bin/bin.$(ARCH)/; else cp -av $(TARGET) /home/$(USER)/bin/; fi
+install: $(TARGET)
+	@if [ -d ~/bin/bin.$(ARCH) ]; then \
+		echo "Installing $(TARGET) to ~/bin/bin.$(ARCH)/"; \
+		install -m 755 $(TARGET) ~/bin/bin.$(ARCH)/$(TARGET); \
+	elif [ -d ~/bin ]; then \
+		echo "Installing $(TARGET) to ~/bin/"; \
+		install -m 755 $(TARGET) ~/bin/$(TARGET); \
+	else \
+		@echo "Skipping: neither ~/bin/bin.$(ARCH) nor ~/bin exist"; \
+	fi
 
-sysinstall:
-	@cp -av $(TARGET) /usr/local/bin/$(TARGET)
-	@chmod 0755 /usr/local/bin/$(TARGET)
+sysinstall: $(TARGET)
+	@if [ -d /usr/local/bin ]; then \
+		echo "Installing $(TARGET) to /usr/local/bin/"; \
+		install -m 755 $(TARGET) /usr/local/bin/$(TARGET); \
+	else \
+		@echo "Skipping: /usr/local/bin does not exist"; \
+	fi
 
 # Phony target for cleaning up generated files
 .PHONY: clean
