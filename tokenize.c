@@ -413,7 +413,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     if (dval.fmt          == FORMAT_FLOAT)
                     {
                         FREG(result)       = dval.value.f32;
-                        fprintf (debug, "[%s] setting to %.2f\n",
+                        fprintf (debug, "[%s] setting to %.4f\n",
                                         REGNAME(result), FREG(result));
                     }
                     else

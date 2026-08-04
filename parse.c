@@ -327,7 +327,7 @@ uint8_t  parse_imm (uint8_t *token, data_t *data)
 
                 case FORMAT_FLOAT:
                     data -> value.f32  = strtof ((token+match[1].rm_so), NULL);
-                    fprintf (debug, "float (%.2f)\n", data -> value.f32);
+                    fprintf (debug, "float (%.4f)\n", data -> value.f32);
                     break;
 
                 case FORMAT_HEX:

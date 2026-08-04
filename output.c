@@ -157,11 +157,11 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
             case FORMAT_FLOAT:
                 if (flag         == TRUE)
                 {
-                    fprintf (stdout, "%.2f",   FMEMGET(REG(id)));
+                    fprintf (stdout, "%.4f",   FMEMGET(REG(id)));
                 }
                 else
                 {
-                    fprintf (stdout, "%.2f",   FREG(id));
+                    fprintf (stdout, "%.4f",   FREG(id));
                 }
                 break;
 
@@ -432,11 +432,11 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
             case FORMAT_FLOAT:
                 if (flag         == TRUE)
                 {
-                    fprintf (stdout, "%.2f",   FMEMGET(IMEMGET(value)));
+                    fprintf (stdout, "%.4f",   FMEMGET(IMEMGET(value)));
                 }
                 else
                 {
-                    fprintf (stdout, "%.2f",   FMEMGET(value));
+                    fprintf (stdout, "%.4f",   FMEMGET(value));
                 }
                 break;
 
@@ -655,7 +655,7 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
                 break;
 
             case FORMAT_FLOAT:
-                fprintf (stdout, "%.2f",   FPORTGET(value));
+                fprintf (stdout, "%.4f",   FPORTGET(value));
                 break;
 
             case FORMAT_SIGNED:
