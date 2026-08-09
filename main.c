@@ -51,6 +51,7 @@ uint8_t   nextflag;
 uint8_t   derefaddr;
 uint8_t   errorcheck;
 uint8_t   haltflag;
+uint8_t   turboflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
 uint32_t  next_bt_lvl;
@@ -104,10 +105,6 @@ int32_t   main (int32_t  argc, char **argv)
     linked_l *btmp                  = NULL;
     linked_l *tmp                   = NULL;
     size_t    len                   = 0;
-    slli      elapsed_ns            = 0;
-    TimeSpec  delay;
-    TimeSpec  start;
-    TimeSpec  end;
     uint8_t   chk                   = FALSE;
     uint8_t   decodeflags           = FLAG_NONE;
     uint8_t   errorflag             = FLAG_NONE;
@@ -144,6 +141,7 @@ int32_t   main (int32_t  argc, char **argv)
     wordsize                        = 4;
     derefaddr                       = FALSE;
     haltflag                        = FALSE;
+    turboflag                       = FALSE;
     waitflag                        = FALSE;
     errorcheck                      = FALSE;
     sys_error                       = ERROR_NONE;
@@ -703,13 +701,6 @@ int32_t   main (int32_t  argc, char **argv)
         {
             ////////////////////////////////////////////////////////////////////////////
             //
-            // Obtain the current time, for instruction timing purposes
-            // (pre-execution)
-            //
-            timespec_get (&start, TIME_UTC);
-
-            ////////////////////////////////////////////////////////////////////////////
-            //
             // Clear the system error variable
             //
             sys_error                  = ERROR_NONE;
@@ -724,33 +715,6 @@ int32_t   main (int32_t  argc, char **argv)
             if (wpoint_check ()       == TRUE)
             {
                 runflag                = FALSE;
-            }
-
-            ////////////////////////////////////////////////////////////////////////////
-            //
-            // Obtain the current time (post execution), for instruction timing
-            // purposes
-            //
-            timespec_get (&end, TIME_UTC);
-
-            ////////////////////////////////////////////////////////////////////////////
-            //
-            // Calculate the time elapsed
-            //
-            elapsed_ns                 = timediff_ns (&start, &end);
-
-            ////////////////////////////////////////////////////////////////////////////
-            //
-            // If the instruction took less than 66 nanoseconds, we need to
-            // delay to keep sync with the 15MHz clock speed
-            //
-            fprintf (debug, "[main] instruction took %llu nanoseconds\n", elapsed_ns);
-            if (elapsed_ns            <  66)
-            {
-                delay.tv_sec           = 0;
-                delay.tv_nsec          = 66 - elapsed_ns;
-
-                nanosleep (&delay, NULL);
             }
         }
 

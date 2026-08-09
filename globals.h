@@ -167,6 +167,7 @@ extern uint8_t    derefaddr;
 extern uint8_t    errorcheck;
 extern uint8_t    nextflag;
 extern uint8_t    haltflag;
+extern uint8_t    turboflag;
 extern uint8_t    waitflag;
 extern uint8_t    wordsize;
 extern uint32_t   profcount;

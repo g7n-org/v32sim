@@ -1086,7 +1086,18 @@ void  decode_process (uint32_t  instruction,
             value           = (immflag == TRUE)  ? immediate  : SRCREG;
             fprintf (debug, "[decode_process] OUT: ioports_set (0x%.3X, 0x%.8X)\n",
                             port, value);
-            PORTSET(port, value);
+			switch (port)
+			{
+				case GPU_DrawingScaleX:
+				case GPU_DrawingScaleY:
+				case GPU_DrawingAngle:
+					FPORTSET(port, value);
+					break;
+
+				default:
+					PORTSET(port, value);
+					break;
+			}
             break;
 
         case MOVS:
