@@ -24,8 +24,8 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
     regex_t     regex;
     regmatch_t  match[5];
     uint8_t     byte               = 0;
-    uint8_t     entry[24];
-    uint8_t     lval[24];
+    uint8_t     entry[512];
+    uint8_t     lval[512];
     uint8_t     fmt                = FORMAT_DEFAULT;
     int8_t     *pos                = NULL;
     int8_t     *string             = NULL;

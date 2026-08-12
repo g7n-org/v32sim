@@ -481,51 +481,58 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
     return (tally);
 }    
 
-void load_command (void)
+void load_command(void)
 {
-    FILE     *fptr                     = NULL;
-    int32_t   index                    = 0;
-    uint8_t   deref_flag               = FALSE;
-    uint8_t   input[64];
-    //uint8_t   token_type               = 0;
+    FILE     *fptr = NULL;
+    uint8_t   input[1024];
+    uint8_t   deref_flag = FALSE;
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Load commands from command-file
-    //
-    if (commandfile                   != NULL)
+    if (commandfile != NULL)
     {
-        fptr                           = fopen (commandfile, "r");
-        if (fptr                      == NULL)
+        fptr = fopen(commandfile, "r");
+        if (fptr == NULL)
         {
-            fprintf (stderr, "[ERROR] Could not open '%s' for reading!\n", commandfile);
-            exit (1);
+            fprintf(stderr, "[ERROR] Could not open '%s' for reading!\n", commandfile);
+            exit(1);
         }
 
-        while (!feof (fptr))
+        while (fgets((char *)input, sizeof(input), fptr) != NULL)
         {
-            index                      = 0;
-            token_label                = NULL;
-            while (!feof (fptr))
+            // Remove trailing newline
+            size_t len = strlen((char *)input);
+            if (len > 0 && input[len-1] == '\n')
+                input[len-1] = '\0';
+
+            if (input[0] == '\0')
+                continue;  // Skip empty lines
+
+            // Tokenize and process the command
+            tokenize_input(input, &deref_flag);
+
+            // Execute the action set by tokenize_input
+            switch (action)
             {
-                input[index]           = fgetc (fptr);
-                if (input[index]      == '\n')
-                {
-                    input[index]       = '\0';
+                case INPUT_CONTINUE:
+                case INPUT_IGNORE:
+                    runflag = TRUE;
+                    nextflag = FALSE;
                     break;
-                }
-                index                  = index + 1;
-            }
 
-            if (feof (fptr))
-            {
-                break;
+                case INPUT_STEP:
+                    // Will single-step once, then stop
+                    break;
+
+                case INPUT_NEXT:
+                    next_tpoint = tpoint;
+                    nextflag = TRUE;
+                    break;
+
+                // Display, break, watch, etc. are handled by tokenize_input itself
+                default:
+                    break;
             }
-            //token_type                 = tokenize_input (input, &deref_flag);
-            tokenize_input (input, &deref_flag);
         }
-        commandfile                    = NULL;
-        fclose (fptr);
+        commandfile = NULL;
+        fclose(fptr);
     }
-    action                             = INPUT_INIT;
 }

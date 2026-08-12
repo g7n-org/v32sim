@@ -408,9 +408,12 @@ int32_t   main (int32_t  argc, char **argv)
     /*
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     */
-    fprintf (stdout, "Vircon32 Simulator / Debugger  (v32sim)\n");
-    fprintf (stdout, "=======================================\n");
-    fprintf (stdout, "[ OFFSET ] [HEXVALUES] [OPC] [DST]\n");
+    if (runflag                       == FALSE)
+    {
+        fprintf (stdout, "Vircon32 Simulator / Debugger  (v32sim)\n");
+        fprintf (stdout, "=======================================\n");
+        fprintf (stdout, "[ OFFSET ] [HEXVALUES] [OPC] [DST]\n");
+    }
 
     while ((action                    != INPUT_QUIT) &&
            (haltflag                  == FALSE))
