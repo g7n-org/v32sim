@@ -137,7 +137,7 @@ int32_t   main (int32_t  argc, char **argv)
     colorflag                       = FALSE;
     nextflag                        = FALSE;
     seek_word                       = 0xFFFFFFFF;
-    watch_word                      = 0x00000000;
+    watch_word                      = 0xFFFFFFFF;
     wordsize                        = 4;
     derefaddr                       = FALSE;
     haltflag                        = FALSE;
