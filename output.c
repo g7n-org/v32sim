@@ -225,26 +225,46 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
                 break;
 
             case FORMAT_STRING:
-                if (flag         == TRUE)
+            {
+                uint32_t value = (flag == TRUE) ? IMEMGET(REG(id)) : REG(id);
+                uint8_t ch;
+                int max_len = 255;  // Safety limit
+                int len = 0;
+
+                if (flag == TRUE)
                 {
-                    data          = IMEMGET(REG(id));
+                    check = memory_chk(value, FLAG_READ, TRUE);
                 }
                 else
                 {
-                    data          = REG(id);
+                    check = memory_chk(value, FLAG_READ, TRUE);
                 }
 
-                for (index        = 3;
-                     index       >= 0;
-                     index        = index - 1)
+                if (check == FALSE)
                 {
-                    entry[index]  = (data & 0x000000FF);
-                    fprintf (stdout, "%.2hhX ", entry[index]);
-                    data          = data >> 8;
+                    fprintf(stdout, "<invalid address>");
                 }
-                entry[4]          = '\0';
-                fprintf (stdout, "\"%s\"", entry);
-                break;
+                else
+                {
+                    fprintf(stdout, "\"");
+                    while (len < max_len)
+                    {
+                        ch = ISYSMEMGET(addr + len);
+                        if (ch == 0) break;  // Null terminator
+                        if (ch >= 32 && ch < 127)
+                        {
+                            fprintf(stdout, "%c", ch);  // Printable ASCII
+                        }
+                        else
+                        {
+                            fprintf(stdout, "\\x%02X", ch);  // Non-printable as hex
+                        }
+                        len++;
+                    }
+                    fprintf(stdout, "\"");
+                }
+            }
+            break;
 
             case FORMAT_BINARY:
                 if (flag         == TRUE)
@@ -504,26 +524,46 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 break;
 
             case FORMAT_STRING:
-                if (flag         == TRUE)
+            {
+                uint32_t result = (flag == TRUE) ? IMEMGET(REG(value)) : REG(value);
+                uint8_t ch;
+                int max_len = 255;  // Safety limit
+                int len = 0;
+
+                if (flag == TRUE)
                 {
-                    data          = IMEMGET(IMEMGET(value));
+                    check = memory_chk(result, FLAG_READ, TRUE);
                 }
                 else
                 {
-                    data          = IMEMGET(value);
+                    check = memory_chk(result, FLAG_READ, TRUE);
                 }
 
-                for (index        = 3;
-                     index       >= 0;
-                     index        = index - 1)
+                if (check == FALSE)
                 {
-                    entry[index]  = (data & 0x000000FF);
-                    fprintf (stdout, "%.2hhX ", entry[index]);
-                    data          = data >> 8;
+                    fprintf(stdout, "<invalid address>");
                 }
-                entry[4]          = '\0';
-                fprintf (stdout, "\"%s\"", entry);
-                break;
+                else
+                {
+                    fprintf(stdout, "\"");
+                    while (len < max_len)
+                    {
+                        ch = ISYSMEMGET(result + len);
+                        if (ch == 0) break;  // Null terminator
+                        if (ch >= 32 && ch < 127)
+                        {
+                            fprintf(stdout, "%c", ch);  // Printable ASCII
+                        }
+                        else
+                        {
+                            fprintf(stdout, "\\x%02X", ch);  // Non-printable as hex
+                        }
+                        len++;
+                    }
+                    fprintf(stdout, "\"");
+                }
+            }
+            break;
 
             case FORMAT_BINARY:
                 if (flag         == TRUE)
