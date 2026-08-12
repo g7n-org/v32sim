@@ -24,6 +24,7 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "cart-c-debug",   required_argument, 0, 19  },
        { "entry-point",    required_argument, 0, 'E' },
        { "errorcheck",     no_argument,       0, 'e' },
+       { "langmode",       required_argument, 0, 'L' },
        { "memcfile",       required_argument, 0, 'M' },
        { "no-debug",       no_argument,       0, 'n' },
        { "profile",        no_argument,       0, 'p' },
@@ -40,7 +41,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:M:nprSw:vh", long_options,
+                                                  "B:b:C:cdDeE:L:M:nprSw:vh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -122,6 +123,17 @@ void  process_args (int32_t  argc, int8_t **argv)
                 cartcdebugflag     = TRUE;
                 break;
 
+            case 'L':
+                if (0             == strcmp (optarg, "C"))
+                {
+                    modeflag       = FLAG_C;
+                }
+                else if (0        == strcmp (optarg, "lua"))
+                {
+                    modeflag       = FLAG_LUA;
+                }
+                break;
+
             case 'M':
                 memcfile           = optarg;
                 break;
@@ -159,7 +171,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:M:nprSw:vh", long_options,
+                                                  "B:b:C:cdDeE:L:M:nprSw:vh", long_options,
                                                   &option_index);
     }
 

@@ -103,7 +103,14 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
 
     if (check                    == FALSE)
     {
-        fprintf (stdout, "<invalid address>");
+        if (modeflag             == FLAG_LUA)
+        {
+
+        }
+        else
+        {
+            fprintf (stdout, "<invalid address>");
+        }
     }
     else
     {
@@ -302,14 +309,59 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
     int32_t   index          = 0;
     uint32_t  data           = 0;
     uint32_t  immv           = 0;
+    uint32_t  payload        = 0;
     uint8_t   dflags         = FLAG_DATA | FLAG_DISPLAY;
     uint8_t   addr[26];
     uint8_t   entry[33];
 
-    check                    = memory_chk (value, FLAG_READ, TRUE);
-    if (check               == TRUE)
+    if (modeflag            == FLAG_LUA)
     {
-        data                 = ISYSMEMGET(value);
+		data                 = ISYSMEMGET(value);
+        immv                 = data & 0xFFC00000;
+        payload              = data & 0x003FFFFF;
+		//fprintf (stdout, "[mem] value: 0x%.8X, immv: 0x%.8X, payload: 0x%.8X\n", value, immv, payload);
+
+        switch (immv)
+        {
+            case 0x7FC00000: // BOXED ROMSTRING
+                payload      = payload | 0x20000000; // apply V32_CART page bit
+                check        = memory_chk (payload, FLAG_READ, TRUE);
+                if (check   == TRUE)
+                {
+					//fprintf (stdout, "[ROMSTRING] data: 0x%.8X\n", data);
+					payload  = data & 0x003FFFFF;
+                    payload  = payload | 0x20000000; // apply V32_CART page bit
+                }
+                break;
+
+            case 0xFFC00000: // BOXED RAMSTRING
+                check        = memory_chk (payload, FLAG_READ, TRUE);
+
+                if (check   == TRUE)
+                {
+                    //data     = ISYSMEMGET(payload);
+					//fprintf (stdout, "[RAMSTRING] data: 0x%.8X\n", data);
+					payload  = data & 0x003FFFFF;
+                }
+                break;
+
+            default:
+                check        = memory_chk (value, FLAG_READ, TRUE);
+                if (check   == TRUE)
+                {
+                    data     = ISYSMEMGET(value);
+					//fprintf (stdout, "[OTHER] data: 0x%.8X\n", data);
+                }
+                break;
+        }
+    }
+    else
+    {
+        check                    = memory_chk (value, FLAG_READ, TRUE);
+        if (check               == TRUE)
+        {
+            data                 = ISYSMEMGET(value);
+        }
     }
 
     if (flag                == TRUE)
@@ -321,7 +373,14 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
         }
         else
         {
-            sprintf (addr, "[0x%.8X(invalid)]", value);
+            if (modeflag    == FLAG_LUA)
+            {
+                sprintf (addr, "[0x%.8X(0x%.8X>0x%.8X)]", value, data, payload);
+            }
+            else
+            {
+                sprintf (addr, "[0x%.8X(invalid)]", value);
+            }
         }
     }
     else
@@ -389,7 +448,14 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
     //
     // Display the display list header
     //
-    fprintf (stdout, "%*s: ", dpoint -> space, entry);
+    if (runflag                  == FALSE)
+    {
+        fprintf (stdout, "%*s: ", dpoint -> space, entry);
+    }
+    else
+    {
+        fprintf (stdout, "%s:", entry);
+    }
 
     if (colorflag                == TRUE)
     {
@@ -499,6 +565,29 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 break;
 
             case FORMAT_BOOLEAN:
+                if (modeflag     == FLAG_LUA)
+                {
+                    switch (data)
+                    {
+                        case 0xFFC00000:
+                            fprintf (stdout, "nil");
+                            break;
+
+                        case 0xFFC00001:
+                            fprintf (stdout, "false");
+                            break;
+
+                        case 0xFFC00002:
+                            fprintf (stdout, "true");
+                            break;
+
+                        default:
+                            fprintf (stdout, "n/a");
+                            break;
+                    }
+                    break;
+                }
+                    
                 if (flag         == TRUE)
                 {
                     if (0        == IMEMGET(IMEMGET(value)))
@@ -529,6 +618,28 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 uint8_t ch;
                 int max_len = 255;  // Safety limit
                 int len = 0;
+
+                //fprintf (stdout, "lua: 0x%.8X > 0x%.8X\n", data, payload);
+                if (modeflag == FLAG_LUA)
+                {
+                    fprintf(stdout, "\"");
+                    while (len <  max_len)
+                    {
+                        ch = ISYSMEMGET(payload + len);
+                        if (ch == 0) break;  // Null terminator
+                        if (ch >= 32 && ch < 127)
+                        {
+                            fprintf(stdout, "%c", ch);  // Printable ASCII
+                        }
+                        else
+                        {
+                            fprintf(stdout, "\\x%02X", ch);  // Non-printable as hex
+                        }
+                        len++;
+                    }
+                    fprintf(stdout, "\"");
+                    break;
+                }
 
                 if (flag == TRUE)
                 {
@@ -590,7 +701,14 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
 
     if (label                    != NULL)
     {
-        fprintf (stdout, " \"%s\"", label);
+        if (runflag              == FALSE)
+        {
+            fprintf (stdout, " \"%s\"", label);
+        }
+        else
+        {
+            fprintf (stdout, ":%s", label);
+        }
     }
     fprintf (stdout, "\n");
 }

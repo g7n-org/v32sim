@@ -260,6 +260,7 @@
 #define  FLAG_SEARCH             1
 #define  FLAG_ASM                2
 #define  FLAG_C                  4
+#define  FLAG_LUA                8
 
 #define  FLAG_READ               4
 #define  FLAG_WRITE              2
