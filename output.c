@@ -316,10 +316,10 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
 
     if (modeflag            == FLAG_LUA)
     {
-		data                 = ISYSMEMGET(value);
+        data                 = ISYSMEMGET(value);
         immv                 = data & 0xFFC00000;
         payload              = data & 0x003FFFFF;
-		//fprintf (stdout, "[mem] value: 0x%.8X, immv: 0x%.8X, payload: 0x%.8X\n", value, immv, payload);
+        //fprintf (stdout, "[mem] value: 0x%.8X, immv: 0x%.8X, payload: 0x%.8X\n", value, immv, payload);
 
         switch (immv)
         {
@@ -328,20 +328,24 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 check        = memory_chk (payload, FLAG_READ, TRUE);
                 if (check   == TRUE)
                 {
-					//fprintf (stdout, "[ROMSTRING] data: 0x%.8X\n", data);
-					payload  = data & 0x003FFFFF;
+                    //fprintf (stdout, "[ROMSTRING] data: 0x%.8X\n", data);
+                    payload  = data & 0x003FFFFF;
                     payload  = payload | 0x20000000; // apply V32_CART page bit
                 }
                 break;
 
-            case 0xFFC00000: // BOXED RAMSTRING
-                check        = memory_chk (payload, FLAG_READ, TRUE);
-
-                if (check   == TRUE)
-                {
-                    //data     = ISYSMEMGET(payload);
-					//fprintf (stdout, "[RAMSTRING] data: 0x%.8X\n", data);
-					payload  = data & 0x003FFFFF;
+            case 0xFFC00000: // BOXED RAMSTRING (and primitives: nil, false, true)
+                // Primitives use payloads 0-3; RAM strings use payloads >= 4
+                if (payload < 4) {
+                    // Primitive: nil (0), false (1), true (2), tombstone (3)
+                    // data already holds the correct boxed value - do nothing
+                    check = TRUE;
+                } else {
+                    // Actual RAM string - validate the payload as a memory address
+                    check = memory_chk(payload, FLAG_READ, TRUE);
+                    if (check == TRUE) {
+                        payload = data & 0x003FFFFF;
+                    }
                 }
                 break;
 
@@ -350,7 +354,7 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 if (check   == TRUE)
                 {
                     data     = ISYSMEMGET(value);
-					//fprintf (stdout, "[OTHER] data: 0x%.8X\n", data);
+                    //fprintf (stdout, "[OTHER] data: 0x%.8X\n", data);
                 }
                 break;
         }
