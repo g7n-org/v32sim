@@ -568,30 +568,69 @@ void  output_mem (uint32_t  value, uint8_t  fmt,  uint8_t  flag, uint8_t *label)
                 decode  (data, immv, (float) immv, dflags);
                 break;
 
-            case FORMAT_BOOLEAN:
+			case FORMAT_BOOLEAN:
                 if (modeflag     == FLAG_LUA)
                 {
-                    switch (data)
+                    // 'immv' and 'payload' were already derived from 'data'
+                    // at the top of this function -- reuse them here instead
+                    // of re-deriving the tag from scratch.
+                    if (immv == 0xFFC00000 && payload < 4)
                     {
-                        case 0xFFC00000:
-                            fprintf (stdout, "nil");
-                            break;
-
-                        case 0xFFC00001:
-                            fprintf (stdout, "false");
-                            break;
-
-                        case 0xFFC00002:
-                            fprintf (stdout, "true");
-                            break;
-
-                        default:
-                            fprintf (stdout, "n/a");
-                            break;
+                        // Primitive singleton: nil / false / true / tombstone
+                        // (these four share the RAMSTRING tag, distinguished
+                        // by payload < 4, same as the top-of-function check)
+                        switch (data)
+                        {
+                            case 0xFFC00000: fprintf (stdout, "nil");         break;
+                            case 0xFFC00001: fprintf (stdout, "false");       break;
+                            case 0xFFC00002: fprintf (stdout, "true");        break;
+                            case 0xFFC00003: fprintf (stdout, "<tombstone>"); break;
+                        }
+                    }
+                    else if (immv == 0xFFC00000 || immv == 0x7FC00000)
+                    {
+                        // RAM or ROM string. 'payload' already holds the
+                        // unboxed, page-adjusted address (see lines 326-350).
+                        int len = 0;
+                        fprintf (stdout, "\"");
+                        while (len < 255)
+                        {
+                            uint8_t ch = ISYSMEMGET (payload + len);
+                            if (ch == 0) break;  // Null terminator
+                            if (ch >= 32 && ch < 127)
+                            {
+                                fprintf (stdout, "%c", ch);  // Printable ASCII
+                            }
+                            else
+                            {
+                                fprintf (stdout, "\\x%02X", ch);  // Non-printable
+                            }
+                            len++;
+                        }
+                        fprintf (stdout, "\"");
+                    }
+                    else if ((data & 0xFFC00000) == 0xFF800000)
+                    {
+                        // Table (RAM-only tag)
+                        fprintf (stdout, "table: 0x%06X", data & 0x003FFFFF);
+                    }
+                    else if ((data & 0xFFC00000) == 0x7F800000)
+                    {
+                        // Function (ROM-only tag)
+                        fprintf (stdout, "function: 0x%06X", data & 0x003FFFFF);
+                    }
+                    else
+                    {
+                        // Untagged: the exponent bits aren't the all-1s NaN
+                        // pattern, so this is a genuine raw IEEE-754 float
+                        // (an ordinary Lua number) -- not an error case.
+                        float f;
+                        memcpy (&f, &data, sizeof (f));
+                        fprintf (stdout, "%.4f", f);
                     }
                     break;
                 }
-                    
+ 
                 if (flag         == TRUE)
                 {
                     if (0        == IMEMGET(IMEMGET(value)))
@@ -871,4 +910,74 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
         fprintf (stdout, " (%s)", label);
     }
     fprintf (stdout, "\n");
+}
+
+// In output.c - add this helper function
+void  format_and_output_value (uint32_t  value, uint8_t   fmt, uint8_t  flag,
+                               int32_t   check, uint32_t  lua_payload) 
+{
+    uint32_t  data     = 0;
+    uint8_t   ch       = 0;
+    int       max_len  = 255;
+    int       len      = 0;
+
+    // Handle Lua mode special cases first
+    if (modeflag      == FLAG_LUA)
+    {
+        switch (fmt)
+        {
+            case FORMAT_BOOLEAN:
+                // Your existing Lua boolean handling
+                switch (value) {
+                    case 0xFFC00000: fprintf(stdout, "nil"); break;
+                    case 0xFFC00001: fprintf(stdout, "false"); break;
+                    case 0xFFC00002: fprintf(stdout, "true"); break;
+                    default: fprintf(stdout, "n/a"); break;
+                }
+                return;
+
+            case FORMAT_STRING:
+                // Your existing Lua string handling with payload
+                fprintf(stdout, "\"");
+                while (len < max_len) {
+                    ch = ISYSMEMGET(lua_payload + len);
+                    if (ch == 0) break;
+                    if (ch >= 32 && ch < 127) {
+                        fprintf(stdout, "%c", ch);
+                    } else {
+                        fprintf(stdout, "\\x%02X", ch);
+                    }
+                    len++;
+                }
+                fprintf(stdout, "\"");
+                return;
+
+            // Add tagged function support here
+            case FORMAT_DECODE:
+                // Handle tagged function pointers
+                if ((value & 0xFFC00000) == 0x7FC00000) {
+                    // Tagged function format
+                    fprintf(stdout, "<function:0x%06X>", value & 0x003FFFFF);
+                } else {
+                    // Fall through to normal decode
+                }
+                break;
+        }
+    }
+
+    // Standard formatting for all modes
+    if (check == FALSE) {
+        if (modeflag != FLAG_LUA) {
+            fprintf(stdout, "<invalid address>");
+        }
+        return;
+    }
+
+    switch (fmt) {
+        case FORMAT_DEFAULT:
+        case FORMAT_HEX:
+            fprintf(stdout, "0x%.8X", flag ? IMEMGET(IMEMGET(value)) : IMEMGET(value));
+            break;
+        // ... other format cases
+    }
 }
