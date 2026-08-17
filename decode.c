@@ -926,7 +926,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case JT:
-            if (DSTREG     == TRUE)
+            if (DSTREG     != FALSE)
             {
                 REG(IP)     = (immflag == TRUE)   ? immediate  : SRCREG;
                 rom_offset  = REG(IP);
