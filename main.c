@@ -748,6 +748,10 @@ int32_t   main (int32_t  argc, char **argv)
             REG(BP)                    = 0x00000000;
 
             REG(IP)                    = BIOS_ERROR_OFFSET;
+
+            runflag                    = FALSE;
+            ignoreflag                 = TRUE;  // Don't update cycle counter
+
             continue; // kick to next iteration
         }
 

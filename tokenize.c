@@ -609,7 +609,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             if (ltmp -> label != NULL)
                             {
-                                check          = strncasecmp (ltmp -> label, token, strlen (ltmp -> label));
+                                check          = strcasecmp (ltmp -> label, token);
                                 if (check     == 0) // existing label found in list
                                 {
                                     fprintf (debug, "BREAK adding the label '%s'\n", ltmp -> label);

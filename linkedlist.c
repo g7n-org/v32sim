@@ -125,7 +125,7 @@ linked_l *find_label (linked_l *list, int8_t *label)
     {
         if (tmp -> label != NULL)
         {
-            check         = strncmp (tmp -> label, label, strlen (tmp -> label));
+            check         = strcmp (tmp -> label, label);
             if (check    == 0)
             {
                 break;
