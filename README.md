@@ -1,59 +1,96 @@
 # v32sim
 
-A text-based Vircon32 simulator/debugger, predominantly for use in debugging, hacking, and studying the system.
+**v32sim**  is  a text-based  debugger  and  simulator for  the  Vircon32
+Fantasy  Console.  Its  purpose  is   to  make  the  machine  observable:
+single-step  the  CPU  instruction  by instruction,  inspect  and  modify
+registers, memory, and IOPorts,  set breakpoints and watchpoints, profile
+execution,  and  drive  the  machine from  command  files  for  automated
+testing.
 
-The aim is to implement enough of the Vircon32 Fantasy Console so that code execution can be studied. Obviously, lacking an actual screen output (or any of the other devices, like audio), it is not meant as any sort of replacement, but can be surprisingly functional, even for use in automating activities for testing.
+It is not an emulator in the audiovisual sense: there is no screen and no
+sound. It  models the  CPU, the  memory system,  and the  IOPorts closely
+enough to  study, debug, and hack  Vircon32 software — and  to automate
+cart testing.
 
-At this point, all instructions have been implemented (but many still need testing); registers and memory are present and should behave in a manner similar to how the system operates. Probably the least functional aspect is anything SPU-related. The ports exist, but are hooked to no tangible functionality beyond being a store and retrieval of information.
+## Current State
+
+- All 64 CPU instructions are implemented (not all exhaustively tested yet)
+- Registers (R0-R15 with their aliases, plus system registers IP/IR/IV) and
+  the four memory pages (RAM, BIOS, CART, MEMCARD) behave as the hardware does
+- System errors (invalid memory/port access, division by zero, etc.) record
+  the machine state into R0-R3, wipe SP/BP, and redirect execution to the
+  BIOS error handler at `0x10000000`
+- Functional IOPort groups: TIM, RNG, INP (gamepads), CAR, MEM, and most GPU
+  ports (textures, regions, drawing parameters)
+- SPU ports exist and store/retrieve values, but have no sound engine behind
+  them (no audio playback)
+- Experimental **Lua mode** (`--langmode=lua`): memory words are inspected for
+  Lua value tags (strings, tables, functions, nil/true/false) when displaying
+  with `/B` or `/s`
+- Experimental **C mode** (`--langmode=C`): with C debug files loaded, the
+  debugger shows the C source line corresponding to the current instruction
 
 ## Table of Contents
 
-- [IOPORTS](#ioports)
+- [Project Layout](#project-layout)
+- [Requirements](#requirements)
+- [Building](#building)
+- [Installing](#installing)
 - [Usage](#usage)
-- [Dependencies](#dependencies)
-- [Arguments](#arguments)
+- [Memory Map](#memory-map)
+- [The Debugger](#the-debugger)
 - [Commands](#commands)
-- [Command Reference](#command-reference)
-- [Gamepad Simulation](#gamepad-simulation)
-- [MEMCARD Support](#memcard-support)
-- [GPU and Texture Support](#gpu-and-texture-support)
-- [Profiling](#profiling)
-- [Screenshots](#screenshots)
+- [IOPORTS](#ioports)
+- [Known Limitations and Planned Features](#known-limitations-and-planned-features)
 
-## IOPORTS
+## Project Layout
 
-All IOPorts are available within the simulator. However, not all ports in each category are functionally accurate.
+```
+.
+├── Makefile              build definitions
+├── README.md             this file
+├── LICENSE
+├── TODO.md
+├── src/                  all C sources
+├── inc/                  all headers
+├── obj/                  object files and dependency files (generated)
+├── bin/                  the compiled v32sim binary (generated)
+├── bios/                 BIOS data files
+├── cart/                 cartridge data files
+└── screenshots/          reference screenshots
+```
 
-For example: the SPU ports are not involved in any processing. Any values written to them or read from them are just that: standalone values. There will be no change to that data.
+## Requirements
 
-Some other ports do have established functionality: all the TIM, RNG, INP, CAR, and MEM ports should actually behave as expected.
+- A C compiler (GCC or Clang)
+- **GNU readline** — prompt line editing, cursor keys, and command history
+  (on macOS the history facility is part of readline; on Linux `libhistory`
+  is a separate library — the Makefile handles both)
+- POSIX regex and libm (standard on Linux and macOS)
 
-Furthermore, some of the GPU ports are now functional, especially those related to textures, regions, and their definitions. All textures present in a V32 file will be loaded into memory in the simulator.
+## Building
 
-### TEXTURES AND REGIONS
+```
+make            # default build          -> bin/v32sim
+make debug      # -DDEBUG -g build       -> bin/v32sim
+make asan       # AddressSanitizer + UBSan build, for hunting memory errors
+make clean      # remove obj/ contents and bin/v32sim
+```
 
-Outside of BIOS and CART code that manipulates the GPU ports, from the simulator prompt one can manipulate the texture and region GPU ports, through the use of the `set` command and `display` or `print` commands.
+Object files  and dependency files  land in  `obj/`; the binary  lands in
+`bin/v32sim`. Header  dependencies are  tracked, so  editing a  header in
+`inc/` rebuilds every  source that includes it. Object  files are **not**
+rebuilt when flags change — run `make clean` when switching between the
+default, `debug`, and `asan` builds.
 
-Also, the `inventory` command will display the currently established texture information (resolution, offsets) in the BIOS and CART.
+## Installing
 
-Many GPU ports should be fully functional:
+```
+make install      # installs to ~/bin/bin.<arch>/ (or ~/bin/)
+make sysinstall   # installs to /usr/local/bin/
+```
 
-- `GPU_ClearColor`
-- `GPU_SelectedTexture`
-- `GPU_SelectedRegion`
-- `GPU_Command` (with support for `GPUCommand_ClearScreen`, `GPUCommand_DrawRegion`, `GPUCommand_DrawRegionZoomed`, `GPUCommand_DrawRegionRotated`, `GPUCommand_DrawRegionRotozoomed`)
-- `GPU_MultiplyColor`
-- `GPU_ActiveBlending` (with modes: `GPUBlendingMode_Alpha`, `GPUBlendingMode_Add`, `GPUBlendingMode_Subtract`)
-- `GPU_DrawingPointX`, `GPU_DrawingPointY`
-- `GPU_DrawingScaleX`, `GPU_DrawingScaleY`
-- `GPU_DrawingAngle`
-- `GPU_RegionMinX`, `GPU_RegionMinY`, `GPU_RegionMaxX`, `GPU_RegionMaxY`
-- `GPU_RegionHotspotX`, `GPU_RegionHotspotY`
-- `GPU_RemainingPixels` (read-only)
-
-The other GPU ports may well be able to be read from/written to, but if there is deeper functionality, they currently just serve as a storage of information (nothing is yet done with that information).
-
-## USAGE
+## Usage
 
 ```
 Usage: v32sim [OPTION]... [CARTFILE.v32]
@@ -64,12 +101,14 @@ Mandatory arguments to long options are mandatory for short options too.
  -C, --command-file=FILE   load this file with sim commands
  -c, --colors              enable colorized output
  -d, --deref-addr          output address of dereference
+ -D, --debug               enable simulator debug output (development)
  -e, --errorcheck          enable runtime error checking
      --bios-asm-debug=FILE load BIOS asm labels from FILE
      --bios-c-debug=FILE   load BIOS C labels from FILE
      --cart-asm-debug=FILE load CART asm labels from FILE
      --cart-c-debug=FILE   load CART C labels from FILE
  -E, --entry-point=OFFSET  set simulator entry point
+ -L, --langmode=MODE       label/source mode: C or lua (experimental)
  -M, --memcfile=FILE       load this file as a MEMCARD
  -n, --no-debug            do not process any debug files
  -p, --profile             enable instruction profiling
@@ -83,360 +122,159 @@ OFFSET is the full 32-bit/4-byte memory address (hex)
 OPCODE is the full 32-bit/4-byte instruction hex
 ```
 
-The simulator will, by default, use the Vircon32 `StandardBios.v32` from the standard location. This can be changed with the `--biosfile` argument, should you wish to use a different BIOS.
+Examples:
 
-To disable the "debugger", run with `--run`, it will just be a simulator.
+```
+v32sim cart.v32                     # start in the debugger
+v32sim -r cart.v32                  # just run the cart
+v32sim -b main -C setup.cmds cart.v32
+v32sim -L lua -r cart.v32           # Lua value display
+```
 
-## DEPENDENCIES
+By  default  the simulator  loads  `StandardBios.v32`  from the  standard
+Vircon32 ComputerSoftware install location; override with `--biosfile`.
 
-### GNU READLINE
+## Memory Map
 
-GNU readline is used for input prompt processing, allowing for shell-like input management (cursor keys, CTRL keys, command history, etc.).
+| Page | First address | Notes |
+|------|--------------|-------|
+| RAM  | `0x00000000` | 16MB / 4M words, read-write |
+| BIOS | `0x10000000` | entry point at `0x10000004`, error handler at `0x10000000` |
+| CART | `0x20000000` | cartridge program ROM |
+| MEMC | `0x30000000` | memory card |
 
-**NOTE:** on macOS, there does not seem to be a separate `history` library; a tweak has been added to the Makefile to avoid an error while building on macOS.
+## The Debugger
 
-### POSIX REGEX
+When  not  started  with  `--run`,  the  simulator  stops  at  the  first
+instruction  and  presents  the  `v32sim>`  prompt.  From  here  you  can
+single-step  (`step`),   step  over  subroutines  (`next`),   run  freely
+(`continue`), and  arrange for  execution to  stop again  at breakpoints,
+watchpoints, or a watched-for opcode.
 
-The simulator currently makes extensive use of the POSIX Regular Expressions functions.
+- **Ctrl-C (SIGINT)** breaks out of run mode back to the prompt
+- **EOF on stdin** (e.g. Ctrl-D, or a closed input pipe) exits cleanly —
+  handy when driving v32sim from scripts
+- On a **system error**, the machine state is stored in R0-R3, SP/BP are
+  wiped, execution is redirected to the BIOS error handler at
+  `0x10000000`, and the simulator stops at the prompt to let you inspect
+  the fault
 
-### MATH
+### Command Files
 
-For some of the higher level math operations, the math library is used.
+`--command-file=FILE` (or  `-C`) feeds  the simulator  a plain  text file
+with **one  valid prompt  command per  line** (any  command: breakpoints,
+display  list  setup, `continue`,  etc.).  This  is  the primary  way  to
+automate sessions;  combine it  with `--run` and  redirected stdin/stdout
+for scripted testing.
 
-### GD LIBRARY
+## Commands
 
-For screenshot generation, the GD graphics library is required to output PNG files.
+| Command    | Description |
+| ---------- | ----------- |
+| `break [0xMEM\|LABEL]` | set an execution breakpoint (address or label) |
+| `unbreak #` | remove breakpoint by index |
+| `continue` | resume execution until next trigger |
+| `step` | execute current instruction, stop at next |
+| `next` | execute current instruction, step over subroutines |
+| `print/fmt XYZ` | one-time display of XYZ (register, memory, IOPort) |
+| `display/fmt XYZ [LABEL]` | add a displaylist item shown at each stop |
+| `undisplay #` | remove displaylist item by index |
+| `label [0xMEM_ADDR LABEL]` | list or set a label for a memory offset |
+| `unlabel #` | remove label by index |
+| `watch REG OP VALUE [LABEL]` | set a conditional watchpoint on a register |
+| `watchlist` | list active watchpoints |
+| `unwatch #\|LABEL` | remove a watchpoint |
+| `backtrace` | list subroutine calls, most recent first |
+| `profile` | show the profiling report (requires `-p`) |
+| `inventory` | system resource overview |
+| `gamepad [#[ COMMAND]]` | view/simulate gamepad state |
+| `load cart:path` / `load memc:path` | load a component at runtime |
+| `unload bios\|cart\|memc` | unload a memory page |
+| `replace IP/IR/IV:0x...` | one-shot instruction/register replacement |
+| `set NAME=VALUE` | set settings, registers, memory, or IOPorts |
+| `ignore` | skip current instruction *(currently behaves like continue)* |
+| `help` / `?` | command help |
+| `quit` | exit the simulator |
 
-## ARGUMENTS
+### Formatting Suffixes
 
-### BIOSFILE
+`print` and `display` accept a format suffix:
 
-By default, `v32sim` attempts to read `StandardBios.v32` from the standard Vircon32 ComputerSoftware install location on the system.
-
-If desired, you can specify an alternate BIOS that the simulator will use at startup.
-
-### COMMAND-FILE
-
-While having the ability to set display list items in the simulator is nice, extensive debugging sessions would incur significant startup costs by constantly having to specify your display list items over and over again.
-
-To facilitate matters, a command-file can be specified, which is merely a plain text file, with **one valid prompt command per line**. Unlike what was previously documented, command-files support **all valid prompt commands**, not just display list items.
-
-### COLORS
-
-Specifying colors will colorize some of the output, in an attempt to help highlight important information and distinguish various data items.
-
-### DEREF-ADDR
-
-To aid in debugging and study: setting `--deref-addr` will take any dereferencing or indexed dereferencing instruction, and display the resulting value, alongside the instruction.
-
-### DEBUG
-
-Mostly for `v32sim` development, the `--debug` argument causes more output to be generated, mostly on internal simulator operations, to help explore problems in simulator operation.
-
-### ENTRY-POINT
-
-Set the offset of where the simulator will start processing (overriding the system default BIOS entry point of `0x10000004`).
-
-Intended to be used to force start from the `CART` at `0x20000000`, it should be used carefully.
-
-### ERRORCHECK
-
-Enabling `errorcheck` will cause the simulator to perform a test evaluation before each instruction execution, validating whether or not it is a resource-legitimate transaction. If it detects a problem, it will provide notification on instruction rendering (if colors are enabled, it will be in red vs the normal yellow), and between exclamation points the type of system error that is about to occur (if you execute the instruction).
-
-### PROFILE
-
-Enable instruction and subroutine profiling. The simulator will do a global tally of instructions executed (and which ones, how many times each one has been executed), along with what and how many times a subroutine has been called.
-
-Additionally, localized instruction tallies per subroutine will be reported at subroutine return (especially for nexting over a subroutine call).
-
-At the single-step prompt, running `profile` will display the current profiling report, breaking down the global tallies of everything.
-
-This processing only happens when profiling is enabled. It CAN be toggled during runtime as well via the prompt's `set` command.
-
-### RUN
-
-Do not provide the debugger prompt: just simulate the indicated CART.
-
-### WATCH-FOR
-
-A different sort of breakpoint. More a hacked "watchpoint" on the system IR register on the lookout for the indicated word of machine code. Useful for stopping execution at a particular instruction (assuming it is not a common instruction like a MOV).
-
-## COMMANDS
-
-`v32sim`, when processing has been stopped, will present a `v32sim>` prompt allowing for per-instruction control and reporting of system details.
-
-This is where `v32sim` can be considered a **DEBUGGER**, in that here we can *single step* through the code, instruction at a time, printing out various register, memory, IOPort values. There's even a *displaylist* functionality where you can have things automatically displayed each step, just like in GDB.
-
-### Command Reference
-
-
-| Command                                 | Description                                                                     |
-| --------------------------------------- | ------------------------------------------------------------------------------- |
-| `break [0xMEM|LABEL]`                   | set an execution breakpoint (memory address or label)                           |
-| `continue`                              | Resume execution until next trigger (breakpoint, HLT, watchpoint)               |
-| `print XYZ`                             | One-time display of XYZ (register, memory, IOPort)                              |
-| `display XYZ [LABEL]`                   | Add display list item to show XYZ each stop                                     |
-| `undisplay #`                           | Remove display list item by index                                               |
-| `label [0xMEM_ADDR LABEL]`              | List or set a label for a memory offset                                         |
-| `unlabel #`                             | Remove label by index                                                           |
-| `load bios:path`                        | Load BIOS file at runtime                                                       |
-| `load cart:path`                        | Load CART file at runtime                                                       |
-| `load memc:path`                        | Load MEMCARD file at runtime                                                    |
-| `unload bios`                           | Unload BIOS from memory                                                         |
-| `unload cart`                           | Unload CART from memory                                                         |
-| `unload memc`                           | Unload MEMCARD from memory                                                      |
-| `next`                                  | Execute current instruction, skip over subroutines                              |
-| `step`                                  | Execute current instruction, stop at next                                       |
-| `backtrace`                             | Display list of subroutine calls (most recent first)                            |
-| `profile`                               | Show profiling report (requires profiling enabled)                              |
-| `inventory`                             | Display system resource overview (CARTs/MEMCARDs loaded, space usage)           |
-| `ignore`                                | Skip current instruction without processing (IP/IR/IV advance, no cycle update) |
-| `replace IP:0xADDR IR:0xINSTR IV:0xIMM` | Replace instruction and immediate at address                                    |
-| `replace IR:0xINSTR`                    | Replace instruction register only                                               |
-| `replace IR:0xINSTR IV:0xIMM`           | Replace instruction and immediate registers                                     |
-| `set NAME=VALUE`                        | Set system feature, register, memory, or IOPort                                 |
-| `unbreak #`                             | Remove breakpoint by index                                                      |
-| `watch REG OP VALUE [LABEL]`            | Set watchpoint on register with condition                                       |
-| `watchlist`                             | Display all active watchpoints                                                  |
-| `unwatch #|LABEL`                       | remove the indicated watchlist member                                           |
-| `help` / `?`                            | Display command help                                                            |
-| `quit`                                  | Exit the simulator                                                              |
-
-
-### Breakpoints
-
-Running the `break` command, providing either an established **label** or valid **offset** will add a breakpoint to the breaklist. This will cause the simulator to trigger a break to the debugger prompt upon encountering this location.
-
-Running `break` by itself will display the current breaklist. Use `unbreak #` to remove a breakpoint by its index number.
+- `/X` uppercase hexadecimal (default), `/x` lowercase hexadecimal
+- `/u` unsigned decimal, `/d` signed decimal, `/o` octal, `/b` binary
+- `/f` floating point
+- `/B` boolean (TRUE/FALSE)
+- `/D` decode the value as an instruction
+- `/s` string (one 32-bit word per character; in Lua mode, unboxes tagged
+  strings)
 
 ### Watchpoints
 
-The `watch` command allows you to set conditional breakpoints on registers. When the register's value meets the specified condition, execution will break and notify you.
-
-**Syntax:** `watch REG OP VALUE [LABEL]`
-
-- **REG:** Any register (R0-R15, BP, SP, CR, SR, DR, IP, IR, IV)
-- **OP:** Comparison operator (=, !=, &lt;, &gt;, &lt;=, &gt;=)
-- **VALUE:** Hex value (0x00000000-0xFFFFFFFF)
-- **LABEL:** Optional label for the watchpoint
-
-**Examples:**
-
-```
-watch SP <= 0x20000000 stack_underflow
-watch R0 != 0x00000000
-watch BP > 0x2000FFFF stack_overflow
-```
-
-Use `watchlist` to view all active watchpoints and `unwatch` to remove them by index or label.
+`watch  REG  OP  VALUE  [LABEL]`  breaks  when  the  register  meets  the
+condition: `OP` is one  of `=`, `!=`, `<`, `>`, `<=`,  `>=`; `REG` is any
+of  R0-R15,  BP, SP,  CR,  SR,  DR, IP,  IR,  IV.  **Note:** the  command
+currently registers only when the  optional LABEL argument is included (a
+parser quirk); e.g. `watch SP <= 0x20000000 stack_underflow`.
 
 ### Display List
 
-The display list shows accumulated values **EACH time** the system stops for input. This supports:
-
-- **Registers:** R0-R15, CR, SR, DR, BP, SP, IP, IR, IV (can be dereferenced with `[]`)
-- **Memory:** Any 4-byte address (e.g., `0xAABBCCDD`), can be dereferenced
-- **Memory Ranges:** Address ranges (e.g., `0xAABBCCD0-0xAABBCCD3`), can be dereferenced
-- **IOPorts:** Any valid IOPort address or symbolic name (e.g., `0xABC`, `GPU_SelectedTexture`)
-
-**Formatting Suffixes:** Append `/N` to display in a specific format:
-
-- `/X` - Uppercase hexadecimal (default)
-- `/x` - Lowercase hexadecimal
-- `/u` - Unsigned int (decimal)
-- `/o` - Octal
-- `/f` - Floating point (decimal)
-- `/D` - Decode as instruction
-- `/d` - Signed int (decimal)
-- `/B` - Boolean
-- `/b` - Binary
-
-**Example:** `display R0/X my_register`
+The display list  re-renders each time the simulator stops.  Items may be
+registers (dereferenceable with `[...]`),  memory addresses or ranges, or
+IOPorts (numeric like `0x205` or symbolic like `GPU_SelectedTexture`). If
+no label is given for an IOPort item, its symbolic name is used.
 
 ### Labels
 
-The `label` command allows you to associate human-readable names with memory offsets. This is useful for:
-
-- Setting breakpoints by name
-- Navigating code more easily
-- Making display/output more readable
-
-**Syntax:**
-
-```
-label                    # List all labels
-label 0x10000040 main    # Set label 'main' at offset 0x10000040
-```
-
-Use `unlabel #` to remove a label by its index.
-
-### Load/Unload
-
-The `load` and `unload` commands allow you to dynamically load and unload system components at runtime:
-
-**Syntax:**
-
-```
-load bios:path/to/biosfile.v32
-load cart:path/to/cartfile.v32
-load memc:path/to/memcfile.v32
-
-unload bios
-unload cart
-unload memc
-```
-
-Primarily useful for swapping MEMCARDs during a session, but can also be used to load/unload BIOS or CART files.
-
-### Replace
-
-The `replace` command provides a "Game Genie"-style functionality, allowing temporary modification of instruction execution without altering memory:
-
-**Syntax:**
-
-```
-replace IP:0xADDR IR:0xINSTRUCT IV:0xIMMEDIATE
-replace IR:0xINSTRUCT
-replace IR:0xINSTRUCT IV:0xIMMEDIATE
-```
-
-This replaces the indicated system register(s) with the specified value(s) for a single execution, making it a temporary change rather than a permanent memory modification (like `set` would do).
+`label 0x10000040 main` associates a name with an offset; labels can then
+be used  for breakpoints  (`-b main`  or `break  main`). Labels  are also
+loaded  automatically from  assembler/C debug  files (`--bios-asm-debug`,
+etc.), which are searched next to the corresponding V32 file.
 
 ### Set
 
-The `set` command configures system features and resources during runtime:
-
-**System Settings:**
-
 ```
-set color=true
-set debug=true
-set verbose=true
-set deref=true
-set errorchk=true
-set profile=true
-```
-
-**Registers:**
-
-```
-set R4=0x4004
-set IP=0x10000040
-```
-
-**Memory:**
-
-```
+set color=true      set deref=true       set debug=true
+set verbose=true    set errorchk=true    set profile=true
+set R4=0x4004       set IP=0x10000040
 set 0x00224466=0x71
-```
-
-**IOPorts:**
-
-```
-set 0x205=7
 set GPU_SelectedTexture=-1
-set GPU_ClearColor=0xFF0000FF
 ```
 
-**Screenshot Settings:**
+`set` with no arguments lists the current settings.
 
-```
-set screengrid=true
-set boundbox=true
-set noextra=true
-```
+### Load/Unload
 
-Running `set` with no arguments displays the current settings and their status.
+`load  cart:path`  and  `load   memc:path`  swap  components  at  runtime
+(primarily for MEMCARD swapping). `unload bios|cart|memc` deallocates the
+page. Note: `load bios:path` is parsed but not yet wired up.
 
-### Backtrace
+## IOPORTS
 
-The `backtrace` command displays a list of subroutine calls from most recent to least recent, helping you understand the call stack and how you arrived at the current execution point.
+All IOPorts exist. Not all are functionally accurate:
 
-### Inventory
+- **TIM, RNG, INP, CAR, MEM**: behave as expected
+- **SPU**: storage/retrieval only, no sound engine
+- **GPU**: functional, especially texture/region management — `GPU_ClearColor`,
+  `GPU_SelectedTexture`, `GPU_SelectedRegion`, `GPU_Command` (ClearScreen,
+  DrawRegion, DrawRegionZoomed, DrawRegionRotated, DrawRegionRotozoomed),
+  `GPU_MultiplyColor`, `GPU_ActiveBlending` (Alpha/Add/Subtract),
+  `GPU_DrawingPointX/Y`, `GPU_DrawingScaleX/Y`, `GPU_DrawingAngle`,
+  `GPU_RegionMinX/MinY/MaxX/MaxY`, `GPU_RegionHotspotX/Y`,
+  `GPU_RemainingPixels` (read-only)
 
-The `inventory` command provides a system resources overview, displaying:
+All textures  present in a V32  file are loaded; `inventory`  lists them.
+From the  prompt, texture/region ports  can be manipulated via  `set` and
+inspected via `print`/`display`.
 
-- Currently loaded CARTs and their status
-- MEMCARDs loaded and their usage
-- Available space in each memory region
-- Texture information for BIOS and CART
+## Known Limitations and Planned Features
 
-### Ignore
-
-The `ignore` command skips the current instruction entirely without any processing. No cycle-count update, no registers altered. Useful for avoiding a known problematic instruction while keeping the session going.
-
-**NOTE:** Could cause runtime problems depending on what is ignored.
-
-### Screenshots
-
-The `screenshot` command outputs the current state of the Vircon32 screen to a PNG file.
-
-**Syntax:**
-
-```
-screenshot                    # Default filename: v32sim.DATESTAMP.png
-screenshot my_screenshot.png  # Custom filename
-```
-
-**Enhancement Settings:**  
-The appearance of screenshots can be enhanced with these settings:
-
-- `screengrid` - Toggle grid overlay
-- `boundbox` - Toggle bounding box display
-- `noextra` - Toggle extra information display
-
-### Profiling
-
-When profiling is enabled (via `-p` or `set profile=true`), the simulator tracks:
-
-- Global instruction execution counts
-- Per-instruction breakdown (all 64 opcodes)
-- Subroutine call counts and timing
-- Localized instruction tallies per subroutine
-
-Run `profile` at the prompt to display the current profiling report.
-
-### Gamepad Simulation
-
-As there is no actual gamepad support integrated into the simulator, all gamepad transactions are controlled via the `gamepad` command at the simulator prompt:
-
-
-| Command               | Description                                    |
-| --------------------- | ---------------------------------------------- |
-| `gamepad`             | List current selected gamepad's values         |
-| `gamepad1 select`     | Select gamepad 1                               |
-| `gamepad1 connect`    | Connect gamepad 1 (allows changes)             |
-| `gamepad1 disconnect` | Disconnect gamepad 1                           |
-| `gamepad left`        | Toggle `left` on the selected gamepad          |
-| `gamepad right`       | Toggle `right` on the selected gamepad         |
-| `gamepad up`          | Toggle `up` on the selected gamepad            |
-| `gamepad down`        | Toggle `down` on the selected gamepad          |
-| `gamepad A`           | Toggle `A` button on the selected gamepad      |
-| `gamepad B`           | Toggle `B` button on the selected gamepad      |
-| `gamepad X`           | Toggle `X` button on the selected gamepad      |
-| `gamepad Y`           | Toggle `Y` button on the selected gamepad      |
-| `gamepad L`           | Toggle `L` button on the selected gamepad      |
-| `gamepad R`           | Toggle `R` button on the selected gamepad      |
-| `gamepad start`       | Toggle `start` button on the selected gamepad  |
-| `gamepad select`      | Toggle `select` button on the selected gamepad |
-
-
-### MEMCARD Support
-
-MEMCARD support is increasingly functional:
-
-- Command-line argument to load a MEMCARD on simulator start (`-M` or `--memcfile`)
-- Prompt's `load` and `unload` commands can transact MEMCARDs at runtime
-- MEMCARD data is loaded into memory at the appropriate location
-
-**Limitation:** Any changes made to MEMCARD data during simulation are **not** written back out to the MEMCARD file on disk. The file remains read-only for the duration of the session.
-
-No checks are currently done to ensure the file loaded is in fact a proper MEMCARD (V32-MEMC header is not currently checked for, nor is the required file size verified). However, it is locked in to reading the exact file size as indicated in the Vircon32 specifications.
-
-### Help
-
-The `help` command (or `?`) displays a summary of all available commands with brief descriptions. For detailed help on a specific command, use `help <command>` or refer to this documentation.
-
-### Quit
-
-The `quit` command exits the simulator immediately.
+- **SPU**: no audio functionality (ports only)
+- **Screenshots**: the `screenshot` command (PNG output via the GD library)
+  is planned but not yet implemented; GD is not currently a build dependency
+- **MEMCARD**: loaded read-only — changes are not written back to the file;
+  the V32-MEMC header is not yet validated
+- **`watch`** requires the LABEL argument to register (see Watchpoints)
+- **`ignore`** does not yet skip the instruction; it currently behaves like
+  `continue`
+- **`load bios:`** is parsed but not yet functional
+- Lua and C display modes (`-L`) are experimental

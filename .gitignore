@@ -111,3 +111,5 @@ errors
 
 # v32sim repo
 v32sim
+bin/*
+obj/*
