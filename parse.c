@@ -174,6 +174,7 @@ uint8_t *parse_deref (uint8_t *input, uint8_t *flag)
         {
             fprintf (debug, "[parse_deref] invalid deref value\n");
             *flag            = FALSE;
+            regfree (&regex);
         }
 
         ////////////////////////////////////////////////////////////////////////////////

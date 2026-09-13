@@ -121,10 +121,10 @@ int8_t *reg_get_name (uint8_t  id)
     if (id                 <  NUM_REGISTERS)
     {
         name                = REGALIAS(id);
-		if (name           == NULL)
-		{
-			name            = REGNAME(id);
-		}
+        if (name           == NULL)
+        {
+            name            = REGNAME(id);
+        }
     }
 
     return (name);
@@ -144,7 +144,8 @@ void  reg_set (uint8_t  id, uint32_t  value, uint8_t  sys_force)
             fprintf (stderr, "[reg_set] ERROR: register '%s' cannot WRITE!\n",
                              (reg+id) -> name);
         }
-        memcpy ((reg+id) -> value.raw, value, 4);
+        (reg+id) -> value.raw = value;
+
     }
     else
     {

@@ -233,9 +233,10 @@
 #define  FMEMSET(addr, word)     fmemory_set (addr, word, FALSE)
 #define  SYSMEMSET(addr, word)   memory_set (addr, word, TRUE)
 
-#define  IPORTGET(addr)          word2int (ioports_get (addr, FALSE))
-#define  ISYSPORTGET(addr)       word2int (ioports_get (addr, TRUE))
-#define  FPORTGET(addr)          word2float (ioports_get (addr, FALSE))
+#define  IPORTGET(addr)          (ioports_get (addr, FALSE) . i32)
+#define  ISYSPORTGET(addr)       (ioports_get (addr, TRUE)  . i32)
+#define  FPORTGET(addr)          (ioports_get (addr, FALSE) . f32)
+
 #define  PORTSET(addr, word)     ioports_set (addr, word, 0.0, FALSE)
 #define  FPORTSET(addr, word)    ioports_set (addr, 0, word, FALSE)
 #define  SYSPORTSET(addr, word)  ioports_set (addr, word, 0.0, TRUE)

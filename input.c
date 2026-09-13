@@ -26,6 +26,12 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
     //
     input_string           = readline (prompt);
 
+    if (input_string      == NULL)
+    {
+        action             = INPUT_QUIT;
+        return (NULL);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     //
     // If colors are enabled, complete the highlight the decoded instruction
@@ -79,7 +85,14 @@ uint8_t  prompt (uint32_t  word)
     }
 
     input                               = get_input (stdin, "v32sim> ");
-    
+
+    if (input                          == NULL)
+    {
+        action                          = INPUT_QUIT;
+        lastaction                      = INPUT_QUIT;
+        return (2);
+    }
+
     if (*input                         == '\0')
     {
         action                          = lastaction;
@@ -258,28 +271,32 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
             fprintf (debug, "[load_labels] filename:     '%s'\n", filename);
 
             input_string                    = strtok (filename, ".");
+            if (input_string               == NULL)
+            {
+                input_string                = (uint8_t *) "";
+            }
             fprintf (debug, "[load_labels] input_string: '%s'\n", input_string);
 
+            size                            = sizeof (uint8_t);
+            len                             = strlen (path) + strlen (input_string) + 16;
             if ((flag & FLAG_ASM)          == FLAG_ASM)
             {
-                size                        = sizeof (uint8_t);
-                len                         = strlen (input_string) + 16;
                 debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
                 sprintf (debugfile, "%s/%s.vbin.debug", path, input_string);
             }
             else if ((flag & FLAG_C)       == FLAG_C)
             {
-                size                        = sizeof (uint8_t);
-                len                         = strlen (input_string) + 16;
                 debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
                 sprintf (debugfile, "%s/%s.asm.debug", path, input_string);
             }
             fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
-            //rfree   (path);
         }
         else
         {
-            debugfile                       = datafile;
+            size                            = sizeof (uint8_t);
+            len                             = strlen (datafile) + 1;
+            debugfile                       = (uint8_t *) ralloc (size, len, FLAG_NONE);
+            strncpy (debugfile, datafile, len);
         }
 
         fptr                                = fopen (debugfile, "r");
@@ -287,34 +304,19 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
         {
             fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
             rfree (debugfile);
+            debugfile                       = NULL;
 
-            if ((flag & FLAG_ASM)          == FLAG_ASM)
+            if ((flag & FLAG_SEARCH)       == FLAG_SEARCH)
             {
-                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                sprintf (debugfile, "obj/%s.vbin.debug", input_string);
-            }
-            else if ((flag & FLAG_C)       == FLAG_C)
-            {
-                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                sprintf (debugfile, "obj/%s.asm.debug", input_string);
-            }
-            fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
-
-            fptr                            = fopen (debugfile, "r");
-            if (fptr                       == NULL)
-            {
-                fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
-                rfree (debugfile);
-
                 if ((flag & FLAG_ASM)      == FLAG_ASM)
                 {
                     debugfile               = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                    sprintf (debugfile, "%s.vbin.debug", input_string);
+                    sprintf (debugfile, "obj/%s.vbin.debug", input_string);
                 }
                 else if ((flag & FLAG_C)   == FLAG_C)
                 {
                     debugfile               = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                    sprintf (debugfile, "%s.asm.debug", input_string);
+                    sprintf (debugfile, "obj/%s.asm.debug", input_string);
                 }
                 fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
 
@@ -322,12 +324,33 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                 if (fptr                   == NULL)
                 {
                     fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
+                    rfree (debugfile);
+                    debugfile               = NULL;
+
+                    if ((flag & FLAG_ASM)  == FLAG_ASM)
+                    {
+                        debugfile           = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                        sprintf (debugfile, "%s.vbin.debug", input_string);
+                    }
+                    else if ((flag & FLAG_C) == FLAG_C)
+                    {
+                        debugfile           = (uint8_t *) ralloc (size, len, FLAG_NONE);
+                        sprintf (debugfile, "%s.asm.debug", input_string);
+                    }
+                    fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
+
+                    fptr                    = fopen (debugfile, "r");
+                    if (fptr               == NULL)
+                    {
+                        fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
+                    }
                 }
             }
         }
 
         rfree (debugfile);
         rfree (token);
+        rfree (path);
 
         if (fptr                           != NULL)
         {
@@ -395,7 +418,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                         size                 = sizeof (int8_t);
                         len                  = strlen (input_string);
                         ltmp -> name         = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
-                        strncpy (ltmp -> name, input_string, len);
+                        strcpy (ltmp -> name, input_string);
                     }
 
                     input_string             = strtok (NULL, ",");  // line number
@@ -433,7 +456,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                         size                 = sizeof (int8_t);
                         len                  = strlen (input_string);
                         ltmp -> name         = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
-                        strncpy (ltmp -> name, input_string, len);
+                        strcpy (ltmp -> name, input_string);
                     }
 
                     input_string             = strtok (NULL, ",");  // ASM line number
@@ -462,7 +485,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
                         size                 = sizeof (int8_t);
                         len                  = strlen (input_string);
                         ltmp -> cname        = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
-                        strncpy (ltmp -> cname, input_string, len);
+                        strcpy (ltmp -> cname, input_string);
                     }
 
                     input_string             = strtok (NULL, ",");  // C line number

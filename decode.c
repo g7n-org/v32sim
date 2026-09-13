@@ -478,8 +478,15 @@ void  decode_display (uint32_t  instruction,
         case IN:
             sprintf (destination, "R%u,",    dst);
             dtmp                         = ioports_ptr (port);
-            token_label                  = dtmp -> name;
-            sprintf (source, "%s", dtmp -> name);
+            if (dtmp                    != NULL)
+            {
+                token_label              = dtmp -> name;
+                sprintf (source, "%s", dtmp -> name);
+            }
+            else
+            {
+                sprintf (source, "0x%.3X", port);
+            }
             fprintf (display,     "%*s %*s %s ",
                                   space,   lookup[opcode].name,
                                   spacing, destination,
@@ -503,9 +510,16 @@ void  decode_display (uint32_t  instruction,
 
         case OUT:
             dtmp                         = ioports_ptr (port);
-            token_label                  = dtmp -> name;
-            //sprintf (destination, "0x%.3X,", port);
-            sprintf (destination, "%s,", dtmp -> name);
+            if (dtmp                    != NULL)
+            {
+                token_label              = dtmp -> name;
+                sprintf (destination, "%s,", dtmp -> name);
+            }
+            else
+            {
+                sprintf (destination, "0x%.3X,", port);
+            }
+
             if (immflag                 == TRUE)
             {
                 switch (port)
@@ -875,7 +889,7 @@ void  decode_process (uint32_t  instruction,
                         ptmp -> label  = (int8_t *) ralloc (sizeof  (int8_t),
                                                             strlen (dtmp -> label) + 1,
                                                             FLAG_NONE);
-                        strncpy (ptmp -> label, dtmp -> label, strlen (dtmp -> label));
+                        strcpy (ptmp -> label, dtmp -> label);
                     }
                     ppoint             = list_add (ppoint, ptmp);
                 }
@@ -901,7 +915,7 @@ void  decode_process (uint32_t  instruction,
                 ptmp -> label          = (int8_t *) ralloc (sizeof (int8_t),
                                                             strlen (dtmp -> label) + 1,
                                                             FLAG_NONE);
-                strncpy (ptmp -> label, dtmp -> label, strlen (dtmp -> label));
+                strcpy (ptmp -> label, dtmp -> label);
             }
             tpoint                     = add_list (tpoint, ptmp);
 
@@ -918,11 +932,18 @@ void  decode_process (uint32_t  instruction,
             //
             // remove entry from beginning of backtrace list (tpoint)
             //
-            ptmp                       = tpoint;
-            tpoint                     = tpoint -> next;
-            ptmp -> next               = NULL;
-            rfree (ptmp);
-            ptmp                       = NULL;
+            if (tpoint                != NULL)
+            {
+                ptmp                   = tpoint;
+                tpoint                 = tpoint -> next;
+                ptmp -> next           = NULL;
+                if (ptmp -> label     != NULL)
+                {
+                    rfree (ptmp -> label);
+                }
+                rfree (ptmp);
+                ptmp                   = NULL;
+            }
             break;
 
         case JT:
@@ -1086,18 +1107,18 @@ void  decode_process (uint32_t  instruction,
             value           = (immflag == TRUE)  ? immediate  : SRCREG;
             fprintf (debug, "[decode_process] OUT: ioports_set (0x%.3X, 0x%.8X)\n",
                             port, value);
-			switch (port)
-			{
-				case GPU_DrawingScaleX:
-				case GPU_DrawingScaleY:
-				case GPU_DrawingAngle:
-					FPORTSET(port, value);
-					break;
+            switch (port)
+            {
+                case GPU_DrawingScaleX:
+                case GPU_DrawingScaleY:
+                case GPU_DrawingAngle:
+                    FPORTSET(port, value);
+                    break;
 
-				default:
-					PORTSET(port, value);
-					break;
-			}
+                default:
+                    PORTSET(port, value);
+                    break;
+            }
             break;
 
         case MOVS:

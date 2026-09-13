@@ -132,12 +132,22 @@ uint32_t  word2int     (word_t *info)
 
 float     word2float   (word_t *info)
 {
-    return (info -> f32);
+    float     result  = 0.0;
+    if (info         != NULL)
+    {
+        result        = info -> f32;
+    }
+    return (result);
 }
 
 uint32_t  word2raw     (word_t *info)
 {
-    return (info -> raw);
+    uint32_t  result  = 0;
+    if (info         != NULL)
+    {
+        result        = info -> raw;
+    }
+    return (result);
 }
 
 word_t   *new_word_i32 (uint32_t *value, uint8_t  num)

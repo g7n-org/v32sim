@@ -100,6 +100,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
         check                                 = regexec (&regex, string, 5, match, 0);
         if (check                            == REG_NOMATCH)
         {
+            regfree (&regex);
             continue;
             fprintf (stderr, "ERROR: malformed input\n");
         }
@@ -758,7 +759,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                     tmp -> label   = (int8_t *) ralloc (sizeof  (int8_t),
                                                                         strlen (token_label) + 1,
                                                                         FLAG_NONE);
-                                    strncpy (tmp -> label, token_label, strlen (token_label));
+                                    strcpy (tmp -> label, token_label);
                                 }
                                 tmp -> FMT         = fmt;
                                 dpoint             = list_add (dpoint, tmp);
@@ -781,7 +782,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 tmp -> label   = (int8_t *) ralloc (sizeof (int8_t),
                                                                     strlen (token_label) + 1,
                                                                     FLAG_NONE);
-                                strncpy (tmp -> label, token_label, strlen (token_label));
+                                strcpy (tmp -> label, token_label);
                             }
                             tmp -> FMT         = fmt;
                             dpoint             = list_add (dpoint, tmp);
@@ -820,7 +821,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                                 tmp -> label   = (int8_t *) ralloc (sizeof (int8_t),
                                                                     strlen (token_label) + 1,
                                                                     FLAG_NONE);
-                                strncpy (tmp -> label, token_label, strlen (token_label));
+                                strcpy (tmp -> label, token_label);
                             }
                             tmp -> FMT         = fmt;
                             dpoint             = list_add (dpoint, tmp);
@@ -842,21 +843,27 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             if (token_label   == NULL)
                             {
                                 dtmp           = ioports_ptr (value);
-                                token_label    = dtmp -> name;
-                                if (fmt       != FORMAT_DEFAULT)
+                                if (dtmp      != NULL)
                                 {
-                                    tmp -> FMT = fmt;
-                                }
-                                else
-                                {
-                                    tmp -> FMT = dtmp -> fmt;
+                                    token_label    = dtmp -> name;
+                                    if (fmt       != FORMAT_DEFAULT)
+                                    {
+                                        tmp -> FMT = fmt;
+                                    }
+                                    else
+                                    {
+                                        tmp -> FMT = dtmp -> fmt;
+                                    }
                                 }
                             }
 
-                            tmp -> label       = (int8_t *) ralloc (sizeof (int8_t),
-                                                                    strlen (token_label) + 1,
-                                                                     FLAG_NONE);
-                            strncpy (tmp -> label, token_label, strlen (token_label));
+                            if (token_label   != NULL)
+                            {
+                                tmp -> label       = (int8_t *) ralloc (sizeof (int8_t),
+                                                                        strlen (token_label) + 1,
+                                                                        FLAG_NONE);
+                                strcpy (tmp -> label, token_label);
+                            }
                             dpoint             = list_add (dpoint, tmp);
                             break;
                     }
@@ -1054,7 +1061,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         ltmp -> label  = (int8_t *) ralloc (sizeof (int8_t),
                                                             strlen (token_label) + 1,
                                                             FLAG_NONE);
-                        strncpy (ltmp -> label, token_label, strlen (token_label));
+                        strcpy (ltmp -> label, token_label);
                         lpoint         = list_add (lpoint, ltmp);
                     }
                     else if (0        == strncasecmp ((string+match[1].rm_so), "lo", 2))
@@ -1236,7 +1243,14 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             }
                             fprintf (debug, "[print/iop] 0x%.3hX was specified\n", value);
                             dtmp                = ioports_ptr (value);
-                            output_iop (value, dtmp -> fmt, dtmp -> name);
+                            if (dtmp           != NULL)
+                            {
+                                output_iop (value, dtmp -> fmt, dtmp -> name);
+                            }
+                            else
+                            {
+                                output_iop (value, FORMAT_DEFAULT, NULL);
+                            }
                             break;
                     }
                 }
@@ -1267,7 +1281,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                             fprintf (debug, "[unload] OTHER: '%s'\n", token);
                         }
                     }
-                    else if (0        == strncasecmp (token, "unwatch", 7)) // unwatch
+                    else if (0        == strncasecmp ((string+match[1].rm_so), "unw", 3))
                     {
                         action = INPUT_UNWATCH;
                         token = strtok((string + match[2].rm_so), " ");
@@ -1346,6 +1360,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     {
                         fprintf(stderr, "[ERROR] Invalid register: %s\n", token);
                         action = INPUT_INIT;
+                        regfree (&regex);
                         break;
                     }
 
@@ -1363,6 +1378,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                         {
                             fprintf(stderr, "[ERROR] Invalid operator: %s\n", token);
                             action = INPUT_INIT;
+                            regfree (&regex);
                             break;
                         }
                     }
@@ -1370,6 +1386,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     {
                         fprintf(stderr, "[ERROR] Missing operator for watchpoint\n");
                         action = INPUT_INIT;
+                        regfree (&regex);
                         break;
                     }
 
@@ -1383,6 +1400,7 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
                     {
                         fprintf(stderr, "[ERROR] Missing value for watchpoint\n");
                         action = INPUT_INIT;
+                        regfree (&regex);
                         break;
                     }
 
@@ -1445,6 +1463,12 @@ uint8_t  tokenize_input (uint8_t *input, uint8_t *flag)
 
     rfree   (form);
     rfree   (pattern);
+    if ((*flag                        == TRUE) &&
+        (string                      != NULL) &&
+        (string                      != input))
+    {
+        rfree (string);
+    }
 
     return  (result);
 }

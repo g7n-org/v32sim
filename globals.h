@@ -201,7 +201,7 @@ void      init_ioports   (void);                              // initialize IOPo
 uint8_t   ioports_chk    (uint16_t,    uint8_t,     uint8_t);
 int16_t   ioports_num    (uint8_t *);
 data_t   *ioports_ptr    (uint16_t);
-word_t   *ioports_get    (uint16_t,    uint8_t);              // get value from port
+word_t    ioports_get    (uint16_t,    uint8_t);              // get value from port
 uint8_t   ioports_set    (uint16_t,    int32_t,     float,    uint8_t); // set value to port
 void      update_ioports (void);
 void      init_memory    (void);                              // initialize memory

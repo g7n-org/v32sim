@@ -649,19 +649,17 @@ data_t  *ioports_ptr  (uint16_t  portaddr)
     //
     uint16_t  type          = (portaddr & 0x0700) >> 8;  // port category
     uint16_t  attr          = (portaddr & 0x00FF);       // item within category
-    data_t   *pptr          = *(ioports+type);           // pointer for sanity
     data_t   *result        = NULL;
 
-    result                  = ioports_chk (portaddr, FLAG_READ, TRUE);
-    if (result             != NULL)
+    if (ioports_chk (portaddr, FLAG_READ, TRUE) == TRUE)
     {
-        result              = (pptr+attr);
+        result              = (*(ioports+type)) + attr;
     }
 
     return (result);
 }
 
-word_t *ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
+word_t  ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
 {
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -671,7 +669,9 @@ word_t *ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
     uint16_t  type                        = 0;      // port category
     uint16_t  attr                        = 0;      // item within category
     uint8_t   check                       = FALSE;  // valid port status
-    word_t   *result                      = NULL;   // return value
+    word_t    result;
+
+    result.raw                            = 0x00000000;
 
     check                                 = ioports_chk (portaddr, FLAG_READ, TRUE);
     if (check                            == TRUE)
@@ -679,7 +679,6 @@ word_t *ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
         type                              = (portaddr & 0x0700) >> 8;
         attr                              = (portaddr & 0x00FF);
         pptr                              = *(ioports+type);
-        result                            = (word_t *) ralloc (sizeof (word_t), 1, FLAG_NONE);
         switch (portaddr)
         {
             ////////////////////////////////////////////////////////////////////////////
@@ -692,13 +691,13 @@ word_t *ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
             case SPU_GlobalVolume:
             case SPU_ChannelVolume:
             case SPU_ChannelSpeed:
-                result -> f32             = (pptr+attr) -> value.f32;
+                result.f32                = (pptr+attr) -> value.f32;
                 break;
 
             case RNG_CurrentValue: // obtain pseudorandom value, place in port
                 (pptr+attr) -> value.i32  = rand ();
             default:
-                result -> i32             = (pptr+attr) -> value.i32;
+                result.i32                = (pptr+attr) -> value.i32;
                 break;
         }
     }

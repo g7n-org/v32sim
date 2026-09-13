@@ -285,7 +285,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // load any debug file labels pertaining to page being loaded
     //
-    if ((cartasmdebugflag          == FALSE) &&
+    if ((cartasmdebugflag          == TRUE) &&
         (chk                       == TRUE) &&
         (cartfile                  != NULL))
     {
@@ -296,7 +296,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // load any debug file labels pertaining to page being loaded
     //
-    if ((cartcdebugflag            == FALSE) &&
+    if ((cartcdebugflag            == TRUE) &&
         (chk                       == TRUE) &&
         (cartfile                  != NULL))
     {
@@ -361,9 +361,11 @@ int32_t   main (int32_t  argc, char **argv)
     //
     if (tpoint                     != NULL)
     {
+        linked_l *nxt               = NULL;
         tmp                         = tpoint;
         while (tmp                 != NULL)
         {
+            nxt                     = tmp -> next;
             if (tmp -> label       == NULL) // not a label: offset
             {
                 value               = tmp -> RAW;
@@ -393,9 +395,19 @@ int32_t   main (int32_t  argc, char **argv)
                 }
             }
 
-            tmp                     = tmp -> next;
+            tmp                     = nxt;
         }
-        tpoint                      = NULL;
+
+        while (tpoint             != NULL)
+        {
+            tmp                     = tpoint;
+            tpoint                 = tpoint -> next;
+            if (tmp -> label       != NULL)
+            {
+                rfree (tmp -> label);
+            }
+            rfree (tmp);
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -748,9 +760,10 @@ int32_t   main (int32_t  argc, char **argv)
             REG(BP)                    = 0x00000000;
 
             REG(IP)                    = BIOS_ERROR_OFFSET;
+            rom_offset                 = BIOS_ERROR_OFFSET;
 
+            sys_error                  = ERROR_NONE;
             runflag                    = FALSE;
-            ignoreflag                 = TRUE;  // Don't update cycle counter
 
             continue; // kick to next iteration
         }
@@ -882,7 +895,8 @@ int32_t   main (int32_t  argc, char **argv)
     }
 
     if ((verbose                      != NULL) &&
-        (verbose                      != stderr))
+        (verbose                      != stderr) &&
+        (verbose                      != devnull))
     {
         fclose (verbose);
     }
