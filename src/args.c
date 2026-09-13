@@ -119,7 +119,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 cartcdebug         = (int8_t *) ralloc (sizeof (int8_t),
                                                         strlen (optarg) + 1,
                                                         FLAG_NONE);
-                strcpy (bioscdebug, optarg);
+                strcpy (cartcdebug, optarg);
                 cartcdebugflag     = TRUE;
                 break;
 
