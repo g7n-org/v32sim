@@ -109,10 +109,17 @@ void update_frame(void) {
             //
             // larger adjustment of TIM_CurrentDate if year needs incrementing
             //
-            if (value >= 365) { // TODO: compensate for leap years
-                value = 0;                  // new year, reset the day to 0
-                upper = upper + 0x00010000; // increment the year
-                value = upper;              // recombine YEAR and DAY
+            {
+                uint32_t  year       = upper >> 16;
+                uint32_t  daysinyear = ((((year % 4) == 0) && ((year % 100) != 0)) ||
+                                        ((year % 400) == 0)) ? 366 : 365;
+
+                if (value >= daysinyear)
+                {
+                    value  = 0;                  // new year, reset the day to 0
+                    upper  = upper + 0x00010000; // increment the year
+                }
+                value = upper | value;           // recombine YEAR and DAY
             }
             SYSPORTSET(TIM_CurrentDate, value);
 
@@ -126,6 +133,8 @@ void update_frame(void) {
     //
     // update all the ports that require per-frame changes
     //
+    gpu_new_frame ();
+    spu_new_frame ();
     update_ioports();
 
     // === NEW: Frame-based throttling with busy-wait ===

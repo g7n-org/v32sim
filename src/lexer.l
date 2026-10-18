@@ -192,6 +192,7 @@ static int  lex_command (void)
         case CMD_CONTINUE:    return (T_CONTINUE);
         case CMD_DISPLAY:     return (T_DISPLAY);
         case CMD_GAMEPAD:     return (T_GAMEPAD);
+        case CMD_ASM:         BEGIN (PATH); return (T_ASM);
         case CMD_HELP:        return (T_HELP);
         case CMD_IGNORE:      return (T_IGNORE);
         case CMD_INVENTORY:   return (T_INVENTORY);
@@ -202,7 +203,9 @@ static int  lex_command (void)
         case CMD_PROFILE:     return (T_PROFILE);
         case CMD_QUIT:        return (T_QUIT);
         case CMD_REPLACE:     return (T_REPLACE);
-        case CMD_SCREENSHOT:  return (T_SCREENSHOT);
+        case CMD_RESTORE:     BEGIN (PATH); return (T_RESTORE);
+        case CMD_SAVE:        BEGIN (PATH); return (T_SAVE);
+        case CMD_SCREENSHOT:  BEGIN (PATH); return (T_SCREENSHOT);
         case CMD_SET:         return (T_SET);
         case CMD_STEP:        return (T_STEP);
         case CMD_UNBREAK:     return (T_UNBREAK);

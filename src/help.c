@@ -17,6 +17,8 @@ void  usage (int8_t *program)
     fprintf (stdout, "     --bios-c-debug=FILE   load BIOS C labels from FILE\n");
     fprintf (stdout, "     --cart-asm-debug=FILE load CART asm labels from FILE\n");
     fprintf (stdout, "     --cart-c-debug=FILE   load CART C labels from FILE\n");
+    fprintf (stdout, "     --debug-dir=DIR       also look for debug files in DIR (first)\n");
+    fprintf (stdout, "     --source              show the source line for each stop (asm; C with -L C)\n");
     fprintf (stdout, " -E, --entry-point=OFFSET  set simulator entry point\n");
     fprintf (stdout, " -L, --langmode=MODE       label/source mode: C or lua (experimental)\n");
     fprintf (stdout, " -M, --memcfile=FILE       load this file as a MEMCARD\n");
@@ -42,6 +44,7 @@ void  help  (uint8_t  item)
         case INPUT_HELP:
             fprintf (stdout, "v32sim commands           description\n");
             fprintf (stdout, "========================= ============================\n");
+            fprintf (stdout, "  asm [@ADDR|-x] INSTR    assemble an instruction (patch memory or run once)\n");
             fprintf (stdout, "  break [0xMEM|LABEL]     set breakpoint (or list them)\n");
             fprintf (stdout, "  unbreak #               remove breakpoint #\n");
             fprintf (stdout, "  continue                resume execution\n");
@@ -54,11 +57,14 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  undisplay #             remove displaylist item #\n");
             fprintf (stdout, "  label [0xMEM LABEL]     list or add label list item\n");
             fprintf (stdout, "  unlabel #               remove label #\n");
-            fprintf (stdout, "  watch REG OP VAL [LBL]  set a register watchpoint\n");
+            fprintf (stdout, "  watch LOC OP VAL [LBL]  set a watchpoint (register, IOPort, memory)\n");
             fprintf (stdout, "  watchlist               list watchpoints\n");
             fprintf (stdout, "  unwatch #|LABEL         remove a watchpoint\n");
             fprintf (stdout, "  set [NAME = VALUE]      set system feature, register, memory, IOPort\n");
             fprintf (stdout, "  replace IP:X IR:Y IV:Z  patch instruction memory\n");
+            fprintf (stdout, "  screenshot [FILE]       write the GPU screen to a PNG file\n");
+            fprintf (stdout, "  save [FILE]             write the machine state to a file\n");
+            fprintf (stdout, "  restore FILE            restore a saved machine state\n");
             fprintf (stdout, "  gamepad [#] [COMMAND]   view/simulate gamepad state\n");
             fprintf (stdout, "  load cart|memc:file     load component into memory\n");
             fprintf (stdout, "  unload bios|cart|memc   unload component from memory\n");
@@ -175,6 +181,8 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    debug    true/false    set simulator debug mode\n");
             fprintf (stdout, "    errorchk true/false    set simulator error checking\n");
             fprintf (stdout, "    verbose  true/false    set simulator verbosity\n");
+            fprintf (stdout, "    source   true/false    show source lines (assembly or C) at the prompt\n");
+            fprintf (stdout, "    mode     asm|c|lua     which source the overlay shows\n");
             fprintf (stdout, "    (values: true/false, on/off, yes/no, 1/0)\n\n");
             fprintf (stdout, "NOTE:\n");
             fprintf (stdout, "    Setting system resources is done outside any access-control\n");
@@ -208,6 +216,43 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    stop execution.\n\n");
             fprintf (stdout, "NOTE:\n");
             fprintf (stdout, "    Could cause runtime problems depending on what is ignored.\n\n");
+            break;
+
+        case INPUT_ASM:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    asm INSTRUCTION\n");
+            fprintf (stdout, "    asm @0xADDRESS INSTRUCTION\n");
+            fprintf (stdout, "    asm -x INSTRUCTION\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Assemble one Vircon32 instruction. Without options the machine\n");
+            fprintf (stdout, "    code replaces the instruction at the current IP (or at ADDRESS);\n");
+            fprintf (stdout, "    with -x it is executed once and memory is left alone.\n\n");
+            fprintf (stdout, "    Operands follow the Vircon32 assembler: registers (R0-R15, CR, SR,\n");
+            fprintf (stdout, "    DR, BP, SP), numbers (decimal, 0xHEX, 0bBIN, 0OCT, floats), labels\n");
+            fprintf (stdout, "    from loaded debug files, IOPort names, and the GPU/SPU constants.\n\n");
+            fprintf (stdout, "EXAMPLES:\n");
+            fprintf (stdout, "    asm mov R1, 0x10\n");
+            fprintf (stdout, "    asm @0x20000100 out GPU_Command, GPUCommand_ClearScreen\n");
+            fprintf (stdout, "    asm -x iadd R0, -1\n\n");
+            fprintf (stdout, "NOTE:\n");
+            fprintf (stdout, "    A replacement may not be longer than the instruction it replaces;\n");
+            fprintf (stdout, "    a shorter one is padded with MOV R0, R0 (a no-op).\n\n");
+            break;
+
+        case INPUT_SAVE:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    save [FILENAME]\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Write the whole machine state (registers, RAM, IOPorts, GPU, SPU,\n");
+            fprintf (stdout, "    timers) to a file; default 'v32sim.DATESTAMP.sav'.\n\n");
+            break;
+
+        case INPUT_RESTORE:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    restore FILENAME\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Restore a state written by 'save'. The BIOS, cartridge and memory\n");
+            fprintf (stdout, "    card loaded now must be the ones in use when it was saved.\n\n");
             break;
 
         case INPUT_SCREENSHOT:
@@ -362,21 +407,26 @@ void  help  (uint8_t  item)
 
 		case INPUT_WATCH:
 			fprintf (stdout, "SYNOPSIS:\n");
-			fprintf (stdout, "    watch REG OP VALUE [LABEL]\n\n");
+			fprintf (stdout, "    watch LOCATION OP VALUE [LABEL]\n\n");
 			fprintf (stdout, "DESCRIPTION:\n");
-			fprintf (stdout, "    Set a watchpoint on a register. When the register's value\n");
-			fprintf (stdout, "    meets the condition, execution will break and notify you.\n\n");
-			fprintf (stdout, "    REG:  Any register (R0-R15, BP, SP, CR, SR, DR, IP, IR, IV)\n");
-			fprintf (stdout, "    OP:   =, !=, <, >, <=, >=\n");
-			fprintf (stdout, "    VALUE: any integer (0x.. hex, 0b.. binary, 0.. octal, or decimal)\n");
-			fprintf (stdout, "    LABEL: Optional label for the watchpoint\n\n");
+			fprintf (stdout, "    Set a watchpoint. Execution breaks when the comparison BECOMES\n");
+			fprintf (stdout, "    true (it is edge-triggered: a condition that stays true does not\n");
+			fprintf (stdout, "    break again until it has been false in between).\n\n");
+			fprintf (stdout, "    LOCATION: a register (R0-R15, BP, SP, CR, SR, DR, IP, IR, IV),\n");
+			fprintf (stdout, "              an IOPort (symbol, or 0x with up to 3 digits), or a\n");
+			fprintf (stdout, "              memory word (0x with more digits)\n");
+			fprintf (stdout, "    OP:       =, ==, !=, <, >, <=, >=\n");
+			fprintf (stdout, "    VALUE:    a number, a register, an IOPort symbol, or [0xMEM],\n");
+			fprintf (stdout, "              [IOPORT], [REG] to compare with another location\n");
+			fprintf (stdout, "    LABEL:    optional name for the watchpoint\n\n");
 			fprintf (stdout, "EXAMPLES:\n");
 			fprintf (stdout, "    watch SP <= 0x20000000 stack_underflow\n");
-			fprintf (stdout, "    watch R0 != 0x00000000\n");
-			fprintf (stdout, "    watch BP > 0x2000FFFF stack_overflow\n\n");
+			fprintf (stdout, "    watch 0x20001000 != 0\n");
+			fprintf (stdout, "    watch TIM_FrameCounter = 60\n");
+			fprintf (stdout, "    watch R1 > [0x20000010]\n\n");
 			fprintf (stdout, "NOTES:\n");
-			fprintf (stdout, "    The label is optional. With no arguments, watch lists the\n");
-			fprintf (stdout, "    watchpoints. Comparisons are unsigned 32-bit.\n\n");
+			fprintf (stdout, "    With no arguments, watch lists the watchpoints. Comparisons are\n");
+			fprintf (stdout, "    unsigned 32-bit.\n\n");
 			break;
 
 		case INPUT_WATCHLIST:

@@ -3,25 +3,139 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// wloc_read() - read the current value of a location without side effects (reading
+// RNG_CurrentValue through ioports_get() would consume a random number)
+//
+static uint8_t wloc_read(const wloc_t *loc, uint32_t *value)
+{
+    word_t   *w = NULL;
+    data_t   *p = NULL;
+
+    switch (loc->kind)
+    {
+        case WLOC_IMM:
+            *value = loc->id;
+            return TRUE;
+
+        case WLOC_REG:
+            if (reg == NULL || loc->id >= NUM_REGISTERS)
+            {
+                return FALSE;
+            }
+            *value = (reg + loc->id)->value.raw;
+            return TRUE;
+
+        case WLOC_MEM:
+            w = memory_get(loc->id, TRUE);
+            if (w == NULL)
+            {
+                return FALSE;
+            }
+            *value = w->raw;
+            return TRUE;
+
+        case WLOC_IOPORT:
+            if (ioports_chk((uint16_t) loc->id, FLAG_READ, TRUE) != TRUE)
+            {
+                return FALSE;
+            }
+            p = (*(ioports + ((loc->id & 0x0700) >> 8))) + (loc->id & 0x00FF);
+            *value = p->value.raw;
+            return TRUE;
+    }
+    return FALSE;
+}
+
+static void wloc_name(const wloc_t *loc, char *out, size_t len)
+{
+    int8_t *name = NULL;
+
+    switch (loc->kind)
+    {
+        case WLOC_REG:
+            snprintf(out, len, "%s", reg_get_name((uint8_t) loc->id));
+            break;
+        case WLOC_MEM:
+            snprintf(out, len, "[0x%.8X]", loc->id);
+            break;
+        case WLOC_IOPORT:
+            name = (*(ioports + ((loc->id & 0x0700) >> 8)) + (loc->id & 0x00FF))->name;
+            if (name != NULL)
+            {
+                snprintf(out, len, "%s", name);
+            }
+            else
+            {
+                snprintf(out, len, "0x%.3X", loc->id);
+            }
+            break;
+        default:
+            snprintf(out, len, "0x%.8X", loc->id);
+            break;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// wpoint_eval() - evaluate the condition of a watchpoint; optionally returns the
+// current values of both sides. An unreadable location makes the condition false.
+//
+static uint8_t wpoint_eval(wpoint_t *wp, uint32_t *lhs_out, uint32_t *rhs_out)
+{
+    uint32_t l = 0;
+    uint32_t r = 0;
+    uint8_t  result = FALSE;
+
+    if (wloc_read(&wp->target, &l) == TRUE && wloc_read(&wp->rhs, &r) == TRUE)
+    {
+        switch (wp->operator)
+        {
+            case WATCH_OP_EQUAL:         result = (l == r); break;
+            case WATCH_OP_NOT_EQUAL:     result = (l != r); break;
+            case WATCH_OP_LESS:          result = (l <  r); break;
+            case WATCH_OP_GREATER:       result = (l >  r); break;
+            case WATCH_OP_LESS_EQUAL:    result = (l <= r); break;
+            case WATCH_OP_GREATER_EQUAL: result = (l >= r); break;
+            default: break;
+        }
+    }
+    if (lhs_out != NULL) *lhs_out = l;
+    if (rhs_out != NULL) *rhs_out = r;
+    return result;
+}
+
+void wpoint_describe(wpoint_t *wp, char *out, size_t len)
+{
+    char a[64];
+    char b[64];
+
+    wloc_name(&wp->target, a, sizeof(a));
+    wloc_name(&wp->rhs, b, sizeof(b));
+    snprintf(out, len, "%s %s %s", a, wpoint_op_to_string(wp->operator), b);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // wpoint_new() - Create a new wpoint node
 //
-wpoint_t *wpoint_new(uint8_t reg_id, uint8_t op, uint32_t value)
+wpoint_t *wpoint_new(wloc_t target, uint8_t op, wloc_t rhs)
 {
     wpoint_t *wp = NULL;
 
-    wp = (wpoint_t *) ralloc(sizeof(wpoint_t), 1, FLAG_NONE);
+    wp = (wpoint_t *) ralloc(sizeof(wpoint_t), 1, FLAG_ZERO);
     if (wp == NULL)
     {
         fprintf(stderr, "[ERROR] Failed to allocate memory for wpoint\n");
         return NULL;
     }
 
-    wp->reg_id = reg_id;
+    wp->target = target;
+    wp->rhs = rhs;
     wp->operator = op;
-    wp->value = value;
     wp->active = TRUE;
     wp->label = NULL;
     wp->next = NULL;
+    wp->was_true = wpoint_eval (wp, NULL, NULL);   // do not fire for what is already true
 
     return wp;
 }
@@ -144,42 +258,21 @@ uint8_t wpoint_remove_by_label(wpoint_t **list, const int8_t *label)
 uint8_t wpoint_check(void)
 {
     wpoint_t *tmp = wpoint;
-    uint32_t reg_value = 0;
-    uint8_t triggered = FALSE;
+    uint32_t  l = 0;
+    uint32_t  r = 0;
+    uint8_t   cond = FALSE;
+    uint8_t   triggered = FALSE;
+    char      desc[160];
 
     while (tmp != NULL)
     {
         if (tmp->active)
         {
-            reg_value = REG(tmp->reg_id);
-
-            switch (tmp->operator)
+            cond = wpoint_eval(tmp, &l, &r);
+            if ((cond == TRUE) && (tmp->was_true == FALSE))
             {
-                case WATCH_OP_EQUAL:
-                    triggered = (reg_value == tmp->value);
-                    break;
-                case WATCH_OP_NOT_EQUAL:
-                    triggered = (reg_value != tmp->value);
-                    break;
-                case WATCH_OP_LESS:
-                    triggered = (reg_value < tmp->value);
-                    break;
-                case WATCH_OP_GREATER:
-                    triggered = (reg_value > tmp->value);
-                    break;
-                case WATCH_OP_LESS_EQUAL:
-                    triggered = (reg_value <= tmp->value);
-                    break;
-                case WATCH_OP_GREATER_EQUAL:
-                    triggered = (reg_value >= tmp->value);
-                    break;
-                default:
-                    fprintf(stderr, "[ERROR] Invalid wpoint operator: %d\n", tmp->operator);
-                    break;
-            }
-
-            if (triggered == TRUE)
-            {
+                triggered = TRUE;
+                wpoint_describe(tmp, desc, sizeof(desc));
                 if (colorflag == TRUE)
                 {
                     fprintf(stdout, "\e[1;31m");
@@ -189,22 +282,18 @@ uint8_t wpoint_check(void)
                 {
                     fprintf(stdout, "%s ", tmp->label);
                 }
-                fprintf(stdout, "%s %s 0x%.8X (current: 0x%.8X)\n",
-                        reg_get_name(tmp->reg_id),
-                        wpoint_op_to_string(tmp->operator),
-                        tmp->value,
-                        reg_value);
+                fprintf(stdout, "%s (current: 0x%.8X vs 0x%.8X)\n", desc, l, r);
                 if (colorflag == TRUE)
                 {
                     fprintf(stdout, "\e[m");
                 }
-                return TRUE;
             }
+            tmp->was_true = cond;
         }
         tmp = tmp->next;
     }
 
-    return FALSE;
+    return triggered;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,11 +316,12 @@ void wpoint_display(void)
 
     while (tmp != NULL)
     {
-        fprintf(stdout, "[%d] %s %s 0x%.8X (%s)",
+        char desc[160];
+
+        wpoint_describe(tmp, desc, sizeof(desc));
+        fprintf(stdout, "[%d] %s (%s)",
                 count,
-                reg_get_name(tmp->reg_id),
-                wpoint_op_to_string(tmp->operator),
-                tmp->value,
+                desc,
                 tmp->active ? "active" : "inactive");
         if (tmp->label != NULL)
         {

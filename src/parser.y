@@ -17,6 +17,7 @@
  *   watch [REG OP VALUE [LABEL]]  watchlist                unwatch INDEX|LABEL
  *   load PAGE:PATH                unload PAGE
  *   gamepad [N] [COMMAND]         help [COMMAND]            screenshot [FILE]
+ *   save [FILE]                   restore FILE
  *
  *   OPERAND  := BASE | '[' BASE ']'                   ('[ ]' dereferences)
  *   BASE     := REGISTER | reg | IOPORT_SYMBOL | HEXNUM | HEXNUM '-' HEXNUM
@@ -32,6 +33,8 @@ static int   operand_number (tok_t *t, uint32_t *value);
 static int   operand_iosym  (tok_t *t);
 static void  set_fmt        (char ch);
 static int   set_lhs_word   (tok_t *t);
+static int   loc_number     (tok_t *t, wloc_t *loc);
+static int   loc_iosym      (tok_t *t, wloc_t *loc);
 %}
 
 %union
@@ -47,7 +50,7 @@ static int   set_lhs_word   (tok_t *t);
 %token       T_EQEQ T_NE T_LE T_GE
 %token       T_BACKTRACE T_BREAK T_CONTINUE T_DISPLAY T_GAMEPAD T_HELP T_IGNORE
 %token       T_INVENTORY T_LABEL T_LOAD T_NEXT T_PRINT T_PROFILE T_QUIT T_REPLACE
-%token       T_SCREENSHOT T_SET T_STEP T_UNBREAK T_UNDISPLAY T_UNLABEL T_UNLOAD
+%token       T_ASM T_RESTORE T_SAVE T_SCREENSHOT T_SET T_STEP T_UNBREAK T_UNDISPLAY T_UNLABEL T_UNLOAD
 %token       T_UNWATCH T_VERSION T_WATCH T_WATCHLIST
 %token       T_BADCMD T_BAD
 
@@ -72,8 +75,17 @@ command
     | T_INVENTORY                       { CMD -> id = CMD_INVENTORY; }
     | T_VERSION                         { CMD -> id = CMD_VERSION;   }
     | T_WATCHLIST                       { CMD -> id = CMD_WATCHLIST; }
+    | T_SAVE                            { CMD -> id = CMD_SAVE; }
+    | T_ASM T_PATH                      { CMD -> id = CMD_ASM;     CMD -> path = $2.text; }
+    | T_SAVE T_PATH                     { CMD -> id = CMD_SAVE;    CMD -> path = $2.text; }
+    | T_RESTORE T_PATH                  { CMD -> id = CMD_RESTORE; CMD -> path = $2.text; }
+    | T_RESTORE
+        {
+            cmd_seterr ("restore: a file name is required");
+            YYERROR;
+        }
     | T_SCREENSHOT                      { CMD -> id = CMD_SCREENSHOT; }
-    | T_SCREENSHOT name                 { CMD -> id = CMD_SCREENSHOT; CMD -> name = $2.text; }
+    | T_SCREENSHOT T_PATH               { CMD -> id = CMD_SCREENSHOT; CMD -> path = $2.text; }
     | break_cmd
     | label_cmd
     | print_cmd
@@ -216,21 +228,34 @@ repl_item
 
 watch_cmd
     : T_WATCH                           { CMD -> id = CMD_WATCHLIST; }
-    | T_WATCH T_REG relop watch_val
+    | T_WATCH watch_target relop watch_rhs
         {
-            CMD -> id = CMD_WATCH; CMD -> watch_reg = (uint8_t) $2.u; CMD -> watch_op = (uint8_t) $3;
+            CMD -> id = CMD_WATCH; CMD -> watch_op = (uint8_t) $3;
         }
-    | T_WATCH T_REG relop watch_val name
+    | T_WATCH watch_target relop watch_rhs name
         {
-            CMD -> id = CMD_WATCH; CMD -> watch_reg = (uint8_t) $2.u; CMD -> watch_op = (uint8_t) $3;
+            CMD -> id = CMD_WATCH; CMD -> watch_op = (uint8_t) $3;
             CMD -> name = $5.text;
         }
     ;
 
-watch_val
-    : T_NUM                             { CMD -> watch_val = $1.u; }
-    | '-' T_NUM                         { CMD -> watch_val = (uint32_t) (0 - $2.u); }
-    | '+' T_NUM                         { CMD -> watch_val = $2.u; }
+/* what is watched: a register, an IOPort (symbol or 0x...), or a memory word (0x....) */
+watch_target
+    : T_REG                             { CMD -> watch_target.kind = WLOC_REG;    CMD -> watch_target.id = $1.u; }
+    | T_IOSYM                           { if (loc_iosym (&$1, &CMD -> watch_target)) YYERROR; }
+    | T_NUM                             { if (loc_number (&$1, &CMD -> watch_target)) YYERROR; }
+    ;
+
+/* what it is compared with: a number, a register, an IOPort symbol, or [0x...] contents */
+watch_rhs
+    : T_NUM                             { CMD -> watch_rhs.kind = WLOC_IMM; CMD -> watch_rhs.id = $1.u; }
+    | '-' T_NUM                         { CMD -> watch_rhs.kind = WLOC_IMM; CMD -> watch_rhs.id = (uint32_t) (0 - $2.u); }
+    | '+' T_NUM                         { CMD -> watch_rhs.kind = WLOC_IMM; CMD -> watch_rhs.id = $2.u; }
+    | T_REG                             { CMD -> watch_rhs.kind = WLOC_REG; CMD -> watch_rhs.id = $1.u; }
+    | T_IOSYM                           { if (loc_iosym (&$1, &CMD -> watch_rhs)) YYERROR; }
+    | '[' T_NUM ']'                     { if (loc_number (&$2, &CMD -> watch_rhs)) YYERROR; }
+    | '[' T_IOSYM ']'                   { if (loc_iosym (&$2, &CMD -> watch_rhs)) YYERROR; }
+    | '[' T_REG ']'                     { CMD -> watch_rhs.kind = WLOC_REG; CMD -> watch_rhs.id = $2.u; }
     ;
 
 relop
@@ -320,6 +345,36 @@ static int  operand_iosym (tok_t *t)
 }
 
 /*
+ * loc_number()/loc_iosym(): watchpoint locations. As with print, a hexadecimal number
+ * of up to 3 digits is an IOPort and a longer one a memory address.
+ */
+static int  loc_number (tok_t *t, wloc_t *loc)
+{
+    if (t -> kind != TOK_HEX)
+    {
+        cmd_seterr ("'%s': addresses and IOPort numbers must be hexadecimal (0x...)", t -> text);
+        return (1);
+    }
+    loc -> kind  = (t -> digits <= 3) ? WLOC_IOPORT : WLOC_MEM;
+    loc -> id    = t -> u;
+    return (0);
+}
+
+static int  loc_iosym (tok_t *t, wloc_t *loc)
+{
+    int16_t  port  = ioports_num ((uint8_t *) t -> text);
+
+    if (port < 0)
+    {
+        cmd_seterr ("unknown IOPort '%s'", t -> text);
+        return (1);
+    }
+    loc -> kind  = WLOC_IOPORT;
+    loc -> id    = (uint32_t) port;
+    return (0);
+}
+
+/*
  * set_fmt(): /b /B /d /D /f /o /s /u /x /X
  */
 static void  set_fmt (char ch)
@@ -360,6 +415,8 @@ static int  set_lhs_word (tok_t *t)
         { "debug",    OPT_DEBUG    },
         { "profile",  OPT_PROFILE  },
         { "verbose",  OPT_VERBOSE  },
+        { "source",   OPT_SOURCE   },
+        { "mode",     OPT_MODE     },
         { NULL,       OPT_NONE     }
     };
     int  index  = 0;

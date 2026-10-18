@@ -15,6 +15,8 @@ int8_t   *commandfile;
 int8_t   *biosasmdebug;
 int8_t   *cartasmdebug;
 int8_t   *bioscdebug;
+uint8_t   sourceflag;          // show source line overlay
+int8_t   *debugdir;          // extra place to look for debug files
 int8_t   *cartcdebug;
 data_t   *reg;
 int8_t   *token_label;
@@ -101,7 +103,6 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // declare and initialize variables
     //
-    FILE     *fptr                  = NULL;
     linked_l *btmp                  = NULL;
     linked_l *tmp                   = NULL;
     size_t    len                   = 0;
@@ -109,13 +110,8 @@ int32_t   main (int32_t  argc, char **argv)
     uint8_t   decodeflags           = FLAG_NONE;
     uint8_t   errorflag             = FLAG_NONE;
     uint8_t   processflag           = FALSE;
-    uint8_t  *filename              = NULL;
     uint32_t  value                 = 0;
-    uint32_t  line_number           = 0;
     uint32_t  old_count             = 0;
-    uint8_t  *line_input            = NULL;
-    int32_t   index                 = 0;
-    size_t    buffer_size           = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -127,6 +123,7 @@ int32_t   main (int32_t  argc, char **argv)
     commandfile                     = NULL;
     rom_offset                      = BIOS_START_OFFSET;
     modeflag                        = FLAG_ASM;
+    sourceflag                      = FALSE;
     branchflag                      = FALSE;
     biosasmdebugflag                = FALSE;
     bioscdebugflag                  = FALSE;
@@ -249,15 +246,20 @@ int32_t   main (int32_t  argc, char **argv)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    gpu_reset ();
+    spu_reset ();
+
     // Initialize BIOS (load contents into memory), optionally loading any debug data
     //
     chk                             = load_memory (V32_PAGE_BIOS, biosfile);
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // load any debug file labels pertaining to page being loaded
+    // load any debug file labels pertaining to page being loaded (the debug file is
+    // searched for next to the V32 file, unless -n was given or the file was named
+    // explicitly with a --*-debug option)
     //
-    if ((biosasmdebugflag          == TRUE)  &&
+    if (((biosasmdebugflag != MU) && (biosasmdebug == NULL))  &&
         (chk                       == TRUE)  &&
         (biosfile                  != NULL))
     {
@@ -268,7 +270,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // load any debug file labels pertaining to page being loaded
     //
-    if ((bioscdebugflag            == TRUE)  &&
+    if (((bioscdebugflag != MU) && (bioscdebug == NULL))  &&
         (chk                       == TRUE)  &&
         (biosfile                  != NULL))
     {
@@ -285,7 +287,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // load any debug file labels pertaining to page being loaded
     //
-    if ((cartasmdebugflag          == TRUE) &&
+    if (((cartasmdebugflag != MU) && (cartasmdebug == NULL)) &&
         (chk                       == TRUE) &&
         (cartfile                  != NULL))
     {
@@ -296,7 +298,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // load any debug file labels pertaining to page being loaded
     //
-    if ((cartcdebugflag            == TRUE) &&
+    if (((cartcdebugflag != MU) && (cartcdebug == NULL)) &&
         (chk                       == TRUE) &&
         (cartfile                  != NULL))
     {
@@ -344,6 +346,11 @@ int32_t   main (int32_t  argc, char **argv)
     // Initialize MEMC (load contents into memory)
     //
     chk                             = load_memory (V32_PAGE_MEMC, memcfile);
+    if ((memcfile                  != NULL) &&
+        (chk                       == FALSE))
+    {
+        exit (FILE_POSITION_ERROR);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -416,6 +423,10 @@ int32_t   main (int32_t  argc, char **argv)
     // run mode or continues
     //
     signal (SIGINT, sigint);
+    signal (SIGSEGV, sigcrash);
+    signal (SIGBUS,  sigcrash);
+    signal (SIGFPE,  sigcrash);
+    signal (SIGABRT, sigcrash);
 
     /*
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
@@ -581,48 +592,7 @@ int32_t   main (int32_t  argc, char **argv)
             //
             do
             {
-                if (modeflag          == FLAG_C)
-                {
-                    //fprintf (stdout, "** MODEFLAG FLAG_C\n");
-                    tmp                = find_value (lpoint, REG(IP));
-                    if (tmp           != NULL)
-                    {
-                        if (filename  == NULL)
-                        {
-                            fptr       = fopen (tmp -> cname, "r");
-                            line_number  = 1;
-                        }
-                        else if (strcmp (filename, tmp -> cname) == 0)
-                        {
-                            fclose (fptr);
-                            fptr       = fopen (tmp -> cname, "r");
-                            line_number  = 1;
-                        }
-
-                        if (tmp -> LINE <  line_number)
-                        {
-                            if (fptr != NULL)
-                                fclose (fptr);
-                            fptr       = fopen (tmp -> cname, "r");
-                            line_number  = 1;
-                        }
-
-                        for (index     = 1;
-                             index    <  tmp -> LINE;
-                             index     = index + 1)
-                        {
-                            len        = getline ((char **)&line_input, &buffer_size, fptr);
-                        }
-                        line_number    = index;
-
-                        /*
-                        if (len       >  0)
-                            fprintf (stdout, "%4u: %s\n", tmp -> LINE, line_input);
-                        else
-                            fprintf (stdout, "empty (line_number: %u, tmp->LINE: %u\n", line_number, tmp->LINE);
-                            */
-                    }
-                }
+                source_overlay (REG(IP));
 
                 if (sys_reg_show      == TRUE)
                 {
@@ -752,12 +722,12 @@ int32_t   main (int32_t  argc, char **argv)
             // the error occurred on get incremented?
             //
             REG(R0)                    = sys_error;
-            REG(R1)                    = REG(IP);
+            REG(R1)                    = REG(IP) + (((REG(IR) & IMMVAL_MASK) != 0) ? 2 : 1);
             REG(R2)                    = REG(IR);
             REG(R3)                    = REG(IV);
 
-            REG(SP)                    = 0x00000000;
-            REG(BP)                    = 0x00000000;
+            REG(SP)                    = 0x003FFFFF;   // the last word of RAM, as at reset
+            REG(BP)                    = 0x003FFFFF;
 
             REG(IP)                    = BIOS_ERROR_OFFSET;
             rom_offset                 = BIOS_ERROR_OFFSET;
@@ -872,6 +842,8 @@ int32_t   main (int32_t  argc, char **argv)
             ignoreflag                 = FALSE;
         }
     }
+
+    memc_save ();   // flush any memory card changes to its file
 
     fprintf (stdout, "------------------------------------\n");
     fprintf (stdout, "IP: 0x%.8X\n", REG(IP));

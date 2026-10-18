@@ -327,7 +327,13 @@ static void  output_render (uint32_t  data, float  fdata,
             break;
 
         case FORMAT_DECODE:
-            decode (data, immv, (float) immv, dflags);
+            {
+                // the immediate's bit pattern is reinterpreted as a float, not converted
+                float  fimmv  = 0.0f;
+
+                memcpy (&fimmv, &immv, sizeof (fimmv));
+                decode (data, immv, fimmv, dflags);
+            }
             break;
     }
 }

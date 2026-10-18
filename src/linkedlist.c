@@ -150,6 +150,24 @@ linked_l *find_value (linked_l *list, uint32_t  value)
     return (tmp);
 }
 
+//
+// find_label(): like find_value(), but only considers nodes that carry a label (debug
+// files hold an entry for every instruction, most of them without one)
+//
+linked_l *find_label_at (linked_l *list, uint32_t  value)
+{
+    linked_l *tmp               = list;
+
+    while ((tmp                != NULL) &&
+           ((tmp -> RAW        != value) ||
+            (tmp -> label      == NULL)))
+    {
+        tmp                     = tmp -> next;
+    }
+
+    return (tmp);
+}
+
 linked_l *find_ptr (linked_l *list, void *pointer)
 {
     linked_l *tmp               = list;

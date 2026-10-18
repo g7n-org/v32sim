@@ -39,6 +39,9 @@
 #define  RAM_FIRST_ADDR          0x00000000
 #define  BIOS_FIRST_ADDR         0x10000000
 #define  CART_FIRST_ADDR         0x20000000
+#define  MEMC_WORDS              262144
+#define  MEMC_SIGNATURE0         0x2D323356   // "V32-"
+#define  MEMC_SIGNATURE1         0x434D454D   // "MEMC"
 #define  MEMC_FIRST_ADDR         0x30000000
 
 #define  RAM_FINAL_ADDR          0x003FFFFF
@@ -122,6 +125,9 @@
 #define  INPUT_WATCHLIST         28
 #define  INPUT_UNWATCH           29
 #define  INPUT_VERSION           30
+#define  INPUT_SAVE              31
+#define  INPUT_RESTORE           32
+#define  INPUT_ASM               33
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A

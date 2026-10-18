@@ -25,6 +25,7 @@
 enum cmd_id
 {
     CMD_NONE                     = 0,
+    CMD_ASM,
     CMD_BACKTRACE,
     CMD_BREAK,
     CMD_CONTINUE,
@@ -40,6 +41,8 @@ enum cmd_id
     CMD_PROFILE,
     CMD_QUIT,
     CMD_REPLACE,
+    CMD_RESTORE,
+    CMD_SAVE,
     CMD_SCREENSHOT,
     CMD_SET,
     CMD_STEP,
@@ -121,6 +124,8 @@ typedef struct operand
 #define  OPT_DEBUG               4
 #define  OPT_PROFILE             5
 #define  OPT_VERBOSE             6
+#define  OPT_SOURCE              7
+#define  OPT_MODE                8
 
 #define  CMD_MAX_REPLACE         3
 
@@ -153,9 +158,9 @@ typedef struct cmd
     } rep[CMD_MAX_REPLACE];
 
     // watch
-    uint8_t    watch_reg;
+    wloc_t     watch_target;
+    wloc_t     watch_rhs;
     uint8_t    watch_op;             // WATCH_OP_*
-    uint32_t   watch_val;
 
     // parsing bookkeeping
     char     **pool;                 // every string allocated while parsing

@@ -163,7 +163,7 @@ void  init_ioports  (void)
                 break;
 
             case GPU_ClearColor:
-                (pptr+index) -> value.i32  = 0x000000FF;
+                (pptr+index) -> value.i32  = 0xFF000000; // opaque black (0xAABBGGRR)
                 sprintf (nptr, "GPU_ClearColor");
                 (pptr+index) -> fmt        = FORMAT_HEX;
                 break;
@@ -284,6 +284,7 @@ void  init_ioports  (void)
                 break;
 
             case SPU_SoundLength:
+                (pptr+index) -> flag       = FLAG_READ;
                 sprintf (nptr, "SPU_SoundLength");
                 break;
 
@@ -300,6 +301,7 @@ void  init_ioports  (void)
                 break;
 
             case SPU_ChannelState:
+                (pptr+index) -> flag       = FLAG_READ;
                 (pptr+index) -> value.i32  = 0x40;
                 sprintf (nptr, "SPU_ChannelState");
                 break;
@@ -742,48 +744,9 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 //
                 *iptr                  = i32;
 
-                if (*iptr             == GPUCommand_ClearScreen)
-                {
-                    value              = IPORTGET(GPU_ClearColor);
-                    // clear the GD image with indicated color
-                }
-                else if (*iptr        == GPUCommand_DrawRegion)
-                {
-                    // obtain current region and attributes, display it on GD image
-                    num                = IPORTGET(GPU_SelectedTexture);
-                    id                 = IPORTGET(GPU_SelectedRegion);
-                    if (num           == -1)
-                    {
-                        rptr           = bios_vtex       -> region;
-                    }
-                    else if (num      != -2)
-                    {
-                        if (cart_vtex == NULL)
-                        {
-                            break;
-                        }
-                        rptr           = (cart_vtex+num) -> region;
-                    }
-
-                    if ((num          != -2) &&
-                        (id           != -2))
-                    {
-                        ; // obtain each attribute, do what needs to be done
-                        /*
-                        rptr -> minX  = IPORTGET(GPU_RegionMinX);
-                        rptr -> minY  = IPORTGET(GPU_RegionMinY);
-                        rptr -> maxX  = IPORTGET(GPU_RegionMaxX);
-                        rptr -> maxY  = IPORTGET(GPU_RegionMaxY);
-                        rptr -> hotX  = IPORTGET(GPU_RegionHotspotX);
-                        rptr -> hotY  = IPORTGET(GPU_RegionHotspotY);
-                        */
-                    }
-                }
+                gpu_command (i32);
                 break;
-//| `0x12` | `GPUCommand_DrawRegionZoomed`     | draw region: rotation off, zoom on  |
-//| `0x13` | `GPUCommand_DrawRegionRotated`    | draw region: rotation on , zoom off |
-//| `0x14` | `GPUCommand_DrawRegionRotozoomed` | draw region: rotation on , zoom on  |
-                    
+
             case GPU_SelectedTexture:
 
                 ////////////////////////////////////////////////////////////////////////
@@ -1005,10 +968,28 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
             case GPU_DrawingScaleX:
             case GPU_DrawingScaleY:
             case GPU_DrawingAngle:
+                *fptr             = f32;
+                break;
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // SPU ports have behavior of their own (see spu.c)
+            //
+            case SPU_Command:
             case SPU_GlobalVolume:
+            case SPU_SelectedSound:
+            case SPU_SelectedChannel:
+            case SPU_SoundLength:
+            case SPU_SoundPlayWithLoop:
+            case SPU_SoundLoopStart:
+            case SPU_SoundLoopEnd:
+            case SPU_ChannelState:
+            case SPU_ChannelAssignedSound:
             case SPU_ChannelVolume:
             case SPU_ChannelSpeed:
-                *fptr             = f32;
+            case SPU_ChannelLoopEnabled:
+            case SPU_ChannelPosition:
+                spu_write (portaddr, i32, f32);
                 break;
 
             case INP_SelectedGamepad:

@@ -7,34 +7,49 @@ registers, memory, and IOPorts,  set breakpoints and watchpoints, profile
 execution,  and  drive  the  machine from  command  files  for  automated
 testing.
 
-It is not an emulator in the audiovisual sense: there is no screen and no
-sound. It  models the  CPU, the  memory system,  and the  IOPorts closely
-enough to  study, debug, and hack  Vircon32 software — and  to automate
-cart testing.
+It is not a player: there is  no window and  no audio output. It models
+the CPU, the memory system, the IOPorts, a software GPU (so `screenshot`
+can write the screen to a PNG), and an SPU (channel and sound state, but
+nothing is played)  closely enough to study,  debug, and hack Vircon32
+software — and to automate cart testing.
 
 ## Current State
 
-- All 64 CPU instructions are implemented (not all exhaustively tested yet)
+- All 64 CPU instructions are implemented and have been checked against the
+  DesktopEmulator sources (repeat counts of `MOVS`/`SETS`/`CMPS`, logical right
+  shifts in `SHL`, and the `ACOS`/`ATAN2`/`LOG`/`POW` errors follow the console)
 - Registers (R0-R15 with their aliases, plus system registers IP/IR/IV) and
   the four memory pages (RAM, BIOS, CART, MEMCARD) behave as the hardware does
 - System errors (invalid memory/port access, division by zero, etc.) record
-  the machine state into R0-R3, wipe SP/BP, and redirect execution to the
-  BIOS error handler at `0x10000000`
-- Functional IOPort groups: TIM, RNG, INP (gamepads), CAR, MEM, and most GPU
-  ports (textures, regions, drawing parameters)
-- SPU ports exist and store/retrieve values, but have no sound engine behind
-  them (no audio playback)
-- Command front end built on **flex/bison** (`lexer.l`, `parser.y`): commands
-  may be abbreviated, `#` starts a comment, and syntax errors report the
-  offending token and column
-- Register watchpoints (`watch`), breakpoints, display list, labels, profiling
+  the machine state into R0-R3, reset SP/BP to the last word of RAM, and
+  redirect execution to the BIOS error handler at `0x10000000`
+- IOPort groups: TIM (with leap years), RNG, INP (gamepads), CAR, MEM, GPU, SPU
+- **GPU**: a software renderer with a 640x360 framebuffer: clear, draw, zoom,
+  rotate, roto-zoom, blending (alpha/add/subtract), multiply color, and the
+  per-frame pixel budget (`GPU_RemainingPixels`); `screenshot` writes it to a PNG
+- **SPU**: 16 channels with sound selection, volume, speed, loop and position
+  state advance every frame, and VSND data from the BIOS and cartridge is
+  loaded; there is no audio output
+- **Memory card**: the `V32-MEMC` header and size are validated, and changes
+  are written back to the file on exit (and on `unload`)
+- **Watchpoints** on registers, IOPorts, and memory words, compared with a
+  number or with another register/IOPort/memory word; edge-triggered
+- **Save / restore** of the whole machine state
+- **Live assembler**: `asm` assembles one instruction and patches it into
+  memory, or runs it once
+- **Source overlay**: the assembly (or C) source line for the current IP is
+  printed at the prompt
+- Command front end built on **flex/bison** (`lexer.l`, `parser.y`), and a second
+  flex/bison pair for the assembler (`asm_lexer.l`, `asm_parser.y`): commands may
+  be abbreviated, `#` starts a comment, and syntax errors report the offending
+  token and column
+- `ignore` skips the current instruction; a **SIGSEGV/SIGBUS/SIGFPE/SIGABRT**
+  handler prints the simulator state before dying
 - Experimental **Lua mode** (`--langmode=lua`): memory words are inspected for
   Lua value tags (strings, tables, functions, nil/true/false) when displaying
   with `/B` or `/s`
-- **C mode** (`--langmode=C`) selects C-style label handling; the C source line
-  is *not* displayed yet (see TODO.md)
-- Labels are loaded from debug files only when a `--*-debug` option is given
-  or the debug file is found next to the V32 file (current directory)
+- **Debug files** (labels and line numbers) are loaded automatically (see
+  [Debug Files](#debug-files)); `-n` turns that off
 
 ## Table of Contents
 
@@ -61,10 +76,18 @@ cart testing.
 │   ├── lexer.l           flex scanner for prompt / command-file lines
 │   ├── parser.y          bison grammar; fills in a parsed command (cmd_t)
 │   ├── command.c         command table, abbreviations, and all executors
-│   └── input.c           prompt loop, readline, command-file input
+│   ├── asm_lexer.l       flex scanner of the live assembler (prefix `asm`)
+│   ├── asm_parser.y      bison grammar of the live assembler (prefix `asm`)
+│   ├── assembly.c        mnemonic table, symbols, instruction encoding
+│   ├── gpu.c             software GPU, framebuffer, PNG screenshot
+│   ├── spu.c             SPU channel / sound model, VSND loading
+│   ├── savestate.c       save / restore of the machine state
+│   ├── source.c          assembly / C source-line overlay
+│   ├── watchpoint.c      register / IOPort / memory watchpoints
+│   └── input.c           prompt loop, readline, command-file input, debug files
 ├── inc/                  all headers (command.h, version.h, ...)
 ├── obj/                  objects, dependency files, and the generated
-│                         lexer.c / parser.c / parser.h (generated)
+│                         lexer.c / parser.c / parser.h and the asm_* equivalents
 ├── bin/                  the compiled v32sim binary (generated)
 ├── bios/                 BIOS data files
 ├── cart/                 cartridge data files
@@ -81,7 +104,8 @@ cart testing.
   version-specific directives, so macOS's stock bison 2.3 / flex 2.5.35 work)
 - libm (standard on Linux and macOS)
 
-POSIX regex is no longer used.
+POSIX regex is no longer used, and PNG output has no library dependency (the
+screenshot writer is built in).
 
 ## Building
 
@@ -123,6 +147,8 @@ Mandatory arguments to long options are mandatory for short options too.
      --bios-c-debug=FILE   load BIOS C labels from FILE
      --cart-asm-debug=FILE load CART asm labels from FILE
      --cart-c-debug=FILE   load CART C labels from FILE
+     --debug-dir=DIR       also look for debug files in DIR (first)
+     --source              show the source line for each stop (asm; C with -L C)
  -E, --entry-point=OFFSET  set simulator entry point
  -L, --langmode=MODE       label/source mode: C or lua (experimental)
  -M, --memcfile=FILE       load this file as a MEMCARD
@@ -208,7 +234,7 @@ prefix (`s` = step, `n` = next, `c` = continue, `b` = break, `p` = print,
 | `undisplay #` | remove displaylist item by index |
 | `label [0xMEM_ADDR LABEL]` | list or set a label for a memory offset |
 | `unlabel #` | remove label by index |
-| `watch [REG OP VALUE [LABEL]]` | set a watchpoint on a register (no arguments: list) |
+| `watch [LOC OP VALUE [LABEL]]` | set a watchpoint on a register, IOPort, or memory word (no arguments: list) |
 | `watchlist` | list active watchpoints |
 | `unwatch #\|LABEL` | remove a watchpoint |
 | `backtrace` | list subroutine calls, most recent first |
@@ -218,8 +244,11 @@ prefix (`s` = step, `n` = next, `c` = continue, `b` = break, `p` = print,
 | `load cart:path` / `load memc:path` | load a component at runtime |
 | `unload bios\|cart\|memc` | unload a memory page |
 | `replace [IP:0xADDR] [IR:0x...] [IV:0x...]` | patch the instruction (and immediate) at IP/ADDR in memory |
+| `asm [@0xADDR\|-x] INSTRUCTION` | assemble an instruction: patch it in (at IP or ADDR), or run it once with `-x` |
+| `screenshot [FILE]` | write the GPU screen to a PNG file |
+| `save [FILE]` / `restore FILE` | write / restore the whole machine state |
 | `set NAME=VALUE` | set settings, registers, memory, or IOPorts |
-| `ignore` | skip current instruction *(currently behaves like continue)* |
+| `ignore` | skip the current instruction (it is not executed and the counters do not advance) |
 | `version` | show the simulator version |
 | `help [COMMAND]` / `?` | command help |
 | `quit` | exit the simulator |
@@ -240,13 +269,63 @@ to 3 digits is an IOPort, more is a memory address (`print/x 0x205`,
 
 ### Watchpoints
 
-`watch  REG  OP  VALUE  [LABEL]`  breaks  when  the  register  meets  the
-condition: `OP` is one  of `=`, `==`, `!=`, `<`, `>`, `<=`,  `>=`; `REG` is any
-of  R0-R15,  BP, SP,  CR,  SR,  DR, IP,  IR,  IV; `VALUE` is any integer
-(hex, binary, octal, decimal); the LABEL is optional, e.g.
-`watch SP <= 0x20000000 stack_underflow`. Remove with `unwatch #` or
-`unwatch LABEL`; `watchlist` (or `watch` alone) lists them.
-Register watchpoints only, for now.
+`watch  LOCATION  OP  VALUE  [LABEL]` breaks when the comparison *becomes*
+true. `LOCATION` is a register (R0-R15, BP, SP, CR, SR, DR, IP, IR, IV), an
+IOPort (a symbol, or hex with up to 3 digits), or a memory word (hex with more
+digits); `OP` is one of `=`, `==`, `!=`, `<`, `>`, `<=`, `>=`; `VALUE` is a
+number (hex, binary, octal, decimal), a register, an IOPort symbol, or the
+contents of `[0xMEM]`, `[IOPORT]`, or `[REG]`; the LABEL is optional:
+
+```
+watch SP <= 0x20000000 stack_underflow
+watch 0x00001000 != 0
+watch TIM_FrameCounter = 60
+watch R1 > [0x00000010]
+```
+
+Watchpoints are edge-triggered: a condition that is already true when it is set,
+or that stays true, does not break again until it has been false in between.
+They are checked after every instruction and whenever the machine state changes
+(so a value that changes and changes back within one instruction is seen).
+Remove with `unwatch #` or `unwatch LABEL`; `watchlist` (or `watch` alone)
+lists them. Comparisons are unsigned 32-bit.
+
+### Live Assembly
+
+`asm` assembles one instruction using the Vircon32 assembler syntax:
+
+```
+asm mov R1, 0x10                       # patch the instruction at the current IP
+asm @0x20000100 out GPU_Command, GPUCommand_ClearScreen
+asm -x iadd R0, -1                     # execute once, memory untouched
+```
+
+Operands are registers (`R0`-`R15`, `CR`, `SR`, `DR`, `BP`, `SP`), numbers
+(decimal, `0xHEX`, `0bBINARY`, `0OCTAL`, floats), labels from the loaded debug
+files, IOPort names, and the `GPUCommand_*`, `GPUBlendingMode_*`,
+`SPUCommand_*`, and `SPUChannelState_*` constants. A decimal integer given to a
+float instruction is converted (`fadd R4, 1` adds 1.0); hex, binary and octal
+are raw bit patterns. A patch may not be longer than the instruction it
+replaces; a shorter one is padded with `MOV R0, R0` (a no-op). The assembled
+output of every instruction of the BIOS has been checked to match its machine
+code word for word.
+
+### Screenshots
+
+`screenshot [FILE]` writes the 640x360 GPU framebuffer to a PNG (default
+`v32sim.DATESTAMP.png`). The renderer is a software model of the console's GPU
+(nearest-neighbor sampling, the same pixel budget and blending), so a screenshot
+shows what the cart has drawn so far this frame.
+
+### Save and Restore
+
+`save [FILE]` writes the machine state (registers, IOPorts, RAM, memory card,
+GPU regions and framebuffer, SPU, timers, gamepads; default
+`v32sim.DATESTAMP.sav`), and `restore FILE` loads it back. The file is
+little-endian with zero runs compressed, and records checksums of the BIOS and
+cartridge: it is only restored into a machine with the same ones. Breakpoints,
+watchpoints, the display list, labels, and profiling data are part of the
+debugging session and are not saved.
 
 ### Display List
 
@@ -258,15 +337,30 @@ no label is given for an IOPort item, its symbolic name is used.
 ### Labels
 
 `label 0x10000040 main` associates a name with an offset; labels can then
-be used  for breakpoints  (`-b main`  or `break  main`). Labels  are also
-loaded  automatically from  assembler/C debug  files (`--bios-asm-debug`,
-etc.), which are searched next to the corresponding V32 file.
+be used  for breakpoints  (`-b main`  or `break  main`) and as `asm` operands.
+Labels are also loaded automatically from assembler/C debug files (see below).
+
+### Debug Files
+
+Next to every V32 file, v32sim looks for its debug file (`NAME.vbin.debug`,
+`NAME.asm.debug`, and the C equivalents) in the directory of the V32 file, the
+current directory, `obj/` and `../obj/`, and the directory given by
+`--debug-dir` (searched first). `--bios-asm-debug` and friends name a file
+explicitly. `-n` disables all of this. Debug files hold one `OFFSET,FILE,LINE[,LABEL]`
+entry per instruction.
+
+With `--source` (or `set source=true`) the source line of the current
+instruction is printed at each stop: assembly lines by default, C lines with
+`-L C` or `set mode=C`. File names in debug files are relative to the directory
+the program was built in, so they are tried as given and relative to the
+directories the debug and V32 files were found in (and their parents).
 
 ### Set
 
 ```
 set color=true      set deref=true       set debug=true
 set verbose=true    set errorchk=true    set profile=true
+set source=true     set mode=C           # source overlay, and which source
 set R4=0x4004       set IP=0x10000040    # IP is a jump
 set 0x00224466=0x71
 set GPU_SelectedTexture=-1
@@ -284,32 +378,32 @@ that is not loaded. `load bios:path` is parsed but not supported yet.
 
 ## IOPORTS
 
-All IOPorts exist. Not all are functionally accurate:
+All IOPorts exist and follow the DesktopEmulator implementation:
 
-- **TIM, RNG, INP, CAR, MEM**: behave as expected
-- **SPU**: storage/retrieval only, no sound engine
-- **GPU**: functional, especially texture/region management — `GPU_ClearColor`,
-  `GPU_SelectedTexture`, `GPU_SelectedRegion`, `GPU_Command` (ClearScreen,
-  DrawRegion, DrawRegionZoomed, DrawRegionRotated, DrawRegionRotozoomed),
-  `GPU_MultiplyColor`, `GPU_ActiveBlending` (Alpha/Add/Subtract),
+- **TIM**: date/time (leap years are handled), frame/cycle counters
+- **RNG, INP, CAR, MEM**: behave as expected
+- **GPU**: `GPU_ClearColor`, `GPU_SelectedTexture`, `GPU_SelectedRegion`,
+  `GPU_Command` (ClearScreen, DrawRegion, DrawRegionZoomed, DrawRegionRotated,
+  DrawRegionRotozoomed), `GPU_MultiplyColor`, `GPU_ActiveBlending`,
   `GPU_DrawingPointX/Y`, `GPU_DrawingScaleX/Y`, `GPU_DrawingAngle`,
-  `GPU_RegionMinX/MinY/MaxX/MaxY`, `GPU_RegionHotspotX/Y`,
-  `GPU_RemainingPixels` (read-only)
+  `GPU_RegionMinX/MinY/MaxX/MaxY`, `GPU_RegionHotspotX/Y`, and
+  `GPU_RemainingPixels` render into the framebuffer
+- **SPU**: `SPU_GlobalVolume`, `SPU_SelectedSound`, `SPU_SoundLength`
+  (read-only), `SPU_SoundPlayWithLoop`, `SPU_SoundLoopStart/End`,
+  `SPU_SelectedChannel`, `SPU_ChannelState` (read-only),
+  `SPU_ChannelAssignedSound`, `SPU_ChannelVolume`, `SPU_ChannelSpeed`,
+  `SPU_ChannelLoopEnabled`, `SPU_ChannelPosition`, `SPU_Command`; channels
+  advance 735 samples per frame, but nothing is mixed or played
 
-All textures  present in a V32  file are loaded; `inventory`  lists them.
-From the  prompt, texture/region ports  can be manipulated via  `set` and
-inspected via `print`/`display`.
+All textures and sounds present in a V32 file are loaded; `inventory` lists
+them. From the prompt, ports can be manipulated via `set` and inspected via
+`print`/`display`.
 
 ## Known Limitations and Planned Features
 
-- **SPU**: no audio functionality (ports only)
-- **Screenshots**: the `screenshot` command (PNG output via the GD library)
-  is planned but not yet implemented; GD is not currently a build dependency
-- **MEMCARD**: loaded read-only — changes are not written back to the file;
-  the V32-MEMC header is not yet validated
-- **`watch`** supports registers and immediate values only
-- GPU has no framebuffer, so nothing is rendered; VSND data is not loaded
-- **`ignore`** does not yet skip the instruction; it currently behaves like
-  `continue`
+- **SPU**: no audio output (no WAV capture either)
 - **`load bios:`** is parsed but not yet functional
 - Lua and C display modes (`-L`) are experimental
+- The debug-file reader is hand-written (it could move onto flex)
+
+See TODO.md for the open items.

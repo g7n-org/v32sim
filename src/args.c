@@ -22,6 +22,8 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "cart-asm-debug", required_argument, 0, 17  },
        { "bios-c-debug",   required_argument, 0, 18  },
        { "cart-c-debug",   required_argument, 0, 19  },
+       { "debug-dir",      required_argument, 0, 20  },
+       { "source",         no_argument,       0, 21  },
        { "entry-point",    required_argument, 0, 'E' },
        { "errorcheck",     no_argument,       0, 'e' },
        { "langmode",       required_argument, 0, 'L' },
@@ -116,6 +118,14 @@ void  process_args (int32_t  argc, int8_t **argv)
                 bioscdebugflag     = TRUE;
                 break;
 
+            case 21: // source
+                sourceflag         = TRUE;
+                break;
+
+            case 20: // debug-dir
+                debugdir           = optarg;
+                break;
+
             case 19: // cart-c-debug
                 cartcdebug         = (int8_t *) ralloc (sizeof (int8_t),
                                                         strlen (optarg) + 1,
@@ -128,6 +138,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 if (0             == strcmp (optarg, "C"))
                 {
                     modeflag       = FLAG_C;
+                    sourceflag     = TRUE;
                 }
                 else if (0        == strcmp (optarg, "lua"))
                 {

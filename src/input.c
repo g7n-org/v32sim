@@ -110,8 +110,10 @@ uint8_t  prompt (uint32_t  word)
 
     switch (action)
     {
-        case INPUT_CONTINUE:
         case INPUT_IGNORE:
+            ignoreflag                  = TRUE;   // skip the current instruction
+            // fall through: then run freely
+        case INPUT_CONTINUE:
             processflag                 = TRUE;
             runflag                     = TRUE;
             nextflag                    = FALSE;
@@ -161,289 +163,265 @@ uint8_t  prompt (uint32_t  word)
     return (processflag);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// open_debug_file(): find and open the debug file that goes with a V32 file.
+//
+// With FLAG_SEARCH, 'datafile' is the V32 file (e.g. dir/game.v32) and the debug file
+// is named game.vbin.debug (assembler) or game.asm.debug (C compiler). These
+// directories are tried in order:
+//
+//     --debug-dir=DIR (if given)      next to the V32 file       DIR/obj
+//     obj/ below the V32 file's dir   ../obj/ from the V32 file  obj/ and . (cwd)
+//
+// Without FLAG_SEARCH, 'datafile' is the debug file itself.
+//
+static FILE  *open_debug_file (const char *datafile, uint8_t flag, char *found, size_t foundlen)
+{
+    char        dir[1024];
+    char        base[512];
+    char        cand[2048];
+    const char *suffix  = ((flag & FLAG_ASM) == FLAG_ASM) ? ".vbin.debug" : ".asm.debug";
+    const char *slash   = NULL;
+    const char *dot     = NULL;
+    FILE       *fptr    = NULL;
+    int         i       = 0;
+    char        sub[6][1100];
+    int         nsub    = 0;
+
+    found[0]  = '\0';
+    if ((flag & FLAG_SEARCH) != FLAG_SEARCH)
+    {
+        snprintf (found, foundlen, "%s", datafile);
+        return (fopen (found, "r"));
+    }
+
+    slash  = strrchr (datafile, '/');
+    if (slash != NULL)
+    {
+        snprintf (dir, sizeof (dir), "%.*s", (int) (slash - datafile), datafile);
+        slash  = slash + 1;
+    }
+    else
+    {
+        snprintf (dir, sizeof (dir), ".");
+        slash  = datafile;
+    }
+    snprintf (base, sizeof (base), "%s", slash);
+    dot  = strrchr (base, '.');
+    if (dot != NULL)
+    {
+        base[dot - base]  = '\0';      // strip the final extension only
+    }
+
+    if (debugdir != NULL)
+    {
+        snprintf (sub[nsub++], sizeof (sub[0]), "%s", debugdir);
+    }
+    snprintf (sub[nsub++], sizeof (sub[0]), "%s",        dir);
+    snprintf (sub[nsub++], sizeof (sub[0]), "%s/obj",    dir);
+    snprintf (sub[nsub++], sizeof (sub[0]), "%s/../obj", dir);
+    snprintf (sub[nsub++], sizeof (sub[0]), "obj");
+    snprintf (sub[nsub++], sizeof (sub[0]), ".");
+
+    for (i = 0; i < nsub; i = i + 1)
+    {
+        snprintf (cand, sizeof (cand), "%s/%s%s", sub[i], base, suffix);
+        fptr  = fopen (cand, "r");
+        if (fptr != NULL)
+        {
+            snprintf (found, foundlen, "%s", cand);
+            return (fptr);
+        }
+        fprintf (debug, "[load_labels] No debug file '%s' found.\n", cand);
+    }
+    return (NULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// next_field(): destructively split a comma separated line; returns the next field
+// (possibly empty) or NULL at the end of the line
+//
+static char  *next_field (char **cursor)
+{
+    char  *start  = *cursor;
+    char  *comma  = NULL;
+
+    if (start == NULL)
+    {
+        return (NULL);
+    }
+    comma  = strchr (start, ',');
+    if (comma != NULL)
+    {
+        *comma   = '\0';
+        *cursor  = comma + 1;
+    }
+    else
+    {
+        *cursor  = NULL;
+    }
+    return (start);
+}
+
+static char  *copy_string (const char *text)
+{
+    size_t  len   = strlen (text) + 1;
+    char   *copy  = (char *) ralloc (sizeof (char), len, FLAG_NONE);
+
+    memcpy (copy, text, len);
+    return (copy);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// load_labels(): read the label data of a debug file into the label list (lpoint).
+//
+// Vircon32 assembler .debug files (FLAG_ASM) look like:
+//
+//     0x10001AE4,obj/debuggerBIOS.asm,4654
+//     0x10001AE6,obj/debuggerBIOS.asm,4656,__for_3281_continue
+//
+// and C compiler .debug files (FLAG_C) like:
+//
+//     obj/debuggerBIOS.asm,24,/PATH/TO/audio.h,40
+//     obj/debuggerBIOS.asm,31,/PATH/TO/audio.h,49,get_selected_sound
+//
+// Returns the number of entries added.
+//
 uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
 {
     FILE     *fptr                          = NULL;
-    int32_t   index                         = 0;
     linked_l *ltmp                          = NULL;
     linked_l *ltmp2                         = NULL;
-    size_t    len                           = 0;
-    size_t    size                          = 0;
-    uint32_t  offset                        = 0;
-    uint32_t  line_number                   = 0;
     uint32_t  tally                         = 0;
-    uint8_t  *debugfile                     = NULL;
-    uint8_t  *input_string                  = NULL;
-    uint8_t  *filename                      = NULL;
-    uint8_t  *path                          = NULL;
-    uint8_t  *string                        = NULL;
-    uint8_t  *token                         = NULL;
+    char      found[2048];
+    char      line[4096];
+    char     *cursor                        = NULL;
+    char     *f0                            = NULL;
+    char     *f1                            = NULL;
+    char     *f2                            = NULL;
+    char     *f3                            = NULL;
+    char     *f4                            = NULL;
+    size_t    len                           = 0;
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Load labels from debug file (if it exists)
-    //
-    if (datafile                           != NULL)
+    if (datafile                           == NULL)
     {
-        if ((flag & FLAG_SEARCH)           == FLAG_SEARCH)
+        return (0);
+    }
+
+    fptr  = open_debug_file ((const char *) datafile, flag, found, sizeof (found));
+    if (fptr                               == NULL)
+    {
+        fprintf (debug, "[load_labels] no debug file for '%s'\n", datafile);
+        return (0);
+    }
+    fprintf (debug, "[load_labels] debugfile:    '%s'\n", found);
+    {
+        // debug-file names are relative to the build directory: remember where the
+        // debug file and the V32 file live (and their parents) to resolve them
+        char   root[2048];
+        char  *slash  = NULL;
+        int    k      = 0;
+        const char *from[2]  = { found, (const char *) datafile };
+
+        for (k = 0; k < 2; k = k + 1)
         {
-            ////////////////////////////////////////////////////////////////////////////
-            //
-            // Generate debug datafile (stored in variable 'debugfile')
-            //
-            size                            = sizeof (uint8_t);
-            len                             = strlen (datafile) + 1;
-            token                           = (uint8_t *) ralloc (size, len, FLAG_NONE);
-            strncpy (token, datafile, len);
-            fprintf (debug, "[load_labels] datafile:     '%s'\n", datafile);
-            fprintf (debug, "[load_labels] token:        '%s'\n", token);
-
-            string                          = dirname  (token);
-            size                            = sizeof (uint8_t);
-            len                             = strlen (string) + 1;
-            path                            = (uint8_t *) ralloc (size, len, FLAG_NONE);
-            strncpy (path, string, len);
-
-            len                             = strlen (datafile) + 1;
-            strncpy (token, datafile, len);
-            filename                        = basename (token);
-
-            fprintf (debug, "[load_labels] path:         '%s'\n", path);
-            fprintf (debug, "[load_labels] filename:     '%s'\n", filename);
-
-            input_string                    = strtok (filename, ".");
-            if (input_string               == NULL)
+            snprintf (root, sizeof (root), "%s", from[k]);
+            slash  = strrchr (root, '/');
+            if (slash == NULL)
             {
-                input_string                = (uint8_t *) "";
+                continue;
             }
-            fprintf (debug, "[load_labels] input_string: '%s'\n", input_string);
-
-            size                            = sizeof (uint8_t);
-            len                             = strlen (path) + strlen (input_string) + 16;
-            if ((flag & FLAG_ASM)          == FLAG_ASM)
-            {
-                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                sprintf (debugfile, "%s/%s.vbin.debug", path, input_string);
-            }
-            else if ((flag & FLAG_C)       == FLAG_C)
-            {
-                debugfile                   = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                sprintf (debugfile, "%s/%s.asm.debug", path, input_string);
-            }
-            fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
-        }
-        else
-        {
-            size                            = sizeof (uint8_t);
-            len                             = strlen (datafile) + 1;
-            debugfile                       = (uint8_t *) ralloc (size, len, FLAG_NONE);
-            strncpy (debugfile, datafile, len);
-        }
-
-        fptr                                = fopen (debugfile, "r");
-        if (fptr                           == NULL)
-        {
-            fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
-            rfree (debugfile);
-            debugfile                       = NULL;
-
-            if ((flag & FLAG_SEARCH)       == FLAG_SEARCH)
-            {
-                if ((flag & FLAG_ASM)      == FLAG_ASM)
-                {
-                    debugfile               = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                    sprintf (debugfile, "obj/%s.vbin.debug", input_string);
-                }
-                else if ((flag & FLAG_C)   == FLAG_C)
-                {
-                    debugfile               = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                    sprintf (debugfile, "obj/%s.asm.debug", input_string);
-                }
-                fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
-
-                fptr                        = fopen (debugfile, "r");
-                if (fptr                   == NULL)
-                {
-                    fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
-                    rfree (debugfile);
-                    debugfile               = NULL;
-
-                    if ((flag & FLAG_ASM)  == FLAG_ASM)
-                    {
-                        debugfile           = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                        sprintf (debugfile, "%s.vbin.debug", input_string);
-                    }
-                    else if ((flag & FLAG_C) == FLAG_C)
-                    {
-                        debugfile           = (uint8_t *) ralloc (size, len, FLAG_NONE);
-                        sprintf (debugfile, "%s.asm.debug", input_string);
-                    }
-                    fprintf (debug, "[load_labels] debugfile:    '%s'\n", debugfile);
-
-                    fptr                    = fopen (debugfile, "r");
-                    if (fptr               == NULL)
-                    {
-                        fprintf (debug, "[load_labels] No debug file '%s' found.\n", debugfile);
-                    }
-                }
-            }
-        }
-
-        rfree (debugfile);
-        rfree (token);
-        rfree (path);
-
-        if (fptr                           != NULL)
-        {
-            if (page                       == V32_PAGE_BIOS)
-            {
-                fprintf (verbose, "[BIOS] ");
-            }
-            else if (page                  == V32_PAGE_CART)
-            {
-                fprintf (verbose, "[CART] ");
-            }
-
-            fprintf (verbose, "LOADING DEBUGGING DATA FOR: %s\n", datafile);
-
-            string                          = (int8_t *) ralloc (sizeof (int8_t), 96, FLAG_ZERO);
-            while (!feof (fptr))
-            {
-                index                       = 0;
-                *(string+index)             = ' ';
-                while (*(string+index)     != '\0')
-                {
-                    *(string+index)         = fgetc (fptr);
-                    if (*(string+index)    == '\n')
-                    {
-                        *(string+index)     = '\0';
-                        break;
-                    }
-
-                    if (feof (fptr))
-                    {
-                        break;
-                    }
-                    index                   = index + 1;
-                    *(string+index)         = ' ';
-                }
-            
-                if (feof (fptr))
-                {
-                    break;
-                }
-
-                ////////////////////////////////////////////////////////////////////////
-                //
-                // Vircon32 assembler .debug files are of the following format:
-                //
-                // 0x10001AE4,obj/debuggerBIOS.asm,4654
-                // 0x10001AE6,obj/debuggerBIOS.asm,4656,__for_3281_continue
-                //
-                // For label loading, we are specifically interested in the lines
-                // with a label in the last field (second example)
-                //
-                if ((flag & FLAG_ASM)       == FLAG_ASM)
-                {
-                    fprintf (debug, "             -------------------------------\n");
-                    fprintf (debug, "[load_label] string:    '%s'\n", string);
-                    input_string             = strtok (string, ","); // offset
-                    fprintf (debug, "[load_label] input_string: '%s'\n", input_string);
-                    offset                   = strtol (input_string, NULL, 16);
-                    ltmp                     = listnode (page, offset);
-
-                    input_string             = strtok (NULL, ",");  // filename
-                    fprintf (debug, "[load_label] input_string: '%s'\n", input_string);
-                    if (input_string        != NULL)
-                    {
-                        size                 = sizeof (int8_t);
-                        len                  = strlen (input_string);
-                        ltmp -> name         = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
-                        strcpy (ltmp -> name, input_string);
-                    }
-
-                    input_string             = strtok (NULL, ",");  // line number
-                    line_number              = strtol (input_string, NULL, 10);
-                    ltmp -> NUMBER           = line_number;
-
-                    input_string             = strtok (NULL, ",");  // label, if present
-                    if (input_string        != NULL)
-                    {
-                        size                 = sizeof (int8_t);
-                        len                  = strlen (input_string) + 1;
-                        ltmp -> label        = (int8_t *) ralloc (size, len, FLAG_NONE);
-                        strcpy (ltmp -> label, input_string);
-                    }
-                    lpoint                   = list_add (lpoint, ltmp);
-                    tally                    = tally + 1;
-                }
-                ////////////////////////////////////////////////////////////////////////
-                //
-                // Vicon32 C Compiler .debug files are of the following format:
-                //
-                // obj/debuggerBIOS.asm,24,/PATH/TO/audio.h,40
-                // obj/debuggerBIOS.asm,31,/PATH/TO/audio.h,49,get_selected_sound
-                //
-                else if ((flag & FLAG_C)    == FLAG_C)
-                {
-                    fprintf (debug, "             -------------------------------\n");
-                    fprintf (debug, "[load_label] string:    '%s'\n", string);
-                    input_string             = strtok (string, ","); // ASM file
-                    fprintf (debug, "[load_label] input_string: '%s'\n", input_string);
-                    offset                   = 0;
-                    ltmp                     = listnode (page, offset);
-                    if (input_string        != NULL)
-                    {
-                        size                 = sizeof (int8_t);
-                        len                  = strlen (input_string);
-                        ltmp -> name         = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
-                        strcpy (ltmp -> name, input_string);
-                    }
-
-                    input_string             = strtok (NULL, ",");  // ASM line number
-                    line_number              = strtol (input_string, NULL, 10);
-                    fprintf (debug, "[load_label] ASM line number: '%u'\n", line_number);
-                    ltmp -> NUMBER           = line_number;
- 
-                    ltmp2                    = lpoint;
-                    while (ltmp2            != NULL)
-                    {
-                        if (ltmp2 -> NUMBER == line_number)
-                        {
-                            break;
-                        }
-                        ltmp2                = ltmp2 -> next;
-                    }
-
-                    if (ltmp2               != NULL)
-                    {
-                        ltmp -> RAW          = ltmp2 -> RAW; // copy offset
-                    }
-
-                    input_string             = strtok (NULL, ",");  // C file
-                    if (input_string        != NULL)
-                    {
-                        size                 = sizeof (int8_t);
-                        len                  = strlen (input_string);
-                        ltmp -> cname        = (int8_t *) ralloc (size, (len+1), FLAG_NONE);
-                        strcpy (ltmp -> cname, input_string);
-                    }
-
-                    input_string             = strtok (NULL, ",");  // C line number
-                    line_number              = strtol (input_string, NULL, 10);
-                    ltmp -> LINE             = line_number;
-
-                    lpoint                   = list_add (lpoint, ltmp);
-                    tally                    = tally + 1;
-                }
-            }
-            fclose (fptr);
-            rfree (string);
+            *slash  = '\0';
+            source_add_root (root);
+            strncat (root, "/..", sizeof (root) - strlen (root) - 1);
+            source_add_root (root);
         }
     }
 
+    if (page                               == V32_PAGE_BIOS)
+    {
+        fprintf (verbose, "[BIOS] ");
+    }
+    else if (page                          == V32_PAGE_CART)
+    {
+        fprintf (verbose, "[CART] ");
+    }
+    fprintf (verbose, "LOADING DEBUGGING DATA FROM: %s\n", found);
+
+    while (fgets (line, sizeof (line), fptr) != NULL)
+    {
+        len  = strlen (line);
+        while ((len > 0) && ((line[len-1] == '\n') || (line[len-1] == '\r')))
+        {
+            line[len-1]  = '\0';
+            len          = len - 1;
+        }
+        if (len == 0)
+        {
+            continue;
+        }
+
+        cursor  = line;
+        f0      = next_field (&cursor);
+        f1      = next_field (&cursor);
+        f2      = next_field (&cursor);
+        f3      = next_field (&cursor);
+        f4      = next_field (&cursor);
+
+        if ((flag & FLAG_ASM) == FLAG_ASM)
+        {
+            // f0 offset, f1 asm file, f2 asm line, f3 label (optional)
+            if ((f0 == NULL) || (f1 == NULL) || (f2 == NULL))
+            {
+                fprintf (debug, "[load_labels] skipping malformed line '%s'\n", line);
+                continue;
+            }
+            ltmp            = listnode (page, (uint32_t) strtoul (f0, NULL, 16));
+            ltmp -> name    = copy_string (f1);
+            ltmp -> NUMBER  = (uint32_t) strtoul (f2, NULL, 10);
+            if ((f3 != NULL) && (*f3 != '\0'))
+            {
+                ltmp -> label  = copy_string (f3);
+            }
+            lpoint  = list_add (lpoint, ltmp);
+            tally   = tally + 1;
+        }
+        else if ((flag & FLAG_C) == FLAG_C)
+        {
+            // f0 asm file, f1 asm line, f2 C file, f3 C line, f4 function (optional)
+            if ((f0 == NULL) || (f1 == NULL) || (f2 == NULL) || (f3 == NULL))
+            {
+                fprintf (debug, "[load_labels] skipping malformed line '%s'\n", line);
+                continue;
+            }
+            ltmp            = listnode (page, 0);
+            ltmp -> name    = copy_string (f0);
+            ltmp -> NUMBER  = (uint32_t) strtoul (f1, NULL, 10);
+            ltmp -> cname   = copy_string (f2);
+            ltmp -> LINE    = (uint32_t) strtoul (f3, NULL, 10);
+
+            // find the matching assembler entry (same page, same asm line) for the offset
+            for (ltmp2  = lpoint; ltmp2 != NULL; ltmp2 = ltmp2 -> next)
+            {
+                if ((ltmp2 -> NUMBER == ltmp -> NUMBER) &&
+                    (ltmp2 -> type   == page)           &&
+                    (ltmp2 -> cname  == NULL))
+                {
+                    ltmp -> RAW  = ltmp2 -> RAW;
+                    break;
+                }
+            }
+            lpoint  = list_add (lpoint, ltmp);
+            tally   = tally + 1;
+        }
+    }
+    fclose (fptr);
+
     return (tally);
-}    
+}
 
 void load_command(void)
 {
@@ -475,8 +453,10 @@ void load_command(void)
             // Execute the action set by tokenize_input
             switch (action)
             {
-                case INPUT_CONTINUE:
                 case INPUT_IGNORE:
+                    ignoreflag = TRUE;   // skip the current instruction
+                    // fall through
+                case INPUT_CONTINUE:
                     runflag = TRUE;
                     nextflag = FALSE;
                     break;

@@ -176,7 +176,7 @@ void  decode_display (uint32_t  instruction,
             value                    = -1;
             if (immflag             == TRUE)
             {
-                ltmp                 = find_value (lpoint, immediate);
+                ltmp                 = find_label_at (lpoint, immediate);
 
                 if (ltmp            == NULL)
                 {
@@ -221,7 +221,7 @@ void  decode_display (uint32_t  instruction,
             sprintf (destination, "R%u,", dst);
             if (immflag             == TRUE)
             {
-                ltmp                 = find_value (lpoint, immediate);
+                ltmp                 = find_label_at (lpoint, immediate);
 
                 if (ltmp            == NULL)
                 {
@@ -882,7 +882,7 @@ void  decode_process (uint32_t  instruction,
                 {
                     ptmp               = listnode (LIST_MEM, REG(IP));
                     ptmp -> SUBCALL    = 1;
-                    dtmp               = find_value (lpoint, REG(IP));
+                    dtmp               = find_label_at (lpoint, REG(IP));
                     if (dtmp != NULL) // subroutine has an associated label
                     {
                         value          = strlen (dtmp -> label);
@@ -908,7 +908,7 @@ void  decode_process (uint32_t  instruction,
             // add entry to beginning of backtrace list (tpoint)
             //
             ptmp                       = listnode (LIST_MEM, REG(IP));
-            dtmp                       = find_value (lpoint, REG(IP));
+            dtmp                       = find_label_at (lpoint, REG(IP));
             if (dtmp                  != NULL) // subroutine has an associated label
             {
                 value                  = strlen (dtmp -> label);
@@ -1128,7 +1128,10 @@ void  decode_process (uint32_t  instruction,
                 MEMSET(REG(DR), value);
                 REG(DR)     = REG(DR) + 1;
                 REG(SR)     = REG(SR) + 1;
-                REG(CR)     = REG(CR) - 1;
+                if (REG(CR) >  0)       // as on the console: CR counts down to 0,
+                {                       // and a CR that starts at <= 0 runs once
+                    REG(CR) = REG(CR) - 1;
+                }
             }
             while (REG(CR) >  0);
             break;
@@ -1136,9 +1139,12 @@ void  decode_process (uint32_t  instruction,
         case SETS:
             do
             {
-                MEMSET(REG(DR), SR);
+                MEMSET(REG(DR), REG(SR));          // the VALUE of the source register
                 REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
-                REG(CR)     = REG(CR) - 1; // CR: Count Register (R11)
+                if (REG(CR) >  0)
+                {
+                    REG(CR) = REG(CR) - 1; // CR: Count Register (R11)
+                }
             }
             while (REG(CR) >  0);
             break;
@@ -1153,7 +1159,10 @@ void  decode_process (uint32_t  instruction,
                 }
                 REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
                 REG(SR)     = REG(SR) + 1; // SR: Source Register (R12)
-                REG(CR)     = REG(CR) - 1; // CR: Count Register (R11)
+                if (REG(CR) >  0)
+                {
+                    REG(CR) = REG(CR) - 1; // CR: Count Register (R11)
+                }
             }
             while (REG(CR) >  0);
             break;
@@ -1196,13 +1205,14 @@ void  decode_process (uint32_t  instruction,
 
         case SHL:
             value           = (immflag == TRUE)  ? immediate  : SRCREG;
-            if (value      >= 0)
+            // the console shifts the unsigned bit pattern (a right shift is logical)
+            if (value      >  0)
             {
-                DSTREG      = DSTREG   << value;
+                DSTREG      = (int32_t) ((uint32_t) DSTREG << (value & 31));
             }
-            else
+            else if (value <  0)
             {
-                DSTREG      = DSTREG   >> abs ((signed) value);
+                DSTREG      = (int32_t) ((uint32_t) DSTREG >> ((-(int64_t) value) & 31));
             }
             break;
 
@@ -1354,19 +1364,40 @@ void  decode_process (uint32_t  instruction,
             FDSTREG         = sinf (FDSTREG);
             break;
 
+        // these four raise a hardware error on the console (the destination is left alone)
         case ACOS:
+            if ((FDSTREG < -1.0f) || (FDSTREG > 1.0f))
+            {
+                sys_error   = ERROR_ARC_COSINE;
+                break;
+            }
             FDSTREG         = acosf (FDSTREG);
             break;
 
         case ATAN2:
+            if ((FDSTREG == 0.0f) && (FSRCREG == 0.0f))
+            {
+                sys_error   = ERROR_ARC_TANGENT_2;
+                break;
+            }
             FDSTREG         = atan2f (FDSTREG, FSRCREG);
             break;
 
         case LOG:
+            if (FDSTREG    <= 0.0f)
+            {
+                sys_error   = ERROR_LOGARITHM;
+                break;
+            }
             FDSTREG         = logf (FDSTREG);
             break;
 
         case POW:
+            if ((FDSTREG < 0.0f) && (truncf (FSRCREG) != FSRCREG))
+            {
+                sys_error   = ERROR_POWER;
+                break;
+            }
             FDSTREG         = powf (FDSTREG, FSRCREG);
             break;
 
@@ -1525,6 +1556,10 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case POP:
             result          = memory_chk  (REG(SP),            FLAG_READ,  FALSE);
+            if ((result    == TRUE) && ((REG(SP) + 1) > RAM_FINAL_ADDR))
+            {
+                result      = FALSE;     // the console flags the pop that leaves the stack
+            }
             if (result     == FALSE)
             {
                 sys_error   = ERROR_STACK_UNDERFLOW;
@@ -1541,7 +1576,7 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case MOVS:
             for (value      = 0;
-                 value     <  REG(CR);
+                 value     <  ((REG(CR) > 0) ? REG(CR) : 1);   // CR <= 0 runs once
                  value      = value + 1)
             {
                 result      = memory_chk  ((REG(SR)+value),   FLAG_READ,  FALSE);
@@ -1554,7 +1589,7 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case SETS:
             for (value      = 0;
-                 value     <  REG(CR);
+                 value     <  ((REG(CR) > 0) ? REG(CR) : 1);   // CR <= 0 runs once
                  value      = value + 1)
             {
                 result      = memory_chk  ((REG(DR)+value),   FLAG_WRITE, FALSE);
@@ -1563,7 +1598,7 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case CMPS:
             for (value      = 0;
-                 value     <  REG(CR);
+                 value     <  ((REG(CR) > 0) ? REG(CR) : 1);   // CR <= 0 runs once
                  value      = value + 1)
             {
                 result      = memory_chk  ((REG(DR)+value),   FLAG_READ,  FALSE);
@@ -1631,7 +1666,7 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case POW:
             if ((FDSTREG   <  0.0) &&
-                (FSRCREG   <  NAN))
+                (truncf (FSRCREG) != FSRCREG))
             {
                 result      = FALSE;
                 sys_error   = ERROR_POWER;

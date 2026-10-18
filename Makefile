@@ -51,8 +51,8 @@ endif
 ####################################################################################
 
 SRC     = $(wildcard $(SRCDIR)/*.c)
-GENSRC  = $(OBJDIR)/lexer.c $(OBJDIR)/parser.c
-GENHDR  = $(OBJDIR)/parser.h
+GENSRC  = $(OBJDIR)/lexer.c $(OBJDIR)/parser.c $(OBJDIR)/asm_lexer.c $(OBJDIR)/asm_parser.c
+GENHDR  = $(OBJDIR)/parser.h $(OBJDIR)/asm_parser.h
 OBJ     = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC)) $(GENSRC:.c=.o)
 DEPS    = $(OBJ:.o=.d)
 BIN     = $(BINDIR)/$(TARGET)
@@ -81,7 +81,16 @@ $(OBJDIR)/parser.h: $(OBJDIR)/parser.c ;
 $(OBJDIR)/lexer.c: $(SRCDIR)/lexer.l $(GENHDR) | $(OBJDIR)
 	$(FLEX) -o $@ $<
 
-$(OBJDIR)/parser.o $(OBJDIR)/lexer.o: $(OBJDIR)/%.o: $(OBJDIR)/%.c
+# live assembler: a second scanner/grammar pair, generated with the prefix 'asm'
+$(OBJDIR)/asm_parser.c: $(SRCDIR)/asm_parser.y | $(OBJDIR)
+	$(BISON) -p asm --defines=$(OBJDIR)/asm_parser.h -o $@ $<
+
+$(OBJDIR)/asm_parser.h: $(OBJDIR)/asm_parser.c ;
+
+$(OBJDIR)/asm_lexer.c: $(SRCDIR)/asm_lexer.l $(OBJDIR)/asm_parser.h | $(OBJDIR)
+	$(FLEX) -P asm -o $@ $<
+
+$(OBJDIR)/parser.o $(OBJDIR)/lexer.o $(OBJDIR)/asm_parser.o $(OBJDIR)/asm_lexer.o: $(OBJDIR)/%.o: $(OBJDIR)/%.c
 	$(CC) $(CFLAGS) $(GENFLAGS) $(INC) -MMD -MP -c $< -o $@
 
 $(OBJDIR) $(BINDIR):

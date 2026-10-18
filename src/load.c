@@ -60,6 +60,75 @@ size_t    get_filesize (int8_t *filename)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
+// memory card persistence: the file it was loaded from, and a checksum of the contents
+// at load/last save, so that only a changed card is written back
+//
+static char      memc_path[1024]  = "";
+static uint32_t  memc_sum         = 0;
+
+static uint32_t  memc_checksum (void)
+{
+    uint32_t  index  = 0;
+    uint32_t  sum    = 0;
+    word_t   *w      = NULL;
+
+    for (index = 0; index < MEMC_WORDS; index = index + 1)
+    {
+        w    = memory_get (MEMC_FIRST_ADDR + index, TRUE);
+        sum  = sum * 31 + ((w == NULL) ? 0 : w -> raw);
+    }
+    return (sum);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// memc_save(): write the memory card contents back to the file it came from (keeps
+// the V32-MEMC header). Does nothing if no card is loaded or nothing changed.
+//
+void  memc_save (void)
+{
+    FILE     *fptr   = NULL;
+    uint32_t  index  = 0;
+    uint32_t  sum    = 0;
+    word_t   *w      = NULL;
+    uint8_t   b[4];
+
+    if (((memory+V32_PAGE_MEMC) -> data == NULL) || (memc_path[0] == '\0'))
+    {
+        return;
+    }
+    sum  = memc_checksum ();
+    if (sum == memc_sum)
+    {
+        return;
+    }
+    fptr  = fopen (memc_path, "r+b");
+    if (fptr == NULL)
+    {
+        fprintf (stderr, "[ERROR:MEMC] could not open '%s' to save the memory card\n", memc_path);
+        return;
+    }
+    fseek (fptr, 2 * wordsize, SEEK_SET);
+    for (index = 0; index < MEMC_WORDS; index = index + 1)
+    {
+        w     = memory_get (MEMC_FIRST_ADDR + index, TRUE);
+        b[0]  = (uint8_t) (w -> raw);
+        b[1]  = (uint8_t) (w -> raw >> 8);
+        b[2]  = (uint8_t) (w -> raw >> 16);
+        b[3]  = (uint8_t) (w -> raw >> 24);
+        fwrite (b, 1, 4, fptr);
+    }
+    if (fclose (fptr) != 0)
+    {
+        fprintf (stderr, "[ERROR:MEMC] error writing '%s'\n", memc_path);
+        return;
+    }
+    memc_sum  = sum;
+    fprintf (verbose, "[MEMC] saved '%s'\n", memc_path);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
 // load_memory(): load data files from disk into page-appropriate location in memory
 //
 uint8_t  load_memory (uint32_t  page, int8_t *filename)
@@ -74,6 +143,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
     uint32_t  offset                    = 0x00000000;
     uint32_t  num_vtex                  = 0x00000000;
     uint32_t  num_vsnd                  = 0x00000000;
+    uint32_t  vsnd_start                = 0x00000000;
     uint32_t  data_size                 = 0x00000000;
     uint32_t  data                      = 0x00000000;
     uint32_t *checksum                  = NULL;
@@ -100,6 +170,33 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
         {
             fprintf (stderr, "[ERROR] Could not open '%s' for reading\n", filename);
             exit    (FILE_OPEN_ERROR);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // A memory card file must carry the V32-MEMC signature (2 words) followed by
+        // exactly 262144 words
+        //
+        if (page                       == V32_PAGE_MEMC)
+        {
+            uint32_t  sig0              = get_word (fptr);
+            uint32_t  sig1              = get_word (fptr);
+
+            if ((sig0                  != MEMC_SIGNATURE0) ||
+                (sig1                  != MEMC_SIGNATURE1))
+            {
+                fprintf (stderr, "[ERROR:MEMC] '%s' is not a V32-MEMC memory card file\n", filename);
+                fclose  (fptr);
+                return  (FALSE);
+            }
+            if (get_filesize (filename) != (uint32_t) ((2 + MEMC_WORDS) * wordsize))
+            {
+                fprintf (stderr, "[ERROR:MEMC] '%s' has the wrong size for a memory card (expected %u bytes)\n",
+                                 filename, (uint32_t) ((2 + MEMC_WORDS) * wordsize));
+                fclose  (fptr);
+                return  (FALSE);
+            }
+            fseek (fptr, 0, SEEK_SET);
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -138,10 +235,12 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     // While we are in the neighborhood, obtain the  vtex
                     // and vsnd offsets
                     //
-                    get_word (fptr); // skipping
-                    get_word (fptr); // skipping
-                    get_word (fptr); // VTEX offset
-                    get_word (fptr); // VSND offset
+                    get_word (fptr); // program ROM start (bytes)
+                    get_word (fptr); // program ROM length (bytes)
+                    get_word (fptr); // video ROM (VTEX) start (bytes)
+                    get_word (fptr); // video ROM (VTEX) length (bytes)
+                    vsnd_start          = get_word (fptr); // audio ROM (VSND) start (bytes)
+                    get_word (fptr); // audio ROM (VSND) length (bytes)
 
                     ////////////////////////////////////////////////////////////////////
                     //
@@ -245,7 +344,8 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     fprintf (debug, "[LOAD:MEMC]\n");
                     fseek (fptr, (0x02 * wordsize), SEEK_SET);
                     SYSPORTSET(MEM_Connected,        TRUE);
-                    data_size           = 262144;
+                    data_size           = MEMC_WORDS;
+                    snprintf (memc_path, sizeof (memc_path), "%s", filename);
                     break;
             }
 
@@ -336,7 +436,62 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     fprintf (debug, "[LOAD:VBIN] final offset of vtex #%d is: 0x%.8X\n", count, offset);
                 }
 
-                // TODO: add section for VSND data, will look much like the above
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Sounds: each is a V32-VSND header (signature, number of samples)
+                // followed by that many 32-bit stereo samples. They are not part of
+                // CPU-addressable memory; they belong to the SPU (see spu.c).
+                //
+                if (page               == V32_PAGE_CART)
+                {
+                    spu_cart_insert (num_vsnd);
+                }
+                if (num_vsnd           >  0)
+                {
+                    uint32_t   filebytes  = get_filesize (filename);
+                    uint32_t   nsamples   = 0;
+                    uint32_t  *samples    = NULL;
+                    size_t     got        = 0;
+                    uint32_t   n          = 0;
+
+                    fseek (fptr, (long) vsnd_start, SEEK_SET);
+                    for (count          = 0;
+                         count         <  num_vsnd;
+                         count          = count + 1)
+                    {
+                        get_word (fptr); // "V32-"
+                        get_word (fptr); // "VSND"
+                        nsamples        = get_word (fptr);
+                        if ((feof (fptr))                              ||
+                            ((uint64_t) nsamples * 4 > (uint64_t) filebytes))
+                        {
+                            fprintf (stderr, "[ERROR:VSND] Bad sound #%d in '%s'\n", count, filename);
+                            exit (FILE_POSITION_ERROR);
+                        }
+                        samples         = (uint32_t *) calloc ((nsamples > 0) ? nsamples : 1, sizeof (uint32_t));
+                        if (samples    == NULL)
+                        {
+                            fprintf (stderr, "[ERROR:VSND] Out of memory loading sound #%d\n", count);
+                            exit (STRING_ALLOC_FAIL);
+                        }
+                        got             = fread (samples, sizeof (uint32_t), nsamples, fptr);
+                        if (got        != nsamples)
+                        {
+                            fprintf (stderr, "[ERROR:VSND] Unexpected end of file reading sound #%d of '%s'\n",
+                                             count, filename);
+                            exit (FILE_POSITION_ERROR);
+                        }
+                        for (n          = 0; n < nsamples; n = n + 1)
+                        {
+                            // samples are little endian in the file
+                            uint8_t  *b = (uint8_t *) (samples + n);
+                            samples[n]  = (uint32_t) b[0]         | ((uint32_t) b[1] << 8) |
+                                          ((uint32_t) b[2] << 16) | ((uint32_t) b[3] << 24);
+                        }
+                        fprintf (debug, "[LOAD:VSND] sound #%d: %u samples\n", count, nsamples);
+                        spu_sound_load ((page == V32_PAGE_BIOS) ? -1 : count, nsamples, samples);
+                    }
+                }
             }
             else
             {
@@ -344,6 +499,11 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             }
             
             fclose (fptr);
+
+            if (page                   == V32_PAGE_MEMC)
+            {
+                memc_sum                = memc_checksum ();
+            }
 
             ////////////////////////////////////////////////////////////////////////////
             //
@@ -387,6 +547,7 @@ uint8_t  unload_memory (uint32_t  page)
             SYSPORTSET(CAR_NumberOfTextures, 0);
             SYSPORTSET(CAR_NumberOfSounds,   0);
             SYSPORTSET(CAR_ProgramROMSize,   0);
+            spu_cart_remove ();
             if (cart_vtex != NULL) // a CART without textures has no cart_vtex
             {
                 for (index          = 0;
@@ -401,7 +562,7 @@ uint8_t  unload_memory (uint32_t  page)
             break;
 
         case V32_PAGE_MEMC:
-            // write MEMC data back to memcfile
+            memc_save ();          // write MEMC data back to its file
             SYSPORTSET(MEM_Connected,        FALSE);
             break;
 

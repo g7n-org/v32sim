@@ -1,7 +1,9 @@
 #include "defines.h"
 #include "command.h"
+#include "assembly.h"
 #include <stdarg.h>
 #include <ctype.h>
+#include <time.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -33,6 +35,7 @@ static const struct
     int         id;
 } cmdtab[] =
 {
+    { "asm",         2, CMD_ASM       },
     { "break",       1, CMD_BREAK     },
     { "backtrace",   2, CMD_BACKTRACE },
     { "bt",          2, CMD_BACKTRACE },
@@ -50,6 +53,8 @@ static const struct
     { "profile",     3, CMD_PROFILE   },
     { "quit",        1, CMD_QUIT      },
     { "replace",     1, CMD_REPLACE   },
+    { "restore",     3, CMD_RESTORE   },
+    { "save",        2, CMD_SAVE      },
     { "screenshot",  3, CMD_SCREENSHOT},
     { "step",        1, CMD_STEP      },
     { "set",         2, CMD_SET       },
@@ -748,11 +753,25 @@ static void  exec_set_list (void)
     fprintf (stdout, "debug:   %s\n", (debug       == stderr) ? "TRUE" : "FALSE");
     fprintf (stdout, "profile: %s\n", (profileflag == TRUE)   ? "TRUE" : "FALSE");
     fprintf (stdout, "verbose: %s\n", (verbose     == stderr) ? "TRUE" : "FALSE");
+    fprintf (stdout, "source:  %s\n", (sourceflag  == TRUE)   ? "TRUE" : "FALSE");
+    fprintf (stdout, "mode:    %s\n", (modeflag == FLAG_C) ? "C" : (modeflag == FLAG_LUA) ? "lua" : "asm");
 }
 
 static void  exec_set_option (cmd_t *c)
 {
     int  state  = -1;
+
+    if (c -> set_opt == OPT_MODE)
+    {
+        if      ((c -> word != NULL) && (0 == strcasecmp (c -> word, "asm")))  modeflag = FLAG_ASM;
+        else if ((c -> word != NULL) && (0 == strcasecmp (c -> word, "c")))    modeflag = FLAG_C;
+        else if ((c -> word != NULL) && (0 == strcasecmp (c -> word, "lua")))  modeflag = FLAG_LUA;
+        else
+        {
+            fprintf (stderr, "[ERROR] set mode: value must be asm, C, or lua\n");
+        }
+        return;
+    }
 
     if (c -> set_isnum == TRUE)
     {
@@ -796,6 +815,10 @@ static void  exec_set_option (cmd_t *c)
                 fprintf (debug, "[set] disabling debugging!\n");
                 debug   = devnull;
             }
+            break;
+
+        case OPT_SOURCE:
+            sourceflag  = state;
             break;
 
         case OPT_PROFILE:
@@ -943,7 +966,8 @@ static void  exec_replace (cmd_t *c)
 //
 static void  exec_watch (cmd_t *c)
 {
-    wpoint_t  *wp  = wpoint_new (c -> watch_reg, c -> watch_op, c -> watch_val);
+    wpoint_t  *wp  = wpoint_new (c -> watch_target, c -> watch_op, c -> watch_rhs);
+    char       desc[160];
 
     if (wp == NULL)
     {
@@ -956,10 +980,8 @@ static void  exec_watch (cmd_t *c)
     }
     wpoint_add (&wpoint, wp);
 
-    fprintf (stdout, "Watchpoint set: %s %s 0x%.8X",
-                     reg_get_name (c -> watch_reg),
-                     wpoint_op_to_string (c -> watch_op),
-                     c -> watch_val);
+    wpoint_describe (wp, desc, sizeof (desc));
+    fprintf (stdout, "Watchpoint set: %s", desc);
     if (wp -> label != NULL)
     {
         fprintf (stdout, " (%s)", wp -> label);
@@ -1018,8 +1040,16 @@ static void  exec_load (cmd_t *c)
     }
     fclose (fptr);
 
+    if ((memory + page) -> data != NULL)
+    {
+        unload_memory (page);   // replacing a component: unload (and save a MEMC) first
+    }
+
     fprintf (debug, "[load] %s filename: '%s'\n", c -> name, c -> path);
-    load_memory (page, c -> path);
+    if (load_memory (page, c -> path) == FALSE)
+    {
+        fprintf (stderr, "[ERROR] load: '%s' was not loaded\n", c -> path);
+    }
 }
 
 static void  exec_unload (cmd_t *c)
@@ -1049,6 +1079,185 @@ static void  exec_unload (cmd_t *c)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
+// screenshot: write the GPU framebuffer to a PNG file
+//
+static void  exec_screenshot (cmd_t *c)
+{
+    char       def[64];
+    char      *name  = c -> path;
+    time_t     now   = time (NULL);
+
+    if (name == NULL)
+    {
+        strftime (def, sizeof (def), "v32sim.%Y%m%d-%H%M%S.png", localtime (&now));
+        name  = def;
+    }
+    if (gpu_screenshot (name) == TRUE)
+    {
+        fprintf (stdout, "[screenshot] wrote %s\n", name);
+    }
+    else
+    {
+        fprintf (stderr, "[ERROR] screenshot: could not write '%s'\n", name);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// save / restore: machine state files
+//
+static void  exec_save (cmd_t *c)
+{
+    char       def[64];
+    char      *name  = c -> path;
+    time_t     now   = time (NULL);
+
+    if (name == NULL)
+    {
+        strftime (def, sizeof (def), "v32sim.%Y%m%d-%H%M%S.sav", localtime (&now));
+        name  = def;
+    }
+    if (state_save (name) == TRUE)
+    {
+        fprintf (stdout, "[save] wrote %s\n", name);
+    }
+    else
+    {
+        fprintf (stderr, "[ERROR] save: could not write '%s'\n", name);
+    }
+}
+
+static void  exec_restore (cmd_t *c)
+{
+    if (state_restore (c -> path) == TRUE)
+    {
+        fprintf (stdout, "[restore] state restored from %s\n", c -> path);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// asm: assemble one instruction (see assembly.h)
+//
+//   asm INSTRUCTION           patch the instruction at the current IP
+//   asm @ADDR INSTRUCTION     patch the instruction at ADDR
+//   asm -x INSTRUCTION        execute it once, without touching memory
+//
+static void  asm_refresh_ir (void)
+{
+    REG(IR)  = IMEMGET(rom_offset);
+    REG(IV)  = ((REG(IR) & IMMVAL_MASK) == IMMVAL_MASK) ? IMEMGET(rom_offset + 1) : 0;
+}
+
+static void  exec_asm (cmd_t *c)
+{
+    char      *text     = c -> path;
+    char      *end      = NULL;
+    char       err[160];
+    uint32_t   words[2] = { 0, 0 };
+    int        count    = 0;
+    uint32_t   address  = REG(IP);
+    uint32_t   old      = 0;
+    uint8_t    execute  = FALSE;
+    uint32_t   flags    = FLAG_NONE;
+    float      fimm     = 0.0f;
+
+    if (text == NULL)
+    {
+        return;
+    }
+    if ((text[0] == '-') && ((text[1] == 'x') || (text[1] == 'X')) &&
+        ((text[2] == ' ') || (text[2] == '\t')))
+    {
+        execute  = TRUE;
+        text     = text + 2;
+    }
+    else if (text[0] == '@')
+    {
+        address  = (uint32_t) strtoul (text + 1, &end, 0);
+        if ((end == text + 1) || ((*end != ' ') && (*end != '\t')))
+        {
+            fprintf (stderr, "[ERROR] asm: expected '@ADDRESS INSTRUCTION'\n");
+            return;
+        }
+        text     = end;
+    }
+
+    if (asm_assemble (text, words, &count, err, sizeof (err)) != 0)
+    {
+        fprintf (stderr, "[ERROR] asm: %s\n", err);
+        return;
+    }
+
+    if (execute == TRUE)
+    {
+        uint32_t  ir  = REG(IR);
+        uint32_t  iv  = REG(IV);
+
+        flags  = (count == 2) ? FLAG_IMMEDIATE : FLAG_NONE;
+        REG(IR)  = words[0];
+        REG(IV)  = (count == 2) ? words[1] : 0;
+        memcpy (&fimm, &REG(IV), sizeof (fimm));
+        branchflag  = FALSE;
+        decode (words[0], REG(IV), fimm, flags | FLAG_PROCESS);
+        if (branchflag == TRUE)
+        {
+            branchflag  = FALSE;
+            asm_refresh_ir ();
+        }
+        else
+        {
+            REG(IR)  = ir;
+            REG(IV)  = iv;
+        }
+        fprintf (stdout, "[asm] executed 0x%.8X", words[0]);
+        if (count == 2)
+        {
+            fprintf (stdout, " 0x%.8X", words[1]);
+        }
+        fprintf (stdout, "\n");
+        return;
+    }
+
+    if ((valid_address (address, FLAG_READ) == FALSE) ||
+        (valid_address (address + count - 1, FLAG_READ) == FALSE))
+    {
+        fprintf (stderr, "[ERROR] asm: 0x%.8X is not a valid address\n", address);
+        return;
+    }
+
+    // the instruction being replaced: the new one must fit in the space it occupies
+    old  = ((ISYSMEMGET(address) & IMMVAL_MASK) == IMMVAL_MASK) ? 2 : 1;
+    if ((uint32_t) count > old)
+    {
+        fprintf (stderr, "[ERROR] asm: the new instruction takes %d words but the one at 0x%.8X "
+                         "takes %u (it would overwrite the next instruction)\n", count, address, old);
+        return;
+    }
+
+    SYSMEMSET(address, words[0]);
+    if (count == 2)
+    {
+        SYSMEMSET(address + 1, words[1]);
+    }
+    else if (old == 2)
+    {
+        // pad with MOV R0, R0 (a one-word no-op) so the next instruction is untouched
+        SYSMEMSET(address + 1, (0x13u << OPCODESHIFT) | (1u << MOVADRSHIFT));
+        fprintf (stdout, "[asm] padded with MOV R0, R0\n");
+    }
+    fprintf (stdout, "[asm] 0x%.8X <- 0x%.8X", address, words[0]);
+    if (count == 2)
+    {
+        fprintf (stdout, " 0x%.8X", words[1]);
+    }
+    fprintf (stdout, "\n");
+    if (address == rom_offset)
+    {
+        asm_refresh_ir ();
+    }
+}
+
 // help
 //
 static void  exec_help (cmd_t *c)
@@ -1067,6 +1276,7 @@ static void  exec_help (cmd_t *c)
 
     switch (id)
     {
+        case CMD_ASM:         help (INPUT_ASM);        break;
         case CMD_HELP:        help (INPUT_HELP);       break;
         case CMD_BACKTRACE:   help (INPUT_BTRACE);     break;
         case CMD_BREAK:       help (INPUT_BREAK);      break;
@@ -1083,6 +1293,8 @@ static void  exec_help (cmd_t *c)
         case CMD_QUIT:        help (INPUT_QUIT);       break;
         case CMD_REPLACE:     help (INPUT_REPLACE);    break;
         case CMD_SCREENSHOT:  help (INPUT_SCREENSHOT); break;
+        case CMD_SAVE:        help (INPUT_SAVE);       break;
+        case CMD_RESTORE:     help (INPUT_RESTORE);    break;
         case CMD_SET:         help (INPUT_SET);        break;
         case CMD_STEP:        help (INPUT_STEP);       break;
         case CMD_UNBREAK:
@@ -1113,6 +1325,7 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_CONTINUE:    action = INPUT_CONTINUE;              break;
         case CMD_DISPLAY:     exec_display (c);                     break;
         case CMD_GAMEPAD:     exec_gamepad (c);                     break;
+        case CMD_ASM:         exec_asm (c);                         break;
         case CMD_HELP:        exec_help (c);                        break;
         case CMD_IGNORE:      action = INPUT_IGNORE;                break;
         case CMD_INVENTORY:   display_config (INPUT_INVENTORY);     break;
@@ -1123,9 +1336,9 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_PROFILE:     show_profile ();                      break;
         case CMD_QUIT:        action = INPUT_QUIT;                  break;
         case CMD_REPLACE:     exec_replace (c);                     break;
-        case CMD_SCREENSHOT:
-            fprintf (stderr, "[ERROR] screenshot: not implemented yet\n");
-            break;
+        case CMD_SCREENSHOT:  exec_screenshot (c);                  break;
+        case CMD_SAVE:        exec_save (c);                        break;
+        case CMD_RESTORE:     exec_restore (c);                     break;
         case CMD_SET:         exec_set (c);                         break;
         case CMD_STEP:        action = INPUT_STEP;                  break;
         case CMD_UNBREAK:
