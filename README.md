@@ -24,11 +24,17 @@ cart testing.
   ports (textures, regions, drawing parameters)
 - SPU ports exist and store/retrieve values, but have no sound engine behind
   them (no audio playback)
+- Command front end built on **flex/bison** (`lexer.l`, `parser.y`): commands
+  may be abbreviated, `#` starts a comment, and syntax errors report the
+  offending token and column
+- Register watchpoints (`watch`), breakpoints, display list, labels, profiling
 - Experimental **Lua mode** (`--langmode=lua`): memory words are inspected for
   Lua value tags (strings, tables, functions, nil/true/false) when displaying
   with `/B` or `/s`
-- Experimental **C mode** (`--langmode=C`): with C debug files loaded, the
-  debugger shows the C source line corresponding to the current instruction
+- **C mode** (`--langmode=C`) selects C-style label handling; the C source line
+  is *not* displayed yet (see TODO.md)
+- Labels are loaded from debug files only when a `--*-debug` option is given
+  or the debug file is found next to the V32 file (current directory)
 
 ## Table of Contents
 
@@ -52,8 +58,13 @@ cart testing.
 ├── LICENSE
 ├── TODO.md
 ├── src/                  all C sources
-├── inc/                  all headers
-├── obj/                  object files and dependency files (generated)
+│   ├── lexer.l           flex scanner for prompt / command-file lines
+│   ├── parser.y          bison grammar; fills in a parsed command (cmd_t)
+│   ├── command.c         command table, abbreviations, and all executors
+│   └── input.c           prompt loop, readline, command-file input
+├── inc/                  all headers (command.h, version.h, ...)
+├── obj/                  objects, dependency files, and the generated
+│                         lexer.c / parser.c / parser.h (generated)
 ├── bin/                  the compiled v32sim binary (generated)
 ├── bios/                 BIOS data files
 ├── cart/                 cartridge data files
@@ -66,7 +77,11 @@ cart testing.
 - **GNU readline** — prompt line editing, cursor keys, and command history
   (on macOS the history facility is part of readline; on Linux `libhistory`
   is a separate library — the Makefile handles both)
-- POSIX regex and libm (standard on Linux and macOS)
+- **flex** and **bison** (any reasonably recent version; the grammar avoids
+  version-specific directives, so macOS's stock bison 2.3 / flex 2.5.35 work)
+- libm (standard on Linux and macOS)
+
+POSIX regex is no longer used.
 
 ## Building
 
@@ -74,7 +89,8 @@ cart testing.
 make            # default build          -> bin/v32sim
 make debug      # -DDEBUG -g build       -> bin/v32sim
 make asan       # AddressSanitizer + UBSan build, for hunting memory errors
-make clean      # remove obj/ contents and bin/v32sim
+make version    # print the version string
+make clean      # remove obj/ contents (including generated parser) and bin/v32sim
 ```
 
 Object files  and dependency files  land in  `obj/`; the binary  lands in
@@ -116,11 +132,17 @@ Mandatory arguments to long options are mandatory for short options too.
  -S, --bios-start          break at BIOS code start
  -w, --watch-for=OPCODE    run until OPCODE is encountered
  -v, --verbose             enable more verbose output
+ -V, --version             display version information and exit
  -h, --help                display this information
 FILE   is any path plus the filename desired
 OFFSET is the full 32-bit/4-byte memory address (hex)
 OPCODE is the full 32-bit/4-byte instruction hex
 ```
+
+`v32sim --version` prints e.g. `v32sim 20261018-dev`. The version is the
+`VERSION` define in `inc/version.h`; it is shown in the banner, the usage text,
+the `version` prompt command, and `make version`. Override at build time with
+`-DVERSION=\"...\"`.
 
 Examples:
 
@@ -163,11 +185,16 @@ watchpoints, or a watched-for opcode.
 
 `--command-file=FILE` (or  `-C`) feeds  the simulator  a plain  text file
 with **one  valid prompt  command per  line** (any  command: breakpoints,
-display  list  setup, `continue`,  etc.).  This  is  the primary  way  to
+display  list  setup, `continue`,  etc.). Blank lines and lines (or line
+endings) beginning with `#` are comments.  This  is  the primary  way  to
 automate sessions;  combine it  with `--run` and  redirected stdin/stdout
 for scripted testing.
 
 ## Commands
+
+Commands are case-insensitive and may be abbreviated to any unambiguous
+prefix (`s` = step, `n` = next, `c` = continue, `b` = break, `p` = print,
+`se` = set, ...). An empty line repeats the last step/next/continue.
 
 | Command    | Description |
 | ---------- | ----------- |
@@ -181,24 +208,27 @@ for scripted testing.
 | `undisplay #` | remove displaylist item by index |
 | `label [0xMEM_ADDR LABEL]` | list or set a label for a memory offset |
 | `unlabel #` | remove label by index |
-| `watch REG OP VALUE [LABEL]` | set a conditional watchpoint on a register |
+| `watch [REG OP VALUE [LABEL]]` | set a watchpoint on a register (no arguments: list) |
 | `watchlist` | list active watchpoints |
 | `unwatch #\|LABEL` | remove a watchpoint |
 | `backtrace` | list subroutine calls, most recent first |
 | `profile` | show the profiling report (requires `-p`) |
 | `inventory` | system resource overview |
-| `gamepad [#[ COMMAND]]` | view/simulate gamepad state |
+| `gamepad [# [COMMAND]]` | view/select/simulate gamepad state (`gamepad 1` selects pad 1) |
 | `load cart:path` / `load memc:path` | load a component at runtime |
 | `unload bios\|cart\|memc` | unload a memory page |
-| `replace IP/IR/IV:0x...` | one-shot instruction/register replacement |
+| `replace [IP:0xADDR] [IR:0x...] [IV:0x...]` | patch the instruction (and immediate) at IP/ADDR in memory |
 | `set NAME=VALUE` | set settings, registers, memory, or IOPorts |
 | `ignore` | skip current instruction *(currently behaves like continue)* |
-| `help` / `?` | command help |
+| `version` | show the simulator version |
+| `help [COMMAND]` / `?` | command help |
 | `quit` | exit the simulator |
 
 ### Formatting Suffixes
 
-`print` and `display` accept a format suffix:
+`print` and `display` accept a format suffix. Numeric operands are hex: up
+to 3 digits is an IOPort, more is a memory address (`print/x 0x205`,
+`print GPU_ClearColor`, `print R3`, `print reg`, `print [SP]`):
 
 - `/X` uppercase hexadecimal (default), `/x` lowercase hexadecimal
 - `/u` unsigned decimal, `/d` signed decimal, `/o` octal, `/b` binary
@@ -211,10 +241,12 @@ for scripted testing.
 ### Watchpoints
 
 `watch  REG  OP  VALUE  [LABEL]`  breaks  when  the  register  meets  the
-condition: `OP` is one  of `=`, `!=`, `<`, `>`, `<=`,  `>=`; `REG` is any
-of  R0-R15,  BP, SP,  CR,  SR,  DR, IP,  IR,  IV.  **Note:** the  command
-currently registers only when the  optional LABEL argument is included (a
-parser quirk); e.g. `watch SP <= 0x20000000 stack_underflow`.
+condition: `OP` is one  of `=`, `==`, `!=`, `<`, `>`, `<=`,  `>=`; `REG` is any
+of  R0-R15,  BP, SP,  CR,  SR,  DR, IP,  IR,  IV; `VALUE` is any integer
+(hex, binary, octal, decimal); the LABEL is optional, e.g.
+`watch SP <= 0x20000000 stack_underflow`. Remove with `unwatch #` or
+`unwatch LABEL`; `watchlist` (or `watch` alone) lists them.
+Register watchpoints only, for now.
 
 ### Display List
 
@@ -235,18 +267,20 @@ etc.), which are searched next to the corresponding V32 file.
 ```
 set color=true      set deref=true       set debug=true
 set verbose=true    set errorchk=true    set profile=true
-set R4=0x4004       set IP=0x10000040
+set R4=0x4004       set IP=0x10000040    # IP is a jump
 set 0x00224466=0x71
 set GPU_SelectedTexture=-1
 ```
 
-`set` with no arguments lists the current settings.
+Booleans accept true/false, on/off, yes/no, 1/0. `set` with no arguments
+lists the current settings. Memory and IOPort targets are validated.
 
 ### Load/Unload
 
 `load  cart:path`  and  `load   memc:path`  swap  components  at  runtime
 (primarily for MEMCARD swapping). `unload bios|cart|memc` deallocates the
-page. Note: `load bios:path` is parsed but not yet wired up.
+page. `load` checks the file can be opened first, and `unload` refuses a page
+that is not loaded. `load bios:path` is parsed but not supported yet.
 
 ## IOPORTS
 
@@ -273,7 +307,8 @@ inspected via `print`/`display`.
   is planned but not yet implemented; GD is not currently a build dependency
 - **MEMCARD**: loaded read-only — changes are not written back to the file;
   the V32-MEMC header is not yet validated
-- **`watch`** requires the LABEL argument to register (see Watchpoints)
+- **`watch`** supports registers and immediate values only
+- GPU has no framebuffer, so nothing is rendered; VSND data is not loaded
 - **`ignore`** does not yet skip the instruction; it currently behaves like
   `continue`
 - **`load bios:`** is parsed but not yet functional

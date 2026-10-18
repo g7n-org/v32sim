@@ -3,10 +3,14 @@
 # v32sim Makefile
 #
 # directory layout:
-#   src/  C sources
+#   src/  C sources, plus lexer.l (flex) and parser.y (bison)
 #   inc/  headers
-#   obj/  build intermediates (.o, .d)          [generated]
+#   obj/  build intermediates (.o, .d, and the
+#         flex/bison generated lexer.c, parser.c,
+#         parser.h)                             [generated]
 #   bin/  compiled binary                       [generated]
+#
+# build requirements: a C compiler, GNU readline, flex, and bison
 #
 ####################################################################################
 
@@ -16,16 +20,23 @@ OS      = $(shell uname -s)
 CC      = gcc
 TARGET  = v32sim
 
+FLEX    = flex
+BISON   = bison
+VERSION_STRING = $(shell sed -n 's/^\#define  *VERSION  *"\(.*\)".*/\1/p' inc/version.h)
+
 SRCDIR  = src
 INCDIR  = inc
 OBJDIR  = obj
 BINDIR  = bin
 
-INC     = -I$(INCDIR)
+INC     = -I$(INCDIR) -I$(OBJDIR)
 
 CFLAGS  = -Wall --std=gnu18 -funsigned-char -Wno-unused-value
 CFLAGS += -Wno-pointer-sign -Wno-main -Wno-int-conversion
 CFLAGS += -Wno-unused-but-set-variable
+
+# generated flex/bison sources are not ours to keep warning-free
+GENFLAGS = -Wno-unused-function -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-fallthrough
 
 # GNU readline; macOS ships history inside readline, Linux wants it separate
 LIBS    = -lreadline -lm
@@ -40,7 +51,9 @@ endif
 ####################################################################################
 
 SRC     = $(wildcard $(SRCDIR)/*.c)
-OBJ     = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC))
+GENSRC  = $(OBJDIR)/lexer.c $(OBJDIR)/parser.c
+GENHDR  = $(OBJDIR)/parser.h
+OBJ     = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC)) $(GENSRC:.c=.o)
 DEPS    = $(OBJ:.o=.d)
 BIN     = $(BINDIR)/$(TARGET)
 
@@ -55,8 +68,21 @@ all: $(BIN)
 $(BIN): $(OBJ) | $(BINDIR)
 	$(CC) $(CFLAGS) $(INC) $(OBJ) -o $@ $(LIBS)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(GENHDR) | $(OBJDIR)
 	$(CC) $(CFLAGS) $(INC) -MMD -MP -c $< -o $@
+
+# command grammar: bison writes parser.c and parser.h, flex writes lexer.c (which
+# includes parser.h for the token numbers)
+$(OBJDIR)/parser.c: $(SRCDIR)/parser.y | $(OBJDIR)
+	$(BISON) --defines=$(OBJDIR)/parser.h -o $@ $<
+
+$(OBJDIR)/parser.h: $(OBJDIR)/parser.c ;
+
+$(OBJDIR)/lexer.c: $(SRCDIR)/lexer.l $(GENHDR) | $(OBJDIR)
+	$(FLEX) -o $@ $<
+
+$(OBJDIR)/parser.o $(OBJDIR)/lexer.o: $(OBJDIR)/%.o: $(OBJDIR)/%.c
+	$(CC) $(CFLAGS) $(GENFLAGS) $(INC) -MMD -MP -c $< -o $@
 
 $(OBJDIR) $(BINDIR):
 	mkdir -p $@
@@ -69,6 +95,9 @@ debug: $(BIN)
 # sanitizer build (ASan + UBSan) for hunting memory errors
 asan: CFLAGS += -g -fsanitize=address,undefined -fno-omit-frame-pointer
 asan: $(BIN)
+
+version:
+	@echo "$(TARGET) $(VERSION_STRING)"
 
 install: $(BIN)
 	@if [ -d ~/bin/bin.$(ARCH) ]; then \
@@ -91,9 +120,9 @@ sysinstall: $(BIN)
 
 clean:
 	@rm -vf .*.sw[op] *.save* *~ core errors
-	@rm -vf $(OBJ) $(DEPS) $(BINDIR)/$(TARGET)
+	@rm -vf $(OBJ) $(DEPS) $(GENSRC) $(GENHDR) $(BINDIR)/$(TARGET)
 
-.PHONY: all debug asan install sysinstall clean
+.PHONY: all debug asan version install sysinstall clean
 
 -include $(DEPS)
 

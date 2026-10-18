@@ -32,6 +32,7 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "bios-start",     no_argument,       0, 'S' },
        { "watch-for",      required_argument, 0, 'w' },
        { "verbose",        no_argument,       0, 'v' },
+       { "version",        no_argument,       0, 'V' },
        { "help",           no_argument,       0, 'h' },
        { 0,                0,                 0,  0  }
     };
@@ -41,7 +42,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:L:M:nprSw:vh", long_options,
+                                                  "B:b:C:cdDeE:L:M:nprSw:vVh", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -166,12 +167,22 @@ void  process_args (int32_t  argc, int8_t **argv)
                 verbose            = stderr;
                 break;
 
+            case 'V':
+                fprintf (stdout, "v32sim %s\n", VERSION);
+                exit (0);
+                break;
+
             case 'h':
                 usage ((int8_t *) argv[0]);
                 break;
+
+            case '?':   // getopt_long() has already named the offending option
+                fprintf (stderr, "Try '%s --help' for more information.\n", argv[0]);
+                exit (1);
+                break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:L:M:nprSw:vh", long_options,
+                                                  "B:b:C:cdDeE:L:M:nprSw:vVh", long_options,
                                                   &option_index);
     }
 

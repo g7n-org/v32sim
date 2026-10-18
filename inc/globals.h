@@ -239,13 +239,7 @@ uint8_t  *show_size      (uint32_t);
 void      process_args   (int32_t,     int8_t  **);
 void      usage          (int8_t   *);
 void      help           (uint8_t);
-uint8_t  *parse_deref    (uint8_t  *,  uint8_t  *);
-uint8_t   parse_token    (uint8_t  *,  uint8_t  *,  uint8_t);
-uint8_t   parse_memrange (uint8_t  *);
-uint8_t   parse_imm      (uint8_t  *,  data_t   *);
-uint8_t   parse_reg      (uint8_t  *);
-uint32_t  tokenize_asm   (uint8_t  *);
-uint8_t   tokenize_input (uint8_t  *,  uint8_t  *);
+uint32_t  tokenize_asm   (uint8_t  *);                        // live assembly (stub)
 uint8_t  *get_input      (FILE     *,  const uint8_t *);
 uint8_t   prompt         (uint32_t);
 linked_l *find_label     (linked_l *,  int8_t *);

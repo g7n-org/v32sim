@@ -1,5 +1,12 @@
 #include "defines.h"
-#include <regex.h>
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// assembly.c: placeholder for the planned "live assembly injection" feature (see
+// TODO.md). The earlier regular-expression design below is commented out and kept
+// only as a record of the operand/addressing-mode notes; the replacement will reuse
+// the flex/bison machinery (lexer.l / parser.y) instead of POSIX regex.
+//
 
 uint32_t  tokenize_asm (uint8_t *input)
 {

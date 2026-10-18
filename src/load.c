@@ -374,8 +374,12 @@ uint8_t  unload_memory (uint32_t  page)
     switch (page)
     {
         case V32_PAGE_BIOS:
-            rfree (bios_vtex -> region);
-            rfree (bios_vtex);
+            if (bios_vtex != NULL)
+            {
+                rfree (bios_vtex -> region);
+                rfree (bios_vtex);
+                bios_vtex = NULL;
+            }
             break;
 
         case V32_PAGE_CART:
@@ -383,13 +387,17 @@ uint8_t  unload_memory (uint32_t  page)
             SYSPORTSET(CAR_NumberOfTextures, 0);
             SYSPORTSET(CAR_NumberOfSounds,   0);
             SYSPORTSET(CAR_ProgramROMSize,   0);
-            for (index              = 0;
-                 index             <  cart_vtex -> qty;
-                 index              = index + 1)
+            if (cart_vtex != NULL) // a CART without textures has no cart_vtex
             {
-                rfree ((cart_vtex+index) -> region);
+                for (index          = 0;
+                     index         <  cart_vtex -> qty;
+                     index          = index + 1)
+                {
+                    rfree ((cart_vtex+index) -> region);
+                }
+                rfree (cart_vtex);
+                cart_vtex           = NULL;
             }
-            rfree (cart_vtex);
             break;
 
         case V32_PAGE_MEMC:
@@ -460,7 +468,7 @@ uint8_t  unload_memory (uint32_t  page)
         // if a CART ASM debug file was specified, clear it
         //
         if ((cartasmdebug          != NULL) &&
-            (page                  == V32_PAGE_BIOS))
+            (page                  == V32_PAGE_CART))
         {
             rfree (cartasmdebug);
             cartasmdebug            = NULL;
@@ -471,7 +479,7 @@ uint8_t  unload_memory (uint32_t  page)
         // if a BIOS C debug file was specified, clear it
         //
         if ((bioscdebug            != NULL) &&
-            (page                  == V32_PAGE_CART))
+            (page                  == V32_PAGE_BIOS))
         {
             rfree (bioscdebug);
             bioscdebug              = NULL;

@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
+#include "version.h"
 #include "watchpoint.h"
 #include "ioports.h"
 #include "vtex.h"
@@ -46,8 +47,8 @@
 #define  MEMC_FINAL_ADDR         0x3003FFFF
 
 #define  NO_CART_ERROR           1
-#define  REGEX_COMPILE_ERROR     2
-#define  REGEX_EXECUTE_ERROR     3
+#define  COMMAND_PARSE_ERROR     2   // reserved (was REGEX_COMPILE_ERROR)
+#define  COMMAND_INTERNAL_ERROR  3   // reserved (was REGEX_EXECUTE_ERROR)
 
 #define  IOPORTS_ALLOC_FAIL      4
 #define  IOPORTS_ACCESS_ERROR    5
@@ -120,6 +121,7 @@
 #define  INPUT_WATCH             27
 #define  INPUT_WATCHLIST         28
 #define  INPUT_UNWATCH           29
+#define  INPUT_VERSION           30
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A

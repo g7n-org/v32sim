@@ -203,7 +203,7 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  flag, uint8_t  sys_force)
     if (result                == TRUE)
     {
         attr                   = (memory+page) -> flag;
-        if ((address          >  (memory+page) -> last_addr) ||
+        if ((address          >= (memory+page) -> last_addr) ||
             ((sys_force       == FALSE) &&
              (flag            != (flag & attr))))
         {
@@ -221,7 +221,8 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  flag, uint8_t  sys_force)
     //
     // memory not loaded (so any access would be an error)
     //
-    if ((memory+page) -> data == NULL)
+    if ((page                 >= NUM_MEMORY_PAGES) ||
+        ((memory+page) -> data == NULL))
     {
         result                 = FALSE;
     }

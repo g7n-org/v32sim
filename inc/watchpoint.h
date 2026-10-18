@@ -25,8 +25,8 @@ extern wpoint_t *wpoint; // Watchpoint list (declared in globals.h)
 
 wpoint_t     *wpoint_new             (uint8_t,     uint8_t,        uint32_t);
 void          wpoint_add             (wpoint_t **, wpoint_t     *);
-void          wpoint_remove          (wpoint_t **, int);
-void          wpoint_remove_by_label (wpoint_t **, const int8_t *);
+uint8_t       wpoint_remove          (wpoint_t **, int);                 // TRUE if removed
+uint8_t       wpoint_remove_by_label (wpoint_t **, const int8_t *);      // TRUE if removed
 uint8_t       wpoint_check           (void);
 void          wpoint_display         (void);
 void          wpoint_clear           (wpoint_t **);

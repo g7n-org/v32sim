@@ -1,115 +1,95 @@
 # TODO
 
-## ENTRY POINT
+Status as of version `20261018-dev`, after the move of the command front
+end to flex/bison.
 
-Should default entry point be at `CART` start of `0x20000000`?
+## DONE (removed from this list)
 
-## SIGNALS (SIGSEGV)
+  * **Registers use access functions** - `reg_get()` / `reg_set()` exist
+    in `register.c`.
+  * **Watchpoints** - register watchpoints (`==`, `!=`, `<`, `<=`, `>`,
+    `>=` against an immediate) work: `watch`, `watchlist`, `unwatch`.
+    The label is optional.
+  * **Command parsing** - regex front end replaced by `lexer.l`,
+    `parser.y` (parse) and `command.c` (execute).
+  * **Version** - `VERSION` in `inc/version.h`; `--version`/`-V`, banner,
+    usage, `version` prompt command, `make version`.
 
-Display some simulator variables
+## STILL LACKING
 
-## TRANSITION REGISTERS TO USE ACCESS FUNCTIONS
+### Commands
 
-Like memory  and ioports, have  registers also  use a `_get`  and `_set`;
-could be helpful when watchpoints are implemented.
+  * **`ignore`** still behaves like `continue`. It should skip the
+    current instruction (advance `rom_offset` past the instruction and
+    its immediate, without executing). About three lines in the
+    `INPUT_IGNORE` case of `prompt()`.
+  * **`screenshot`** - parsed, prints "not implemented yet". Needs the
+    GPU framebuffer (see below) and a PNG writer (libgd, or libpng).
+  * **`load bios:PATH`** - parsed, reports "not supported".
+  * **Save / restore state** - save RAM, registers and IOPorts to a file;
+    store a checksum of the CART (computed in `load_memory()`) so a state
+    cannot be restored against a different cartridge.
+  * **`replace`** patches memory but not the instruction already fetched
+    for the current step (takes effect on the next arrival at that
+    address). Decide whether that is wanted or should re-fetch.
 
-## SAVE / RESTORE COMMANDS IN PROMPT
+### Watchpoints
 
-Save states!
+  * Register-only. Memory and IOPort watches are not implemented.
+  * Value is an immediate only; comparing against another register,
+    memory or IOPort contents is not implemented.
+  * Checked once per instruction in the main loop, not inside
+    `reg_set()`/`memory_set()`/`ioports_set()`, so a value that changes
+    and changes back within one instruction is missed.
 
-The idea  is to  save to file  the current state  of RAM,  registers, and
-ioports. Probably also  tie in some check against CART  and MEMC state so
-that you cannot restore a save state for an entirely different cartridge.
+### Hardware
 
-Perhaps some simple checksum of the CART? Could do that in load_memory()!
+  * **SPU** - ports store and return values; no sound engine.
+  * **GPU rendering** - texture, region and drawing ports work, but there
+    is no framebuffer. Needed for `screenshot`. VTEX data is stored
+    stripped of headers; a VTEX -> PNG path (see `vircon2png` in the
+    Vircon32 DevTools, libpng / libgd `gdImageCreateFromPngPtr()`) is
+    still to do.
+  * **VSND** - sound data is not loaded into memory by `load_memory()`
+    (`num_vsnd` is read; the offsets are skipped). Same approach as VTEX.
+  * **MEMC write-back** - MEMCARD changes are lost on exit.
+    `unload_memory()` should save them to the memcfile (keep `memcfile`
+    in `mem_t`). The V32-MEMC header is not validated.
+  * **TIM_TIMEDAY** - day-of-year ignores leap years
+    (`update_sys.c`, "compensate for leap years").
 
-## IMPLEMENT SPU IOPORTS
+### Debug information
 
-The SPU ports now exist, but no functionality currently exists: the ports
-can only be read from or written to, but nothing happens to the data that
-resides in the SPU ports.
+  * **Debug file location** - only the current directory is searched.
+    Also try `obj/` and `../obj/`, and add a command-line option.
+  * **Assembly overlay** - labels, offsets and line numbers are read from
+    the debug file, but the matching source line is not displayed in
+    place of the decoded instruction.
+  * **C overlay** - `.asm.debug` carries the C line numbers; show the C
+    line for the current instruction. `-L C` currently only
+    selects the C-style label files; no C source is displayed.
+  * The CSV debug-file loader (`load_labels()`) is hand-rolled; it could
+    be moved onto flex now that the build has it.
 
-At least now, all ports exist, so any code using the SPU ports should now
-not segfault.
+### Live assembly injection
 
-## GPU PORTS
+  Specify assembly text, encode it, and execute or patch it in. This is
+  now practical: `lexer.l`/`parser.y` give the build the machinery, and
+  `assembly.c` has a header describing the plan (the old regex design is
+  kept there, commented out, as a sketch). `gbtov32`
+  (`doc/v32asm_reference.md`) is the reference for the instruction
+  syntax and operand modes. The decoder (`decode.c`) is the inverse.
 
-Texture, Region,  and Region  definition ports  are now  functioning. The
-VTEX data  is now properly  being loaded  into memory, stripping  out the
-headers.
+### Miscellaneous
 
-### VTEX TO PNG FORMAT
-
-Looking through  the code to  `vircon2png` (in  DevTools), I see  how the
-data is  stored in memory  for core PNG data,  using libpng. I  am hoping
-to  be able  to  replicate  this process,  then  use  something like  the
-libGD  `gdImageCreateFromPng()`  function  to  read it  directly  into  a
-`gdImagePtr`, then proceed on my way from there.
-
-  * https://libgd.github.io/manuals/2.3.0/files/gd_png-c.html
-  * https://libgd.github.io/manuals/2.2.3/files/gd_gd2-c.html
-  * https://libgd.github.io/manuals/2.3.0/files/gd_png-c.html#gdImageCreateFromPngPtr
-  * https://github.com/libgd/libgd/blob/master/src/pngtogd2.c
-
-## MEMC
-
-Functional MEMC support is online, but  changes will be lost on simulator
-exit. The  `unload_memory()` function  needs to be  updated to  save MEMC
-data back to the loaded memcfile.
-
-I will likely need to store `memcfile`  in `mem_t` to have it on hand for
-such operations.
-
-## VSND DATA
-
-No VSND  data is  currently being  loaded into  memory. Support  for that
-still needs to be added to `load_memory()`.
-
-The infrastructure is in  place to do that, via my  work on VTEX loading,
-which is a largely similar process.
-
-## FINISH IMPLEMENTING TIM_TIMEDAY
-
-Currently does not handle leap years/days.
-
-## VARIED DEBUG FILE LOCATION CHECK
-
-Currently  only   checks  current  directory,  should   also  check  obj/
-directory:
-
-  * `.` - current only location it checks (where .v32 is read from)
-  * `obj/` - should also check
-  * `../obj/` - should also check
-  * implement a command-line argument to specify
-
-## WATCHPOINTS
-
-Idea for watchpoints:
-
-  * linked list ID'ing register, memory, or ioport.
-  * comparison operator (standard `==`, `!=`, `<`, `<=`, `>`, and `>=`)
-  * value to watch for:
-    * immediate value
-	* register contents
-	* memory address contents
-	* ioport contents
-
-The  various  `_get` and  `_set`  functions  for registers,  memory,  and
-ioports need  to perform  a sweep through  the watchlist,  performing any
-checks for the entries that pertain to them.
-
-## ASSEMBLY CODE OVERLAY
-
-With the  offsets, line numbers, and  labels loaded from the  debug file,
-look up the actual line of assembly and display it instead of our decoded
-output.
-
-## C CODE OVERLAY
-
-Access the .asm.debug to also get the  lines from the C file, and display
-the corresponding line of C code.
-
-## LIVE ASSEMBLY INJECTION
-
-Specify actual  assembly code,  that gets encoded  into machine  code and
-then executed.
+  * **Entry point** - should the default start be the cartridge
+    (`0x20000000`) rather than the BIOS?
+  * **SIGSEGV** - only SIGINT is trapped. A SIGSEGV handler should print
+    some simulator state (IP, instruction, last access) before dying.
+  * **Tests** - there is no automated test suite. The old-vs-new
+    scenario scripts used for the flex/bison change (step, next,
+    continue, breakpoints, watchpoints, replace against
+    `cart/09_hello.v32`) are a good starting point.
+  * **Instruction coverage** - all 64 opcodes are implemented, but not
+    all are exhaustively tested, and port modes/quantities have not been
+    fully cross-checked against the Vircon32 reference.

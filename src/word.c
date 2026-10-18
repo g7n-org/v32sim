@@ -48,7 +48,7 @@ uint32_t  get_word (FILE *fptr)
             // shifts and iORs to place the byte at the appropriate
             // word byte offset
             //
-            word     = word | (*(data+index) << (8 * index));
+            word     = word | ((uint32_t) *(data+index) << (8 * index));
         }
     }
 

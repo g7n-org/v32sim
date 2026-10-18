@@ -91,11 +91,14 @@ void  display_config (uint8_t  item)
             fprintf (stdout, "===================================\n");
             fprintf (stdout, "RAM:  %s\n", show_size (V32_PAGE_RAM));
             fprintf (stdout, "BIOS: %s\n", show_size (V32_PAGE_BIOS));
-            fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",
-                     index,
-                     (bios_vtex) -> wide,
-                     (bios_vtex) -> high,
-                     (bios_vtex) -> offset);
+            if (bios_vtex != NULL)
+            {
+                fprintf (stdout, "  > VTEX #%d (%hux%hu) at 0x%.8X\n",
+                         index,
+                         (bios_vtex) -> wide,
+                         (bios_vtex) -> high,
+                         (bios_vtex) -> offset);
+            }
             fprintf (stdout, "CART: %s\n", show_size (V32_PAGE_CART));
             if (cart_vtex   == NULL)
             {

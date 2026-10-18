@@ -3,7 +3,7 @@
 void  usage (int8_t *program)
 {
     fprintf (stdout, "Usage: %s [OPTION]... [CARTFILE.v32]\n", program);
-    fprintf (stdout, "Debugger/Simulator for Vircon32 Fantasy Console\n\n");
+    fprintf (stdout, "Debugger/Simulator for Vircon32 Fantasy Console (version %s)\n\n", VERSION);
     fprintf (stdout, "Mandatory arguments to long options are mandatory ");
     fprintf (stdout, "for short options too.\n\n");
     fprintf (stdout, " -B, --biosfile=FILE       load this BIOS V32 file as BIOS\n");
@@ -11,12 +11,14 @@ void  usage (int8_t *program)
     fprintf (stdout, " -C, --command-file=FILE   load this file with sim commands\n");
     fprintf (stdout, " -c, --colors              enable colorized output\n");
     fprintf (stdout, " -d, --deref-addr          output address of dereference\n");
+    fprintf (stdout, " -D, --debug               enable simulator debug output (development)\n");
     fprintf (stdout, " -e, --errorcheck          enable runtime error checking\n");
     fprintf (stdout, "     --bios-asm-debug=FILE load BIOS asm labels from FILE\n");
     fprintf (stdout, "     --bios-c-debug=FILE   load BIOS C labels from FILE\n");
     fprintf (stdout, "     --cart-asm-debug=FILE load CART asm labels from FILE\n");
     fprintf (stdout, "     --cart-c-debug=FILE   load CART C labels from FILE\n");
     fprintf (stdout, " -E, --entry-point=OFFSET  set simulator entry point\n");
+    fprintf (stdout, " -L, --langmode=MODE       label/source mode: C or lua (experimental)\n");
     fprintf (stdout, " -M, --memcfile=FILE       load this file as a MEMCARD\n");
     fprintf (stdout, " -n, --no-debug            do not process any debug files\n");
     fprintf (stdout, " -p, --profile             enable instruction profiling\n");
@@ -24,6 +26,7 @@ void  usage (int8_t *program)
     fprintf (stdout, " -S, --bios-start          break at BIOS code start\n");
     fprintf (stdout, " -w, --watch-for=OPCODE    run until OPCODE is encountered\n");
     fprintf (stdout, " -v, --verbose             enable more verbose output\n");
+    fprintf (stdout, " -V, --version             display version information and exit\n");
     fprintf (stdout, " -h, --help                display this information\n\n");
     fprintf (stdout, "FILE   is any path plus the filename desired\n");
     fprintf (stdout, "OFFSET is the full 32-bit/4-byte memory addres (hex)\n");
@@ -39,25 +42,34 @@ void  help  (uint8_t  item)
         case INPUT_HELP:
             fprintf (stdout, "v32sim commands           description\n");
             fprintf (stdout, "========================= ============================\n");
-            fprintf (stdout, "  break 0xMEM|LABEL       set breakpoint\n");
+            fprintf (stdout, "  break [0xMEM|LABEL]     set breakpoint (or list them)\n");
+            fprintf (stdout, "  unbreak #               remove breakpoint #\n");
             fprintf (stdout, "  continue                resume execution\n");
-            fprintf (stdout, "  print XYZ               one-time display of XYZ\n");
-            fprintf (stdout, "  display XYZ LABEL       add displaylist item:\n");
-            fprintf (stdout, "  label 0xMEM LABEL       add label list item\n");
-            fprintf (stdout, "  load memory:file        load component into memory\n");
-            fprintf (stdout, "  unload memory           unload component from memory\n");
-            fprintf (stdout, "  next                    next (skip subroutines)\n");
             fprintf (stdout, "  step                    step to next instruction\n");
-            fprintf (stdout, "  backtrace               display list of calls\n");
-            fprintf (stdout, "  profile                 show profiling report\n");
-            fprintf (stdout, "  inventory               system resource inventory\n");
+            fprintf (stdout, "  next                    next (skip subroutines)\n");
             fprintf (stdout, "  ignore                  ignore this instruction\n");
-            fprintf (stdout, "  replace X Y Z           replace:\n");
-            fprintf (stdout, "  set NAME = VALUE        set system feature\n");
-            fprintf (stdout, "  unbreak #/undisplay #   remove item from list\n");
+            fprintf (stdout, "  backtrace               display list of calls\n");
+            fprintf (stdout, "  print[/F] XYZ           one-time display of XYZ\n");
+            fprintf (stdout, "  display[/F] XYZ [LABEL] add displaylist item\n");
+            fprintf (stdout, "  undisplay #             remove displaylist item #\n");
+            fprintf (stdout, "  label [0xMEM LABEL]     list or add label list item\n");
             fprintf (stdout, "  unlabel #               remove label #\n");
-            fprintf (stdout, "  help/?                  display this help\n");
-            fprintf (stdout, "  quit                    exit the simulator\n");
+            fprintf (stdout, "  watch REG OP VAL [LBL]  set a register watchpoint\n");
+            fprintf (stdout, "  watchlist               list watchpoints\n");
+            fprintf (stdout, "  unwatch #|LABEL         remove a watchpoint\n");
+            fprintf (stdout, "  set [NAME = VALUE]      set system feature, register, memory, IOPort\n");
+            fprintf (stdout, "  replace IP:X IR:Y IV:Z  patch instruction memory\n");
+            fprintf (stdout, "  gamepad [#] [COMMAND]   view/simulate gamepad state\n");
+            fprintf (stdout, "  load cart|memc:file     load component into memory\n");
+            fprintf (stdout, "  unload bios|cart|memc   unload component from memory\n");
+            fprintf (stdout, "  inventory               system resource inventory\n");
+            fprintf (stdout, "  profile                 show profiling report\n");
+            fprintf (stdout, "  version                 show the simulator version\n");
+            fprintf (stdout, "  help [COMMAND] / ?      display this help\n");
+            fprintf (stdout, "  quit                    exit the simulator\n\n");
+            fprintf (stdout, "Commands may be abbreviated (s = step, n = next, c = continue, p = print,\n");
+            fprintf (stdout, "se = set, pro = profile, in = inventory, lo = load, ...). Blank lines repeat\n");
+            fprintf (stdout, "the previous step/next/continue. Lines starting with # are comments.\n");
             break;
 
         case INPUT_GAMEPAD:
@@ -68,7 +80,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "DESCRIPTION:\n");
             fprintf (stdout, "    Display current values, or manipulate the gamepads\n");
             fprintf (stdout, "    (0-3), with the following commands:\n\n");
-            fprintf (stdout, "    select      - switch to the indicated gamepad (0-3)\n");
+            fprintf (stdout, "    select      - switch to the indicated gamepad (needs a number, 0-3)\n");
             fprintf (stdout, "    connect     - connect the selected gamepad (active)\n");
             fprintf (stdout, "    disconnect  - disconnect the selected gamepad (inactive)\n");
             fprintf (stdout, "    left        - toggle left d-pad button (pressed/not pressed)\n");
@@ -78,6 +90,9 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    start       - toggle start button (pressed/not pressed)\n");
             fprintf (stdout, "    A|B|X|Y|L|R - toggle indicated button (pressed/not pressed)\n\n");
             fprintf (stdout, "NOTES:\n");
+            fprintf (stdout, "    With a gamepad number, that gamepad is selected first; a number\n");
+            fprintf (stdout, "    alone selects the gamepad and shows its state. Commands may be\n");
+            fprintf (stdout, "    abbreviated (le, ri, u, d, s, di, c, se).\n");
             fprintf (stdout, "    When pressed, the button's value will be a positive number\n");
             fprintf (stdout, "    of frames it has been pressed. When not pressed, a negative\n");
             fprintf (stdout, "    number of frames it has not been pressed\n\n");
@@ -89,11 +104,15 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    replace IR:0xINSTRUCT\n");
             fprintf (stdout, "    replace IR:0xINSTRUCT IV:0xIMMEDIATE\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
-            fprintf (stdout, "    Somewhat of a one-shot \"Game-Genie\"-style command,\n");
-            fprintf (stdout, "    allowing for the replacement of the indicated system\n");
-            fprintf (stdout, "    register(s) with the specified value(s). This will\n");
-            fprintf (stdout, "    not replace the values in memory (like a set would),\n");
-            fprintf (stdout, "    making it more for a temporary change.\n\n");
+            fprintf (stdout, "    A \"Game-Genie\"-style patch of instruction memory. IP:0xADDR\n");
+            fprintf (stdout, "    picks the address to patch (default: the current IP), IR:\n");
+            fprintf (stdout, "    overwrites the instruction word there, and IV: overwrites\n");
+            fprintf (stdout, "    the immediate word that follows it (if the new instruction\n");
+            fprintf (stdout, "    takes one). Items are applied left to right.\n\n");
+            fprintf (stdout, "NOTE:\n");
+            fprintf (stdout, "    The patch is written to memory and stays there. It does not\n");
+            fprintf (stdout, "    alter the instruction already fetched for this step, so it\n");
+            fprintf (stdout, "    takes effect the next time execution reaches that address.\n\n");
             break;
 
         case INPUT_BREAK:
@@ -124,6 +143,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    List or set a label for the indicated memory offset. An entry is\n");
             fprintf (stdout, "    made in the label list, allowing for label<->offset lookups to be\n");
             fprintf (stdout, "    performed, utilized by a number of simulator features.\n\n");
+            break;
 
         case INPUT_CONTINUE:
             fprintf (stdout, "SYNOPSIS:\n");
@@ -135,13 +155,17 @@ void  help  (uint8_t  item)
         case INPUT_SET:
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    set setting=true|false\n");
-            fprintf (stdout, "    set R#|IP|IR|IV=0xTHEVALUE\n");
+            fprintf (stdout, "    set R#|SP|BP|CR|SR|DR|IP|IR|IV=0xTHEVALUE\n");
+            fprintf (stdout, "    set\n");
             fprintf (stdout, "    set 0xMEM_ADDR=0xTHEVALUE\n");
             fprintf (stdout, "    set 0xIOP=0xTHEVALUE\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
             fprintf (stdout, "    Set some system setting or resource to a specified value.\n");
             fprintf (stdout, "    This facility offers a way, during runtime, to alter the\n");
             fprintf (stdout, "    state of registers, memory, and IOPorts for use in testing\n");
+            fprintf (stdout, "    (setting IP is a jump: execution continues from the new IP).\n");
+            fprintf (stdout, "    With no arguments, the current settings are listed. The IOPort\n");
+            fprintf (stdout, "    may also be given by its symbolic name (GPU_ClearColor=...).\n");
             fprintf (stdout, "    or enabling desired conditions. It is also used for setting\n");
             fprintf (stdout, "    simulator configurations during runtime.\n\n");
             fprintf (stdout, "SETTINGS:\n");
@@ -150,7 +174,8 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    profile  true/false    set instruction profiling\n");
             fprintf (stdout, "    debug    true/false    set simulator debug mode\n");
             fprintf (stdout, "    errorchk true/false    set simulator error checking\n");
-            fprintf (stdout, "    verbose  true/false    set simulator verbosity\n\n");
+            fprintf (stdout, "    verbose  true/false    set simulator verbosity\n");
+            fprintf (stdout, "    (values: true/false, on/off, yes/no, 1/0)\n\n");
             fprintf (stdout, "NOTE:\n");
             fprintf (stdout, "    Setting system resources is done outside any access-control\n");
             fprintf (stdout, "    bounds: those resources that are read-only will be impair\n");
@@ -249,9 +274,13 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    print/fmt [0xMEM_ADDR]\n");
             fprintf (stdout, "    print/fmt 0xMEMADDR1-0xMEMADDR2\n");
             fprintf (stdout, "    print/fmt [0xMEMADDR1-0xMEMADDR2]\n");
-            fprintf (stdout, "    print/fmt 0xIOP LABEL\n\n");
+            fprintf (stdout, "    print/fmt 0xIOP\n");
+            fprintf (stdout, "    print/fmt IOPORT_SYMBOL\n");
+            fprintf (stdout, "    print/fmt reg\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
-            fprintf (stdout, "    A one-time output of the indicated value. Typically used when one\n");
+            fprintf (stdout, "    A hexadecimal number of up to 3 digits is an IOPort, longer ones a\n");
+            fprintf (stdout, "    memory address. REGISTER is R0-R15, BP, SP, CR, SR, DR, IP, IR, IV\n");
+            fprintf (stdout, "    ('reg' shows R0-R15). A one-time output of the indicated value. Typically used when one\n");
             fprintf (stdout, "    does not want to establish a displaylist item. Functionality is\n");
             fprintf (stdout, "    pretty much identical to that of the display command.\n\n");
             fprintf (stdout, "FORMATTING:\n");
@@ -317,6 +346,20 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    will be re-indexed\n\n");
             break;
 
+        case INPUT_QUIT:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    quit\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Leave the simulator (end of input, ie Ctrl-D, does the same).\n\n");
+            break;
+
+        case INPUT_VERSION:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    version\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Display the simulator version (also: v32sim --version).\n\n");
+            break;
+
 		case INPUT_WATCH:
 			fprintf (stdout, "SYNOPSIS:\n");
 			fprintf (stdout, "    watch REG OP VALUE [LABEL]\n\n");
@@ -325,12 +368,15 @@ void  help  (uint8_t  item)
 			fprintf (stdout, "    meets the condition, execution will break and notify you.\n\n");
 			fprintf (stdout, "    REG:  Any register (R0-R15, BP, SP, CR, SR, DR, IP, IR, IV)\n");
 			fprintf (stdout, "    OP:   =, !=, <, >, <=, >=\n");
-			fprintf (stdout, "    VALUE: Hex value (0x00000000-0xFFFFFFFF)\n");
+			fprintf (stdout, "    VALUE: any integer (0x.. hex, 0b.. binary, 0.. octal, or decimal)\n");
 			fprintf (stdout, "    LABEL: Optional label for the watchpoint\n\n");
 			fprintf (stdout, "EXAMPLES:\n");
 			fprintf (stdout, "    watch SP <= 0x20000000 stack_underflow\n");
 			fprintf (stdout, "    watch R0 != 0x00000000\n");
 			fprintf (stdout, "    watch BP > 0x2000FFFF stack_overflow\n\n");
+			fprintf (stdout, "NOTES:\n");
+			fprintf (stdout, "    The label is optional. With no arguments, watch lists the\n");
+			fprintf (stdout, "    watchpoints. Comparisons are unsigned 32-bit.\n\n");
 			break;
 
 		case INPUT_WATCHLIST:

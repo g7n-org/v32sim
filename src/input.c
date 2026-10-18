@@ -1,6 +1,7 @@
 #include "defines.h"
 #include <readline/readline.h>
 #include <readline/history.h>
+#include "command.h"
 
 uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 {
@@ -71,9 +72,7 @@ uint8_t  prompt (uint32_t  word)
     int32_t    value                    = 0;
     static uint8_t   *input             = NULL;
     static uint8_t    lastaction        = INPUT_INIT;
-    uint8_t    deref_flag               = FALSE;
     uint8_t    processflag              = FALSE;
-    //uint8_t    token_type               = PARSE_NONE;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -93,69 +92,29 @@ uint8_t  prompt (uint32_t  word)
         return (2);
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // an empty line repeats the previous action (eg: hit Enter to keep stepping);
+    // anything else is parsed (flex/bison) and executed by process_command(), which
+    // leaves `action` set to what must happen next: INPUT_INIT for the commands that
+    // do not move the CPU, otherwise step/next/continue/ignore/quit
+    //
     if (*input                         == '\0')
     {
         action                          = lastaction;
     }
-
-    //tokenize_asm   (input);
-
-    if (action                         != INPUT_NONE)
-    {
-        //token_type                      = tokenize_input (input, &deref_flag);
-        tokenize_input (input, &deref_flag);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // newcommand will be the character recently input; if newline,
-    // repeat lastcommand
-    //
     else
     {
-        action                          = lastaction;
+        process_command (input);
     }
 
     switch (action)
     {
-        case INPUT_BREAK:
-        case INPUT_LABEL:
-        case INPUT_REPLACE:
-        case INPUT_UNDO:
-            processflag                 = FALSE;
-            action                      = INPUT_INIT;
-            break;
-
-        case INPUT_SET:
-            fprintf (stdout, "v32sim settings\n");
-            fprintf (stdout, "===============\n");
-            fprintf (stdout, "color:   %s\n", (colorflag   == TRUE)   ? "TRUE" : "FALSE");
-            fprintf (stdout, "deref:   %s\n", (derefaddr   == TRUE)   ? "TRUE" : "FALSE");
-            fprintf (stdout, "error:   %s\n", (errorcheck  == TRUE)   ? "TRUE" : "FALSE");
-            fprintf (stdout, "debug:   %s\n", (debug       == stderr) ? "TRUE" : "FALSE");
-            fprintf (stdout, "profile: %s\n", (profileflag == TRUE)   ? "TRUE" : "FALSE");
-            fprintf (stdout, "verbose: %s\n", (verbose     == stderr) ? "TRUE" : "FALSE");
-            processflag                 = FALSE;
-            action                      = INPUT_INIT;
-            break;
-
         case INPUT_CONTINUE:
         case INPUT_IGNORE:
             processflag                 = TRUE;
             runflag                     = TRUE;
             nextflag                    = FALSE;
-            break;
-
-        case INPUT_PRINT:
-            lastaction                  = INPUT_NONE;
-            break;
-
-        case INPUT_DISPLAY:
-            lastaction                 = INPUT_NONE;
-            break;
-
-        case INPUT_GAMEPAD:
-            lastaction                 = INPUT_NONE;
             break;
 
         case INPUT_QUIT:
@@ -193,26 +152,8 @@ uint8_t  prompt (uint32_t  word)
             nextflag                   = TRUE;
             break;
 
-        case INPUT_WATCH:
-            fprintf (stderr, "[INPUT] WATCH]\n");
-            // Already handled in tokenize_input
-            action = INPUT_INIT;
-            break;
-
-        case INPUT_WATCHLIST:
-            fprintf (stderr, "[INPUT] WATCHLIST]\n");
-            wpoint_display();
-            action = INPUT_INIT;
-            break;
-
-        case INPUT_UNWATCH:
-            // Already handled in tokenize_input
-            action = INPUT_INIT;
-            break;
-
-        case INPUT_HELP:
-            help (INPUT_HELP);
-            action                     = INPUT_INIT;
+        default:                // nothing else moves the CPU
+            processflag                = FALSE;
             break;
     }
     lastaction                         = action;
@@ -508,7 +449,6 @@ void load_command(void)
 {
     FILE     *fptr = NULL;
     uint8_t   input[1024];
-    uint8_t   deref_flag = FALSE;
 
     if (commandfile != NULL)
     {
@@ -529,8 +469,8 @@ void load_command(void)
             if (input[0] == '\0')
                 continue;  // Skip empty lines
 
-            // Tokenize and process the command
-            tokenize_input(input, &deref_flag);
+            // Parse (flex/bison) and execute the command
+            process_command((char *)input);
 
             // Execute the action set by tokenize_input
             switch (action)
@@ -550,7 +490,7 @@ void load_command(void)
                     nextflag = TRUE;
                     break;
 
-                // Display, break, watch, etc. are handled by tokenize_input itself
+                // Display, break, watch, etc. are handled by process_command itself
                 default:
                     break;
             }

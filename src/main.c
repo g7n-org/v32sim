@@ -422,7 +422,7 @@ int32_t   main (int32_t  argc, char **argv)
     */
     if (runflag                       == FALSE)
     {
-        fprintf (stdout, "Vircon32 Simulator / Debugger  (v32sim)\n");
+        fprintf (stdout, "Vircon32 Simulator / Debugger  (v32sim %s)\n", VERSION);
         fprintf (stdout, "=======================================\n");
         fprintf (stdout, "[ OFFSET ] [HEXVALUES] [OPC] [DST]\n");
     }

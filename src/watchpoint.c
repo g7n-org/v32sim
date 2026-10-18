@@ -51,7 +51,7 @@ void wpoint_add(wpoint_t **list, wpoint_t *wp)
 //
 // wpoint_remove() - Remove a wpoint by index
 //
-void wpoint_remove(wpoint_t **list, int index)
+uint8_t wpoint_remove(wpoint_t **list, int index)
 {
     wpoint_t *tmp = NULL;
     wpoint_t *prev = NULL;
@@ -59,7 +59,8 @@ void wpoint_remove(wpoint_t **list, int index)
 
     if (*list == NULL)
     {
-        return;
+        fprintf(stderr, "[ERROR] Watchpoint index %d not found\n", index);
+        return FALSE;
     }
 
     tmp = *list;
@@ -82,7 +83,7 @@ void wpoint_remove(wpoint_t **list, int index)
             }
 
             rfree(tmp);
-            return;
+            return TRUE;
         }
 
         prev = tmp;
@@ -91,20 +92,22 @@ void wpoint_remove(wpoint_t **list, int index)
     }
 
     fprintf(stderr, "[ERROR] Watchpoint index %d not found\n", index);
+    return FALSE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 // wpoint_remove_by_label() - Remove a wpoint by its label
 //
-void wpoint_remove_by_label(wpoint_t **list, const int8_t *label)
+uint8_t wpoint_remove_by_label(wpoint_t **list, const int8_t *label)
 {
     wpoint_t *tmp = NULL;
     wpoint_t *prev = NULL;
 
     if ((*list == NULL) || (label == NULL))
     {
-        return;
+        fprintf(stderr, "[ERROR] Watchpoint with label '%s' not found\n", (label != NULL) ? (const char *)label : "");
+        return FALSE;
     }
 
     tmp = *list;
@@ -123,7 +126,7 @@ void wpoint_remove_by_label(wpoint_t **list, const int8_t *label)
 
             rfree(tmp->label);
             rfree(tmp);
-            return;
+            return TRUE;
         }
 
         prev = tmp;
@@ -131,6 +134,7 @@ void wpoint_remove_by_label(wpoint_t **list, const int8_t *label)
     }
 
     fprintf(stderr, "[ERROR] Watchpoint with label '%s' not found\n", label);
+    return FALSE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
