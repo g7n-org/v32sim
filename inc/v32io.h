@@ -71,5 +71,8 @@ void      v32io_term_resume   (void);                     // execution continues
 void      v32io_term_suspend  (void);                     // the prompt takes the terminal
 void      v32io_show          (void);                     // 'kbd' command
 void      v32io_shutdown      (void);
+void      v32io_tty           (int);                      // --tty full-screen mode
+int       v32io_tty_on        (void);
+void      v32io_tty_frame     (void);
 
 #endif

@@ -491,11 +491,126 @@ void  v32io_kbd_text (const uint8_t *text, size_t len, int final)
 //
 // the host terminal
 //
+//
+// Full-screen mode (--tty): while the program runs, the host terminal shows the text
+// console (gpu.c) on the alternate screen and the keys typed go to the v32kbd. Leaving
+// it (the prompt, the end of the run) gives the terminal back, and the last screen is
+// left in the scrollback as plain text.
+//
+static int       tty_on        = 0;       // --tty was asked for
+static int       tty_shown     = 0;       // the alternate screen is up
+static uint32_t  tty_gen       = 0;
+static int       tty_since     = 0;       // frames since the last repaint
+static int       tty_dirty     = 1;
+
+void  v32io_tty (int on)
+{
+    tty_on  = (on != 0);
+}
+
+int  v32io_tty_on (void)
+{
+    return (tty_on);
+}
+
+static void  tty_write (const char *s, size_t n)
+{
+    ssize_t  r  = 0;
+
+    while (n > 0)
+    {
+        r  = write (STDOUT_FILENO, s, n);
+        if (r <= 0)  return;
+        s  = s + r;
+        n  = n - (size_t) r;
+    }
+}
+
+static void  tty_enter (void)
+{
+    static const char  seq[]  = "\033[?1049h\033[?25l\033[2J";
+
+    if ((tty_on != 0) && (tty_shown == 0))
+    {
+        tty_write (seq, sizeof (seq) - 1);
+        tty_shown  = 1;
+        tty_dirty  = 1;
+    }
+}
+
+static void  tty_leave (void)
+{
+    static const char  seq[]  = "\033[0m\033[?25h\033[?1049l";
+
+    if (tty_shown != 0)
+    {
+        tty_write (seq, sizeof (seq) - 1);
+        tty_shown  = 0;
+        fflush (stdout);
+        gpu_console_show (stdout);        // what the screen said, for the record
+        fflush (stdout);
+    }
+}
+
+static void  tty_paint (void)
+{
+    int            rows = 0, cols = 0, row = 0, col = 0, last = 0, k = 0;
+    const uint8_t *g    = gpu_console_cells (&rows, &cols);
+    char           u8[4];
+    char          *buf  = (char *) malloc ((size_t) (rows * (cols * 3 + 8) + 128));
+    size_t         n    = 0;
+
+    if (buf == NULL)  return;
+    memcpy (buf + n, "\033[H", 3);  n = n + 3;
+    for (row = 0; row < rows; row = row + 1)
+    {
+        last = -1;
+        for (col = 0; col < cols; col = col + 1)
+        {
+            if ((g[row * cols + col] != 0) && (g[row * cols + col] != ' '))  last = col;
+        }
+        for (col = 0; col <= last; col = col + 1)
+        {
+            k  = gpu_console_utf8 (g[row * cols + col], u8);
+            memcpy (buf + n, u8, (size_t) k);  n = n + (size_t) k;
+        }
+        memcpy (buf + n, "\033[K\n", 4);  n = n + 4;
+    }
+    k  = sprintf (buf + n, "\033[J\033[7m v32sim: Ctrl-] = debugger \033[0m");
+    n  = n + (size_t) k;
+    tty_write (buf, n);
+    free (buf);
+}
+
+//
+// v32io_tty_frame(): once per frame; repaint when the text changed (at most every
+// 2 frames) while the program runs
+//
+void  v32io_tty_frame (void)
+{
+    if ((tty_shown == 0) || (runflag != TRUE))
+    {
+        return;
+    }
+    tty_since  = tty_since + 1;
+    if (((console_gen != tty_gen) || (tty_dirty != 0)) && (tty_since >= 2))
+    {
+        tty_paint ();
+        tty_gen    = console_gen;
+        tty_dirty  = 0;
+        tty_since  = 0;
+    }
+}
+
 static void  term_restore (void)
 {
     if ((kbd.raw != 0) && (kbd.fd >= 0))
     {
         tcsetattr (kbd.fd, TCSANOW, &kbd.saved);
+    }
+    if (kbd.raw != 0)
+    {
+        tty_leave ();
     }
     kbd.raw  = 0;
 }
@@ -525,6 +640,7 @@ void  v32io_term_resume (void)
     if (tcsetattr (kbd.fd, TCSANOW, &t) == 0)
     {
         kbd.raw  = 1;
+        tty_enter ();
     }
 }
 
@@ -742,6 +858,7 @@ void  v32io_frame (void)
     }
     source_poll ();
     drain ();
+    v32io_tty_frame ();
     if (kbd.qcount > 0)
     {
         ev  = kbd.q[kbd.qhead];

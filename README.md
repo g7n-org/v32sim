@@ -446,12 +446,32 @@ one event per frame waits, nothing is lost.
 
 ## The Text Console
 
-Characters drawn with the BIOS font (`print_at()` and friends: texture -1, region =
-character code, on the 10x20 pixel grid) are also kept as text in a 64x18 grid.
-`console` shows it (UTF-8; BIOS box drawing characters become Unicode),
-`--console` prints it when the run ends, and ClearScreen empties it. With the
-keyboard and `-x`/`--max-frames` this makes a v32nix or V32DOS session scriptable:
-type with `kbd type`, run some frames, read the screen with `console`.
+Characters drawn with the BIOS texture (texture -1, region = character code) are
+also kept as text. Two layouts are recognized:
+
+  * the **BIOS font** as `print_at()` lays it out: 10x20 pixel cells, 64x18
+  * the **v32c++ terminal** (`libc/v32term.h`): 80x24 cells of 8x15 pixels, drawn
+    slightly scaled from regions the library defines on the BIOS texture; a cell's
+    "paper" draw blanks it and the glyph draw that follows sets its character
+
+The layout drawn to last is the one shown. `console` prints it (UTF-8; BIOS box
+drawing characters become Unicode), `--console` prints it when the run ends, and
+ClearScreen empties it. Colors and attributes are not kept, only characters.
+
+### Interactive mode
+
+    v32sim --tty -B bios.v32 v32nix.v32            keyboard on gamepad 0
+    v32sim --tty --v32kbd=1 -B bios.v32 cart.v32   keyboard on gamepad 1
+
+`--tty` runs the program with the text console on your terminal (alternate
+screen, repainted when the text changes) and your keys going to an emulated
+v32kbd, so a text program such as v32nix or V32DOS can be used right there. It
+needs a terminal on stdin and stdout. **Ctrl-]** leaves for the debugger prompt
+(the terminal is given back; the last screen stays in the scrollback as text);
+`continue` returns to the program. Ctrl-C and the other control keys go to the
+program, not to v32sim. The program must read a v32kbd on that gamepad port
+(`v32kbd_init` / `v32io` library); one that reads the on-screen keyboard of
+v32term's default key source will not see your keys.
 
 ## Running Unattended
 

@@ -21,7 +21,11 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
   * **Unattended runs** - `--fast`, `--frame-us`, `--max-frames`, `-x`.
   * **`load bios:PATH`**, **`replace`** refreshes IR/IV, **float disassembly**
     prints shortest round-trip values.
-  * **Text console** - `console` / `--console` capture BIOS-font text.
+  * **Text console** - `console` / `--console` capture BIOS-font text, both the
+    64x18 BIOS layout and v32c++'s 80x24 terminal; `--tty` is a full-screen
+    interactive mode with the v32kbd.
+  * **GPU** - scale/angle ports were set from the register's bits converted as
+    an integer; zoomed and rotated draws were wrong for real programs.
   * **Tests** - `tests/run_tests.sh` (v32dev suite, v32kbd, persistence).
   * **TIM leap years**.
   * **Debug file location** - directory of the V32 file, current directory,
@@ -45,8 +49,9 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
     onto flex.
   * **Entry point** - should the default start be the cartridge
     (`0x20000000`) rather than the BIOS?
-  * **Text console** - only BIOS-font draws on the 10x20 grid are captured;
-    text a program renders with its own font is not.
+  * **Text console** - only BIOS-texture draws are captured, as characters:
+    colors, reverse video and the cursor are not shown by `--tty`; text drawn
+    with a program's own font is not captured.
   * **v32mouse** - the protocol is not emulated (only the keyboard).
   * **Cycle accuracy** - `MOVS`/`SETS`/`CMPS` run to completion as one step
     (the console runs one word per cycle).

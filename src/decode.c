@@ -1156,7 +1156,8 @@ void  decode_process (uint32_t  instruction,
                 case GPU_DrawingScaleX:
                 case GPU_DrawingScaleY:
                 case GPU_DrawingAngle:
-                    FPORTSET(port, value);
+                    memcpy (&fvalue, &value, sizeof (fvalue));   // the register holds the float's bits
+                    FPORTSET(port, fvalue);
                     break;
 
                 default:

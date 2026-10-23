@@ -34,6 +34,8 @@ void  usage (int8_t *program)
     fprintf (stdout, "     --fast                do not throttle to real time (frames run as fast as possible)\n");
     fprintf (stdout, "     --frame-us=N          wall-clock microseconds per frame (default 16666; 0 = --fast)\n");
     fprintf (stdout, "     --max-frames=N        stop after N frames\n");
+    fprintf (stdout, "     --tty                 full-screen interactive mode: the text console on this terminal, keys\n");
+    fprintf (stdout, "                           to a v32kbd (port 0 unless --v32kbd=N); Ctrl-] = debugger\n");
     fprintf (stdout, "     --console             print the BIOS-font text screen when the run ends\n");
     fprintf (stdout, " -x, --exit-status         exit status tells how the program ended: 0 HLT, 2 frame limit,\n");
     fprintf (stdout, "                           3 system error (stops instead of entering the BIOS handler)\n");

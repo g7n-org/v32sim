@@ -14,6 +14,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 SIM=${V32SIM:-$HERE/../bin/v32sim}
 TCD=$(cd "${1:?toolchain dir}" && pwd)
 IOD=$(cd "${2:?v32io project dir}" && pwd)
+CXX=${3:-}          # optional: a built v32c++ project dir (bin/v32c, libc/): tests its 80x24 terminal
 W=${WORK:-$(mktemp -d)}
 mkdir -p "$W"
 pass=0; fail=0
@@ -86,6 +87,16 @@ check "load bios: at the prompt" "$bi" "0"
 echo "== text console"
 con=$("$SIM" -r -x -n --fast --max-frames=20 --console -B "$BIOS" "$W/roms/carts/t_con.v32" 2>&1 | head -3)
 check "BIOS-font text captured" "$con" "$(printf 'Hello, v32 console\nline two\n  x=?é')"
+
+if [ -n "$CXX" ]; then
+    echo "== v32c++ 80x24 terminal (zoomed 8x15 cells)"
+    mkdir -p "$W/cxx" && cp -r "$W/roms/tc" "$W/cxx/" && cp "$HERE/carts/hello80.c" "$W/cxx/hello.c"
+    ( cd "$W/cxx" && "$CXX/bin/v32c" -I "$CXX/libc" hello.c -o hello_v.c >/dev/null 2>&1 \
+      && ./tc/compile hello_v.c -o hello.asm >/dev/null && ./tc/assemble hello.asm -o hello_v.vbin >/dev/null \
+      && ./tc/packrom hello_v.xml -o hello.v32 >/dev/null ) || bad "v32c++ build"
+    t=$("$SIM" -r -x -n --fast --max-frames=300 --console -B "$BIOS" "$W/cxx/hello.v32" 2>&1 | head -4)
+    check "v32term text captured" "$t" "$(printf 'Hello from v32libc, an 80x24 terminal\nline 0: gjpqy,Q_ 0\nline 1: gjpqy,Q_ 7\nline 2: gjpqy,Q_ 14')"
+fi
 
 echo "== memory card persistence"
 ( cd "$W/roms/carts" && cp "$HERE/carts/memwrite.asm" . && ../tc/assemble memwrite.asm -o memwrite.vbin >/dev/null \

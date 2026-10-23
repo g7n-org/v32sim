@@ -372,6 +372,15 @@ int32_t   main (int32_t  argc, char **argv)
     {
         v32io_kbd_attach (kbdport);
     }
+    if ((v32io_tty_on () == TRUE) && (kbdinput == NULL))
+    {
+        if (isatty (STDIN_FILENO) == 0 || isatty (STDOUT_FILENO) == 0)
+        {
+            fprintf (stderr, "[ERROR] --tty needs a terminal on stdin and stdout\n");
+            exit (1);
+        }
+        kbdinput  = (int8_t *) "stdin";
+    }
     if (kbdinput                   != NULL)
     {
         if (kbdport                <  0)

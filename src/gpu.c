@@ -121,73 +121,148 @@ static uint32_t  gpu_texel (vtex_t *tex, int x, int y)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
-// The text console: draws with the BIOS texture (id -1) put the character whose code is
-// the region number at a cell of the BIOS font grid (10x20 pixels, 64x18 cells, as
-// print_at() lays text out). The grid is kept as text so that a text interface can be
-// read without looking at pixels; ClearScreen empties it.
+// The text console. Draws with the BIOS texture (id -1) are also kept as characters, so
+// that a text interface can be read (and shown on a terminal) without looking at pixels.
+// Two layouts are recognized, both with region = character code:
 //
-#define  CON_COLS    64
-#define  CON_ROWS    18
-#define  CON_CELL_W  10
-#define  CON_CELL_H  20
+//   BIOS      the BIOS font as print_at() lays it out: regions 14-255, 10x20 pixel
+//             cells, 64x18 characters
+//   v32term   the 80x24 terminal of v32c++'s libc: 8x15 pixel cells, glyphs drawn
+//             slightly scaled from regions the library defines on the BIOS texture
+//             (body 256+C, shade blocks 769-776); the cell's background is a "paper"
+//             draw (region 768) that comes first, so it blanks the cell. Tail
+//             regions (512+C, 1024+C) are the descenders of the same character
+//
+// The layout that was drawn to last is the one shown. ClearScreen empties both.
+//
+#define  CON_A_COLS  64
+#define  CON_A_ROWS  18
+#define  CON_B_COLS  80
+#define  CON_B_ROWS  24
 
-static uint8_t  console_grid[CON_ROWS][CON_COLS];
+static uint8_t   console_a[CON_A_ROWS][CON_A_COLS];
+static uint8_t   console_b[CON_B_ROWS][CON_B_COLS];
+static uint8_t   console_use_b  = FALSE;
+uint32_t         console_gen    = 0;           // changes whenever the text does
 
-static void  console_put (int32_t region, int32_t x, int32_t y)
+static void  console_cell (uint8_t *cell, uint8_t value)
 {
-    if ((region < 14) || (region > 255) || (x < 0) || (y < 0))
+    if (*cell != value)
     {
-        return;
-    }
-    if (((x % CON_CELL_W) != 0) || ((y % CON_CELL_H) != 0))
-    {
-        return;     // not on the character grid: some other BIOS graphic
-    }
-    if (((x / CON_CELL_W) < CON_COLS) && ((y / CON_CELL_H) < CON_ROWS))
-    {
-        console_grid[y / CON_CELL_H][x / CON_CELL_W]  = (uint8_t) region;
+        *cell        = value;
+        console_gen  = console_gen + 1;
     }
 }
 
+static void  console_put (int32_t region, int32_t x, int32_t y)
+{
+    if ((x < 0) || (y < 0))
+    {
+        return;
+    }
+    if ((region >= 14) && (region <= 255))
+    {
+        if (((x % 10) == 0) && ((y % 20) == 0) && ((x / 10) < CON_A_COLS) && ((y / 20) < CON_A_ROWS))
+        {
+            console_use_b  = FALSE;
+            console_cell (&console_a[y / 20][x / 10], (uint8_t) region);
+        }
+        return;
+    }
+    if (((x % 8) != 0) || ((y % 15) != 0) || ((x / 8) >= CON_B_COLS) || ((y / 15) >= CON_B_ROWS))
+    {
+        return;
+    }
+    if (region == 768)                                   // paper: the cell starts blank
+    {
+        console_use_b  = TRUE;
+        console_cell (&console_b[y / 15][x / 8], 0);
+    }
+    else if ((region >= 256 + 14) && (region <= 256 + 255))
+    {
+        console_use_b  = TRUE;
+        console_cell (&console_b[y / 15][x / 8], (uint8_t) (region - 256));
+    }
+    else if ((region >= 769) && (region <= 776))        // shade blocks 17-20
+    {
+        console_use_b  = TRUE;
+        console_cell (&console_b[y / 15][x / 8], (uint8_t) (17 + (region - 769) / 2));
+    }
+}
+
+static void  console_clear (void)
+{
+    memset (console_a, 0, sizeof (console_a));
+    memset (console_b, 0, sizeof (console_b));
+    console_gen  = console_gen + 1;
+}
+
 //
-// gpu_console_show(): the grid as UTF-8 text, trailing blanks and blank lines at the
-// end removed. Returns the number of lines shown
+// gpu_console_cells(): the character grid that is current
+//
+const uint8_t *gpu_console_cells (int *rows, int *cols)
+{
+    if (console_use_b == TRUE)
+    {
+        *rows  = CON_B_ROWS;
+        *cols  = CON_B_COLS;
+        return (&console_b[0][0]);
+    }
+    *rows  = CON_A_ROWS;
+    *cols  = CON_A_COLS;
+    return (&console_a[0][0]);
+}
+
+//
+// gpu_console_utf8(): the text of a BIOS font code, as UTF-8; returns the byte count
+//
+int  gpu_console_utf8 (uint8_t c, char *out)
+{
+    uint16_t  u  = (c == 0) ? ' ' : (c >= 32 && c < 127) ? c : 0;
+    int       k  = 0;
+
+    if ((u == 0) && (c != 0))
+    {
+        for (k = 0; k < (int) BIOS_CHARS; k = k + 1)
+        {
+            if (bios_chars[k].code == c)  { u = bios_chars[k].unicode;  break; }
+        }
+        if (u == 0)  u = '?';
+    }
+    if (u < 0x80)   { out[0] = (char) u;  return (1); }
+    if (u < 0x800)  { out[0] = (char) (0xC0 | (u >> 6));  out[1] = (char) (0x80 | (u & 0x3F));  return (2); }
+    out[0] = (char) (0xE0 | (u >> 12));  out[1] = (char) (0x80 | ((u >> 6) & 0x3F));  out[2] = (char) (0x80 | (u & 0x3F));
+    return (3);
+}
+
+//
+// gpu_console_show(): the grid as text, trailing blanks and blank lines at the end
+// removed. Returns the number of lines shown
 //
 int  gpu_console_show (FILE *out)
 {
-    int  row = 0, col = 0, last = -1, end = 0, k = 0, n = 0;
-    uint16_t  u = 0;
+    int            rows = 0, cols = 0, row = 0, col = 0, last = -1, end = 0, n = 0, len = 0;
+    const uint8_t *g    = gpu_console_cells (&rows, &cols);
+    char           u8[4];
 
-    for (row = 0; row < CON_ROWS; row = row + 1)
+    for (row = 0; row < rows; row = row + 1)
     {
-        for (col = 0; col < CON_COLS; col = col + 1)
+        for (col = 0; col < cols; col = col + 1)
         {
-            if ((console_grid[row][col] != 0) && (console_grid[row][col] != ' '))  last = row;
+            if ((g[row * cols + col] != 0) && (g[row * cols + col] != ' '))  last = row;
         }
     }
     for (row = 0; row <= last; row = row + 1)
     {
         end = -1;
-        for (col = 0; col < CON_COLS; col = col + 1)
+        for (col = 0; col < cols; col = col + 1)
         {
-            if ((console_grid[row][col] != 0) && (console_grid[row][col] != ' '))  end = col;
+            if ((g[row * cols + col] != 0) && (g[row * cols + col] != ' '))  end = col;
         }
         for (col = 0; col <= end; col = col + 1)
         {
-            uint8_t  c = console_grid[row][col];
-
-            u = (c == 0) ? ' ' : (c >= 32 && c < 127) ? c : 0;
-            if ((u == 0) && (c != 0))
-            {
-                for (k = 0; k < (int) BIOS_CHARS; k = k + 1)
-                {
-                    if (bios_chars[k].code == c)  { u = bios_chars[k].unicode;  break; }
-                }
-                if (u == 0)  u = '?';
-            }
-            if (u < 0x80)        fputc (u, out);
-            else if (u < 0x800)  { fputc (0xC0 | (u >> 6), out);  fputc (0x80 | (u & 0x3F), out); }
-            else                 { fputc (0xE0 | (u >> 12), out);  fputc (0x80 | ((u >> 6) & 0x3F), out);  fputc (0x80 | (u & 0x3F), out); }
+            len  = gpu_console_utf8 (g[row * cols + col], u8);
+            fwrite (u8, 1, (size_t) len, out);
         }
         fputc ('\n', out);
         n = n + 1;
@@ -450,7 +525,7 @@ void  gpu_command (int32_t command)
             }
             SYSPORTSET(GPU_RemainingPixels, remaining);
             gpu_clear ();
-            memset (console_grid, 0, sizeof (console_grid));
+            console_clear ();
             break;
 
         case GPUCommand_DrawRegion:            gpu_draw (FALSE, FALSE); break;
