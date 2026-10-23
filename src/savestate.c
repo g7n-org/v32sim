@@ -282,6 +282,8 @@ uint8_t  state_restore (const char *filename)
     uint32_t   i          = 0;
     uint32_t   j          = 0;
     uint32_t   ntex       = 0;
+    uint32_t  *keep_old   = NULL;
+    uint32_t  *keep_new   = NULL;
     uint32_t   saved[NUM_REGISTERS];
     uint32_t   saved_rom  = 0;
     uint8_t    ok         = FALSE;
@@ -346,7 +348,34 @@ uint8_t  state_restore (const char *filename)
                 fprintf (stderr, "[ERROR] restore: the state has a memory card, none is loaded\n");
                 goto damaged;
             }
-            if (read_range (f, MEMC_FIRST_ADDR, MEMC_WORDS) != 0)  goto truncated;
+            // a live v32dev mailbox belongs to the host process as much as to the state:
+            // the header and the host-owned area stay as they are now, only the
+            // cart-owned part (the program's own side of the conversation) is restored
+            if (memc_mailbox () == TRUE)
+            {
+                keep_old  = (uint32_t *) malloc (DEV_REGION_WORDS * sizeof (uint32_t));
+                keep_new  = (uint32_t *) malloc (DEV_REGION_WORDS * sizeof (uint32_t));
+                if ((keep_old == NULL) || (keep_new == NULL))
+                {
+                    free (keep_old);  free (keep_new);
+                    goto damaged;
+                }
+                memc_region_get (keep_old);
+            }
+            if (read_range (f, MEMC_FIRST_ADDR, MEMC_WORDS) != 0)
+            {
+                if (keep_old != NULL)  { memc_region_put (keep_old);  free (keep_old);  free (keep_new);  keep_old = NULL; }
+                goto truncated;
+            }
+            if (keep_old != NULL)
+            {
+                memc_region_get (keep_new);
+                memcpy (keep_new, keep_old, (DEV_HEADER_WORDS + DEV_HOST_WORDS) * sizeof (uint32_t));
+                memc_region_put (keep_new);
+                free (keep_old);  free (keep_new);
+                keep_old  = NULL;
+            }
+            memc_touch_all ();
         }
 
         if (read_regions (f, bios_vtex) != 0)  goto truncated;
@@ -386,6 +415,7 @@ uint8_t  state_restore (const char *filename)
     REG(IP)     = rom_offset;
     REG(IR)     = ISYSMEMGET (REG(IP));
     REG(IV)     = (0 < (REG(IR) & IMMVAL_MASK)) ? ISYSMEMGET (REG(IP) + 1) : 0;
+    v32io_kbd_clear ();     // queued keys belong to the time before the state
     ok          = TRUE;
     goto done;
 

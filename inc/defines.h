@@ -128,6 +128,8 @@
 #define  INPUT_SAVE              31
 #define  INPUT_RESTORE           32
 #define  INPUT_ASM               33
+#define  INPUT_KBD               34
+#define  INPUT_MAILBOX           35
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A
@@ -338,5 +340,8 @@
 #define  ATAN2                   0x3D
 #define  LOG                     0x3E
 #define  POW                     0x3F
+
+#include "memc.h"
+#include "v32io.h"
 
 #endif

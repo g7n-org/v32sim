@@ -74,6 +74,8 @@ uint8_t  prompt (uint32_t  word)
     static uint8_t    lastaction        = INPUT_INIT;
     uint8_t    processflag              = FALSE;
 
+    v32io_term_suspend ();      // the prompt takes the host terminal back (if v32kbd had it)
+
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // Display the prompt and obtain input

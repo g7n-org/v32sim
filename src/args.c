@@ -35,6 +35,12 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "watch-for",      required_argument, 0, 'w' },
        { "verbose",        no_argument,       0, 'v' },
        { "version",        no_argument,       0, 'V' },
+       { "v32kbd",         optional_argument, 0, 22  },
+       { "kbd-input",      required_argument, 0, 23  },
+       { "fast",           no_argument,       0, 24  },
+       { "frame-us",       required_argument, 0, 25  },
+       { "max-frames",     required_argument, 0, 26  },
+       { "exit-status",    no_argument,       0, 'x' },
        { "help",           no_argument,       0, 'h' },
        { 0,                0,                 0,  0  }
     };
@@ -44,7 +50,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:L:M:nprSw:vVh", long_options,
+                                                  "B:b:C:cdDeE:L:M:nprSw:vVhx", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -183,6 +189,35 @@ void  process_args (int32_t  argc, int8_t **argv)
                 exit (0);
                 break;
 
+            case 22: // v32kbd[=PORT]
+                kbdport            = (optarg != NULL) ? atoi (optarg) : 0;
+                if ((kbdport < 0) || (kbdport >= V32_NUM_GAMEPADS))
+                {
+                    fprintf (stderr, "[ERROR] --v32kbd: gamepad port must be 0-3\n");
+                    exit (1);
+                }
+                break;
+
+            case 23: // kbd-input
+                kbdinput           = optarg;
+                break;
+
+            case 24: // fast
+                frame_us           = 0;
+                break;
+
+            case 25: // frame-us
+                frame_us           = (uint32_t) strtoul (optarg, NULL, 10);
+                break;
+
+            case 26: // max-frames
+                max_frames         = (uint32_t) strtoul (optarg, NULL, 10);
+                break;
+
+            case 'x':
+                exitflag           = TRUE;
+                break;
+
             case 'h':
                 usage ((int8_t *) argv[0]);
                 break;
@@ -193,7 +228,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:L:M:nprSw:vVh", long_options,
+                                                  "B:b:C:cdDeE:L:M:nprSw:vVhx", long_options,
                                                   &option_index);
     }
 

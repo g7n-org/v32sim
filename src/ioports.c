@@ -1061,9 +1061,14 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
 
                 ////////////////////////////////////////////////////////////////////////
                 //
-                // update the gamepad backing store
+                // update the gamepad backing store; a gamepad that is disconnected
+                // has all its controls released (a minute unpressed)
                 //
-                (gamepad+id) -> connected  = i32;
+                (gamepad+id) -> connected  = (i32 != 0) ? 1 : 0;
+                if (i32                   == 0)
+                {
+                    gamepad_reset ((uint8_t) id);
+                }
                 break;
 
             case INP_GamepadLeft:
@@ -1141,8 +1146,8 @@ void  update_ioports (void)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // update INP_ ports, specifically the dpad and buttons: each frame the value
-    // moves away from 0 by 1 (be it negative- no pressed, or positive- pressed)
+    // each frame the count of every control moves away from 0 by 1 (be it negative -
+    // not pressed, or positive - pressed), within a +/-3600 range (a minute)
     //
     for (index                          = 0;
          index                         <  V32_NUM_GAMEPADS;
@@ -1159,34 +1164,39 @@ void  update_ioports (void)
                 if (*(iptr+button)     <  0) // if button NOT pressed
                 {
                     *(iptr+button)      = *(iptr+button) - 1;
-
-                    ////////////////////////////////////////////////////////////////////
-                    //
-                    // It was observed there may be some sort of -3600 lower bound
-                    // for buttonpress tracking (a minute), at which point it just
-                    // holds at that value. Also appears to be the initial value
-                    //
                     if (*(iptr+button) <  -3600)
                     {
                         *(iptr+button)  = -3600;
                     }
-
                 }
                 else
                 {
                     *(iptr+button)      = *(iptr+button) + 1;
-                }
-
-                ////////////////////////////////////////////////////////////////////////
-                //
-                // if the currently selected gamepad is the current  index  as  we
-                // cycle through the gamepad array, update the ports
-                //
-                if (index              == IPORTGET(INP_SelectedGamepad))
-                {
-                    SYSPORTSET((button+0x402), *(iptr+button));
+                    if (*(iptr+button) >  3600)
+                    {
+                        *(iptr+button)  = 3600;
+                    }
                 }
             }
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // v32io devices (a v32kbd reports one key event per frame) set their controls
+    // now: a control they change is seen by the program with a count of 1 in this
+    // frame, as when the DesktopEmulator applies host input before it runs a frame
+    //
+    v32io_frame ();
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // the ports show the selected gamepad
+    //
+    index                               = IPORTGET(INP_SelectedGamepad);
+    if ((index                         >= 0) &&
+        (index                         <  V32_NUM_GAMEPADS))
+    {
+        gamepad_publish ((uint8_t) index);
     }
 }

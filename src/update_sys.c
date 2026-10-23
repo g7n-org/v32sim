@@ -17,7 +17,17 @@ static uint64_t get_ns(void) {
 // === NEW: Frame-based throttling state ===
 static uint64_t frame_start_ns = 0;
 #define CYCLES_PER_FRAME (turboflag ? 500000 : 250000)  // 500k (30MHz) or 250k (15MHz)
-#define FRAME_TIME_NS    (1000000000ULL / V32_FRAMES_PER_SECOND)  // ~16.67ms
+#define FRAME_TIME_NS    (frame_us * 1000ULL)                    // ~16.67ms by default
+
+//
+// Pacing and limits (see --frame-us, --fast and --max-frames): a frame lasts at least
+// frame_us microseconds of real time (0 = run as fast as possible); with a frame limit
+// the simulator halts when that many frames have been completed
+//
+uint32_t  frame_us      = 1000000 / V32_FRAMES_PER_SECOND;
+uint32_t  max_frames    = 0;       // 0 = no limit
+uint32_t  frames_run    = 0;       // frames completed since start
+uint8_t   frame_limit   = FALSE;   // set when max_frames was reached
 
 void update_cycle(void) {
     ////////////////////////////////////////////////////////////////////////////////////
@@ -131,17 +141,35 @@ void update_frame(void) {
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
+    // the memory card: what the program wrote during the frame goes to its file, and
+    // what a v32dev host wrote to the mailbox comes in, ready for the next frame
+    //
+    memc_frame ();
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
     // update all the ports that require per-frame changes
     //
     gpu_new_frame ();
     spu_new_frame ();
     update_ioports();
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // frame limit (used by scripted runs)
+    //
+    frames_run = frames_run + 1;
+    if ((max_frames != 0) && (frames_run >= max_frames))
+    {
+        frame_limit  = TRUE;
+        haltflag     = TRUE;
+    }
+
     // === NEW: Frame-based throttling with busy-wait ===
     uint64_t now_ns = get_ns();
     uint64_t elapsed_ns = now_ns - frame_start_ns;
 
-    if (elapsed_ns < FRAME_TIME_NS) {
+    if ((frame_us != 0) && (elapsed_ns < FRAME_TIME_NS)) {
         uint64_t sleep_ns = FRAME_TIME_NS - elapsed_ns;
 
         if (sleep_ns > 1000) {  // >1μs: use nanosleep

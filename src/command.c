@@ -46,6 +46,8 @@ static const struct
     { "?",           1, CMD_HELP      },
     { "ignore",      1, CMD_IGNORE    },
     { "inventory",   2, CMD_INVENTORY },
+    { "kbd",         2, CMD_KBD       },
+    { "mailbox",     2, CMD_MAILBOX   },
     { "label",       1, CMD_LABEL     },
     { "load",        2, CMD_LOAD      },
     { "next",        1, CMD_NEXT      },
@@ -689,6 +691,89 @@ static int  gp_resolve (const char *word)
     return (GP_UNKNOWN);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// kbd: the v32kbd keyboard (see v32io.h)
+//
+static void  exec_kbd (cmd_t *c)
+{
+    char   line[2048];
+    char  *verb  = NULL;
+    char  *rest  = NULL;
+    char  *p     = NULL;
+    char  *mode  = NULL;
+    int    n     = 0;
+
+    if (c -> path == NULL)
+    {
+        v32io_show ();
+        return;
+    }
+    snprintf (line, sizeof (line), "%s", c -> path);
+    verb  = line;
+    p     = line;
+    while ((*p != '\0') && (*p != ' ') && (*p != '\t'))  p = p + 1;
+    if (*p != '\0')
+    {
+        *p  = '\0';
+        p   = p + 1;
+        while ((*p == ' ') || (*p == '\t'))  p = p + 1;
+    }
+    rest  = p;
+
+    if (0 == strcasecmp (verb, "attach"))
+    {
+        n  = (*rest != '\0') ? atoi (rest) : 0;
+        v32io_kbd_attach (n);
+    }
+    else if (0 == strcasecmp (verb, "detach"))
+    {
+        v32io_kbd_detach ();
+    }
+    else if (0 == strcasecmp (verb, "type"))
+    {
+        v32io_kbd_type (rest);
+    }
+    else if (0 == strcasecmp (verb, "key"))
+    {
+        p = rest;
+        while ((*p != '\0') && (*p != ' ') && (*p != '\t'))  p = p + 1;
+        if (*p != '\0')
+        {
+            *p    = '\0';
+            mode  = p + 1;
+            while ((*mode == ' ') || (*mode == '\t'))  mode = mode + 1;
+        }
+        v32io_kbd_key (rest, mode);
+    }
+    else if (0 == strcasecmp (verb, "input"))
+    {
+        v32io_kbd_source ((*rest != '\0') ? rest : "off");
+    }
+    else if (0 == strcasecmp (verb, "clear"))
+    {
+        v32io_kbd_clear ();
+    }
+    else if (0 == strcasecmp (verb, "status"))
+    {
+        v32io_show ();
+    }
+    else
+    {
+        fprintf (stderr, "[ERROR] kbd: unknown subcommand '%s' (try 'help kbd')\n", verb);
+    }
+}
+
+static void  exec_mailbox (cmd_t *c)
+{
+    if ((c -> has_num == TRUE) && (c -> num >= DEV_CHANNELS))
+    {
+        fprintf (stderr, "[ERROR] mailbox: no channel %u (valid: 0-%d)\n", c -> num, DEV_CHANNELS - 1);
+        return;
+    }
+    memc_show ((c -> has_num == TRUE) ? (int) c -> num : -1);
+}
+
 static void  exec_gamepad (cmd_t *c)
 {
     int  which  = GP_UNKNOWN;
@@ -924,6 +1009,8 @@ static void  exec_set (cmd_t *c)
 //
 // replace IP:.. IR:.. IV:..
 //
+static void  asm_refresh_ir (void);
+
 static void  exec_replace (cmd_t *c)
 {
     int32_t   index   = 0;
@@ -958,6 +1045,9 @@ static void  exec_replace (cmd_t *c)
         }
     }
     fprintf (debug, "\n");
+
+    // the instruction being stepped was fetched before the patch: fetch it again
+    asm_refresh_ir ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -1016,9 +1106,6 @@ static void  exec_load (cmd_t *c)
     switch (page)
     {
         case V32_PAGE_BIOS:
-            fprintf (stderr, "[ERROR] load bios: loading a BIOS at runtime is not supported yet\n");
-            return;
-
         case V32_PAGE_CART:
         case V32_PAGE_MEMC:
             break;
@@ -1049,6 +1136,25 @@ static void  exec_load (cmd_t *c)
     if (load_memory (page, c -> path) == FALSE)
     {
         fprintf (stderr, "[ERROR] load: '%s' was not loaded\n", c -> path);
+        return;
+    }
+
+    if (page == V32_PAGE_BIOS)
+    {
+        //
+        // a new BIOS: its labels replace those of the old one, and the instruction in
+        // IR/IV is fetched again in case it lies in the BIOS
+        //
+        biosfile  = (int8_t *) strdup (c -> path);   // the command's own copy dies with it
+        if ((biosasmdebugflag != MU) && (biosasmdebug == NULL))
+        {
+            load_labels (biosfile, V32_PAGE_BIOS, FLAG_SEARCH | FLAG_ASM);
+        }
+        if ((bioscdebugflag != MU) && (bioscdebug == NULL))
+        {
+            load_labels (biosfile, V32_PAGE_BIOS, FLAG_SEARCH | FLAG_C);
+        }
+        asm_refresh_ir ();
     }
 }
 
@@ -1283,6 +1389,8 @@ static void  exec_help (cmd_t *c)
         case CMD_CONTINUE:    help (INPUT_CONTINUE);   break;
         case CMD_DISPLAY:     help (INPUT_DISPLAY);    break;
         case CMD_GAMEPAD:     help (INPUT_GAMEPAD);    break;
+        case CMD_KBD:         help (INPUT_KBD);        break;
+        case CMD_MAILBOX:     help (INPUT_MAILBOX);    break;
         case CMD_IGNORE:      help (INPUT_IGNORE);     break;
         case CMD_INVENTORY:   help (INPUT_INVENTORY);  break;
         case CMD_LABEL:       help (INPUT_LABEL);      break;
@@ -1325,6 +1433,8 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_CONTINUE:    action = INPUT_CONTINUE;              break;
         case CMD_DISPLAY:     exec_display (c);                     break;
         case CMD_GAMEPAD:     exec_gamepad (c);                     break;
+        case CMD_KBD:         exec_kbd (c);                         break;
+        case CMD_MAILBOX:     exec_mailbox (c);                     break;
         case CMD_ASM:         exec_asm (c);                         break;
         case CMD_HELP:        exec_help (c);                        break;
         case CMD_IGNORE:      action = INPUT_IGNORE;                break;

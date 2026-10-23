@@ -52,6 +52,7 @@ static int   loc_iosym      (tok_t *t, wloc_t *loc);
 %token       T_INVENTORY T_LABEL T_LOAD T_NEXT T_PRINT T_PROFILE T_QUIT T_REPLACE
 %token       T_ASM T_RESTORE T_SAVE T_SCREENSHOT T_SET T_STEP T_UNBREAK T_UNDISPLAY T_UNLABEL T_UNLOAD
 %token       T_UNWATCH T_VERSION T_WATCH T_WATCHLIST
+%token       T_KBD T_MAILBOX
 %token       T_BADCMD T_BAD
 
 %type  <t>   name
@@ -94,6 +95,10 @@ command
     | replace_cmd
     | watch_cmd
     | gamepad_cmd
+    | T_KBD                             { CMD -> id = CMD_KBD; }
+    | T_KBD T_PATH                      { CMD -> id = CMD_KBD; CMD -> path = $2.text; }
+    | T_MAILBOX                         { CMD -> id = CMD_MAILBOX; }
+    | T_MAILBOX T_NUM                   { CMD -> id = CMD_MAILBOX; CMD -> has_num = TRUE; CMD -> num = $2.u; }
     | help_cmd
     | load_cmd
     | undo_cmd

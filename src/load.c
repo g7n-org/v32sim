@@ -60,75 +60,6 @@ size_t    get_filesize (int8_t *filename)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
-// memory card persistence: the file it was loaded from, and a checksum of the contents
-// at load/last save, so that only a changed card is written back
-//
-static char      memc_path[1024]  = "";
-static uint32_t  memc_sum         = 0;
-
-static uint32_t  memc_checksum (void)
-{
-    uint32_t  index  = 0;
-    uint32_t  sum    = 0;
-    word_t   *w      = NULL;
-
-    for (index = 0; index < MEMC_WORDS; index = index + 1)
-    {
-        w    = memory_get (MEMC_FIRST_ADDR + index, TRUE);
-        sum  = sum * 31 + ((w == NULL) ? 0 : w -> raw);
-    }
-    return (sum);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
-//
-// memc_save(): write the memory card contents back to the file it came from (keeps
-// the V32-MEMC header). Does nothing if no card is loaded or nothing changed.
-//
-void  memc_save (void)
-{
-    FILE     *fptr   = NULL;
-    uint32_t  index  = 0;
-    uint32_t  sum    = 0;
-    word_t   *w      = NULL;
-    uint8_t   b[4];
-
-    if (((memory+V32_PAGE_MEMC) -> data == NULL) || (memc_path[0] == '\0'))
-    {
-        return;
-    }
-    sum  = memc_checksum ();
-    if (sum == memc_sum)
-    {
-        return;
-    }
-    fptr  = fopen (memc_path, "r+b");
-    if (fptr == NULL)
-    {
-        fprintf (stderr, "[ERROR:MEMC] could not open '%s' to save the memory card\n", memc_path);
-        return;
-    }
-    fseek (fptr, 2 * wordsize, SEEK_SET);
-    for (index = 0; index < MEMC_WORDS; index = index + 1)
-    {
-        w     = memory_get (MEMC_FIRST_ADDR + index, TRUE);
-        b[0]  = (uint8_t) (w -> raw);
-        b[1]  = (uint8_t) (w -> raw >> 8);
-        b[2]  = (uint8_t) (w -> raw >> 16);
-        b[3]  = (uint8_t) (w -> raw >> 24);
-        fwrite (b, 1, 4, fptr);
-    }
-    if (fclose (fptr) != 0)
-    {
-        fprintf (stderr, "[ERROR:MEMC] error writing '%s'\n", memc_path);
-        return;
-    }
-    memc_sum  = sum;
-    fprintf (verbose, "[MEMC] saved '%s'\n", memc_path);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
-//
 // load_memory(): load data files from disk into page-appropriate location in memory
 //
 uint8_t  load_memory (uint32_t  page, int8_t *filename)
@@ -203,7 +134,7 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
         //
         // Adjust size of region of memory
         //
-        (memory+page) -> size           = get_filesize (filename);
+        (memory+page) -> size           = (page == V32_PAGE_MEMC) ? MEMC_WORDS : get_filesize (filename);
         (memory+page) -> last_addr      = (memory+page) -> firstaddr;
         (memory+page) -> last_addr     += (memory+page) -> size;
         chk                             = alloc_memory (page);
@@ -345,7 +276,6 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
                     fseek (fptr, (0x02 * wordsize), SEEK_SET);
                     SYSPORTSET(MEM_Connected,        TRUE);
                     data_size           = MEMC_WORDS;
-                    snprintf (memc_path, sizeof (memc_path), "%s", filename);
                     break;
             }
 
@@ -500,9 +430,13 @@ uint8_t  load_memory (uint32_t  page, int8_t *filename)
             
             fclose (fptr);
 
+            //
+            // The card is loaded: from now on the controller keeps its file in step
+            // (and may find that the card carries a live v32dev mailbox)
+            //
             if (page                   == V32_PAGE_MEMC)
             {
-                memc_sum                = memc_checksum ();
+                memc_attach (filename);
             }
 
             ////////////////////////////////////////////////////////////////////////////
@@ -562,7 +496,7 @@ uint8_t  unload_memory (uint32_t  page)
             break;
 
         case V32_PAGE_MEMC:
-            memc_save ();          // write MEMC data back to its file
+            memc_detach ();        // write MEMC data back to its file
             SYSPORTSET(MEM_Connected,        FALSE);
             break;
 

@@ -76,6 +76,7 @@ void sigcrash (int32_t  signum)
     fprintf (stderr, "------------------------------------\n");
     fprintf (stderr, "Please report this, with the command line and cart, to the v32sim maintainer.\n");
 
+    v32io_shutdown ();      // give the terminal back
     memc_save ();
 
     signal (signum, SIG_DFL);

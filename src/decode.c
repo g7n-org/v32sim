@@ -1,5 +1,49 @@
 #include "defines.h"
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// float_text(): a float immediate as the shortest text that reads back as the same
+// float, and that the assembler accepts as a float (a '.' is always present).
+// NaN and infinity have no such text: they are shown as their bit pattern
+//
+static void  float_text (float  value,  char *out)
+{
+    char      mant[40];
+    char     *e      = NULL;
+    uint32_t  bits   = 0;
+    int       digits = 0;
+
+    memcpy (&bits, &value, sizeof (bits));
+    if ((bits & 0x7F800000) == 0x7F800000)
+    {
+        sprintf (out, "0x%.8X", bits);
+        return;
+    }
+    for (digits = 1; digits <= 9; digits = digits + 1)
+    {
+        snprintf (mant, sizeof (mant), "%.*g", digits, (double) value);
+        if (strtof (mant, NULL) == value)
+        {
+            break;
+        }
+    }
+    if (strpbrk (mant, ".") == NULL)
+    {
+        e = strpbrk (mant, "eE");
+        if (e != NULL)
+        {
+            memmove (e + 2, e, strlen (e) + 1);          // 1e-05 -> 1.0e-05
+            e[0] = '.';
+            e[1] = '0';
+        }
+        else
+        {
+            strcat (mant, ".0");
+        }
+    }
+    strcpy (out, mant);
+}
+
 uint8_t  decode (uint32_t  instruction,
                  uint32_t  immediate,
                  float     fimmediate,
@@ -311,7 +355,7 @@ void  decode_display (uint32_t  instruction,
             sprintf (destination, "R%u,", dst);
             if (immflag               == TRUE)
             {
-                sprintf (source, "%.3f", fimmediate);
+                float_text (fimmediate, source);
             }
             else
             {

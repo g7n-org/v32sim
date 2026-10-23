@@ -29,6 +29,13 @@ void  usage (int8_t *program)
     fprintf (stdout, " -w, --watch-for=OPCODE    run until OPCODE is encountered\n");
     fprintf (stdout, " -v, --verbose             enable more verbose output\n");
     fprintf (stdout, " -V, --version             display version information and exit\n");
+    fprintf (stdout, "     --v32kbd[=PORT]       emulate a v32kbd keyboard on gamepad PORT (default 0)\n");
+    fprintf (stdout, "     --kbd-input=SOURCE    host key source: stdin, fd:N, FIFO/pipe/file (implies --v32kbd)\n");
+    fprintf (stdout, "     --fast                do not throttle to real time (frames run as fast as possible)\n");
+    fprintf (stdout, "     --frame-us=N          wall-clock microseconds per frame (default 16666; 0 = --fast)\n");
+    fprintf (stdout, "     --max-frames=N        stop after N frames\n");
+    fprintf (stdout, " -x, --exit-status         exit status tells how the program ended: 0 HLT, 2 frame limit,\n");
+    fprintf (stdout, "                           3 system error (stops instead of entering the BIOS handler)\n");
     fprintf (stdout, " -h, --help                display this information\n\n");
     fprintf (stdout, "FILE   is any path plus the filename desired\n");
     fprintf (stdout, "OFFSET is the full 32-bit/4-byte memory addres (hex)\n");
@@ -66,6 +73,8 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  save [FILE]             write the machine state to a file\n");
             fprintf (stdout, "  restore FILE            restore a saved machine state\n");
             fprintf (stdout, "  gamepad [#] [COMMAND]   view/simulate gamepad state\n");
+            fprintf (stdout, "  kbd [SUBCOMMAND]        v32kbd keyboard: type text, press keys, host input\n");
+            fprintf (stdout, "  mailbox [CHANNEL]       v32dev mailbox state of the memory card\n");
             fprintf (stdout, "  load cart|memc:file     load component into memory\n");
             fprintf (stdout, "  unload bios|cart|memc   unload component from memory\n");
             fprintf (stdout, "  inventory               system resource inventory\n");
@@ -102,6 +111,33 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    When pressed, the button's value will be a positive number\n");
             fprintf (stdout, "    of frames it has been pressed. When not pressed, a negative\n");
             fprintf (stdout, "    number of frames it has not been pressed\n\n");
+            break;
+
+        case INPUT_KBD:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    kbd                      show the keyboard state\n");
+            fprintf (stdout, "    kbd attach [PORT]        emulate a v32kbd on gamepad PORT (default 0)\n");
+            fprintf (stdout, "    kbd detach\n");
+            fprintf (stdout, "    kbd type TEXT            type text (C escapes: \\n \\r \\t \\b \\e \\xHH \\uHHHH)\n");
+            fprintf (stdout, "    kbd key KEY [MODE]       KEY: a, f1, enter, esc, up, ctrl+c, shift+tab, 0x41 ...\n");
+            fprintf (stdout, "                             MODE: tap (default), down, up\n");
+            fprintf (stdout, "    kbd input SOURCE|off     host input: stdin, fd:N, a FIFO/pipe/file path\n");
+            fprintf (stdout, "    kbd clear                forget queued keys and text\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    The v32io keyboard looks like a gamepad to the program: Left/Right is a\n");
+            fprintf (stdout, "    strobe, Up/Down says press/release and Start A B X Y L R carry a 7-bit key\n");
+            fprintf (stdout, "    code. One key event is delivered per frame. Characters outside a US layout\n");
+            fprintf (stdout, "    are sent as BIOS-font typed characters. With a terminal as host input the\n");
+            fprintf (stdout, "    terminal is raw while the program runs; Ctrl-] returns to the prompt.\n");
+            break;
+
+        case INPUT_MAILBOX:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    mailbox [CHANNEL]\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Show the v32dev mailbox in the last 16384 words of the memory card:\n");
+            fprintf (stdout, "    liveness, and for each channel (0-3) the host and cart parts, the ring\n");
+            fprintf (stdout, "    indices, descriptors and pending data.\n");
             break;
 
         case INPUT_REPLACE:

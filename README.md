@@ -30,8 +30,14 @@ software — and to automate cart testing.
 - **SPU**: 16 channels with sound selection, volume, speed, loop and position
   state advance every frame, and VSND data from the BIOS and cartridge is
   loaded; there is no audio output
-- **Memory card**: the `V32-MEMC` header and size are validated, and changes
-  are written back to the file on exit (and on `unload`)
+- **Memory card**: the `V32-MEMC` header and size are validated; changes reach
+  the file at the end of every frame (so a killed simulator loses at most one
+  frame), as the DesktopEmulator does. A card formatted for **v32dev** keeps a
+  live mailbox, so programs using the v32dev library (storage, serial, ...)
+  talk to a real `v32dev.py serve` host process (see *Memory Card and v32dev*)
+- **v32io keyboard**: a `v32kbd` on any gamepad port, fed from the prompt
+  (`kbd type`, `kbd key`) or from the host (a terminal, pipe, FIFO or file),
+  see *The v32io Keyboard*
 - **Watchpoints** on registers, IOPorts, and memory words, compared with a
   number or with another register/IOPort/memory word; edge-triggered
 - **Save / restore** of the whole machine state
@@ -61,6 +67,10 @@ software — and to automate cart testing.
 - [Memory Map](#memory-map)
 - [The Debugger](#the-debugger)
 - [Commands](#commands)
+- [Memory Card and v32dev](#memory-card-and-v32dev)
+- [The v32io Keyboard](#the-v32io-keyboard)
+- [Running Unattended](#running-unattended)
+- [Tests](#tests)
 - [IOPORTS](#ioports)
 - [Known Limitations and Planned Features](#known-limitations-and-planned-features)
 
@@ -159,6 +169,12 @@ Mandatory arguments to long options are mandatory for short options too.
  -w, --watch-for=OPCODE    run until OPCODE is encountered
  -v, --verbose             enable more verbose output
  -V, --version             display version information and exit
+ --v32kbd[=PORT]           emulate a v32kbd keyboard on gamepad PORT (default 0)
+ --kbd-input=SOURCE        host key source: stdin, fd:N, FIFO/pipe/file (implies --v32kbd)
+ --fast                    do not throttle to real time
+ --frame-us=N              wall-clock microseconds per frame (default 16666)
+ --max-frames=N            stop after N frames
+ -x, --exit-status         exit status tells how the program ended
  -h, --help                display this information
 FILE   is any path plus the filename desired
 OFFSET is the full 32-bit/4-byte memory address (hex)
@@ -374,7 +390,76 @@ lists the current settings. Memory and IOPort targets are validated.
 `load  cart:path`  and  `load   memc:path`  swap  components  at  runtime
 (primarily for MEMCARD swapping). `unload bios|cart|memc` deallocates the
 page. `load` checks the file can be opened first, and `unload` refuses a page
-that is not loaded. `load bios:path` is parsed but not supported yet.
+that is not loaded. `load bios:path` replaces the BIOS (its labels are
+reloaded and the fetched instruction is refreshed).
+
+## Memory Card and v32dev
+
+A memory card file is `V32-MEMC` followed by 262144 little-endian words. The
+simulator keeps it in step with card memory the way the DesktopEmulator does:
+every write marks its 256-word page, and the dirty pages are written at the
+end of each frame.
+
+**v32dev** (the v32io project's host-device transport) uses the last 16384
+words of the card as a mailbox with four channels. The host side is a separate
+process (`v32dev.py serve CARD --ch1 storage:disk.img`) that reads and writes
+the card *file* while the program runs. For that to work the simulator plays
+the emulator's part:
+
+  * the **header** (liveness flag and heartbeat, words 8 and 9 of the region)
+    is maintained in memory only and never written to the file
+  * the **host-owned area** is read back from the file at the start of every
+    frame, and never written; the program cannot clobber what the host wrote
+  * of the **cart-owned** parts, the 16 control words of each channel (the ring
+    indices) are written after everything else, so a host that sees a new index
+    also sees the data it announces
+  * a card without a valid header (or with `V32DEV_DISABLE` set) is an ordinary
+    card; none of this applies
+
+`mailbox [CHANNEL]` shows the whole state: liveness, heartbeats, ring indices,
+descriptors and pending data. `restore` leaves a live mailbox's header and
+host area alone.
+
+The v32dev real-cartridge test suite of the v32io project (`dev_rom_test.py`)
+passes unchanged against v32sim: see *Tests*.
+
+## The v32io Keyboard
+
+v32io devices look like a gamepad to the program. The keyboard, `v32kbd`, uses
+Left/Right as a strobe, Up/Down for press/release, and Start A B X Y L R as a
+7-bit key code, one key event per frame. v32sim emulates one on any port:
+
+    v32sim --v32kbd=1 --kbd-input=stdin -B bios.v32 cart.v32
+    v32sim --kbd-input=/tmp/keys cart.v32            (a FIFO, pipe or file)
+
+or from the prompt: `kbd attach 1`, `kbd type "ls -l\n"`, `kbd key ctrl+c`,
+`kbd key f1 down`, `kbd input FILE`, `kbd` (status), `kbd clear`.
+
+Text becomes key events the way a US keyboard produces them (shift is held
+across consecutive characters that need it); UTF-8 characters the BIOS font
+has (accents, box drawing...) are sent as v32io *typed characters*. A terminal
+used as input is put in raw mode while the program runs: arrow keys, Delete,
+F1-F12, Ctrl and Alt combinations are translated, and **Ctrl-]** returns to the
+debugger prompt (which gets the terminal back). Text that arrives faster than
+one event per frame waits, nothing is lost.
+
+## Running Unattended
+
+  * `--fast` / `--frame-us=N`: do not sleep to hold 60 frames per second (or
+    wait N microseconds per frame). `--max-frames=N` stops after N frames.
+  * `-x` / `--exit-status`: the exit status tells how the run ended: 0 the
+    program halted, 2 the frame limit was reached, 3 a system error (the run
+    stops there instead of entering the BIOS error handler).
+
+## Tests
+
+`tests/run_tests.sh TOOLCHAIN V32IO_PROJECT` builds the test cartridges with
+the Vircon32 DevTools and runs: the v32dev suite through
+`tests/v32sim_runner.sh` (a `dev_rom_runner` look-alike: 41 checks of storage
+and serial devices, host crash and recovery, plain and unformatted cards), the
+v32kbd checks (commands, host input with escape sequences, typed characters,
+event order), the disassembly round trip of float immediates, `load bios:`, and
+card persistence when the simulator is killed with `kill -9`.
 
 ## IOPORTS
 
@@ -402,7 +487,7 @@ them. From the prompt, ports can be manipulated via `set` and inspected via
 ## Known Limitations and Planned Features
 
 - **SPU**: no audio output (no WAV capture either)
-- **`load bios:`** is parsed but not yet functional
+
 - Lua and C display modes (`-L`) are experimental
 - The debug-file reader is hand-written (it could move onto flex)
 

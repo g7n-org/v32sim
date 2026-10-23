@@ -65,7 +65,7 @@ void  init_memory (void)
             case V32_PAGE_MEMC:
                 (memory+page) -> type       = V32_PAGE_MEMC;
                 (memory+page) -> firstaddr  = MEMC_FIRST_ADDR;
-                (memory+page) -> size       = get_filesize (memcfile);
+                (memory+page) -> size       = (get_filesize (memcfile) > 0) ? MEMC_WORDS : 0;
                 (memory+page) -> flag       = FLAG_READ | FLAG_WRITE;
                 (memory+page) -> data       = NULL;
                 break;
@@ -266,6 +266,10 @@ void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
     {
         dptr                        = (memory+page)  -> data;
         (dptr+offset) -> value.i32  = dataword;
+        if (page                   == V32_PAGE_MEMC)
+        {
+            memc_touch (offset);      // the card file is saved at the end of the frame
+        }
     }
 }
 
@@ -281,5 +285,9 @@ void    fmemory_set (uint32_t  address, float  dataword, uint8_t  sys_force)
     {
         dptr                        = (memory+page)  -> data;
         (dptr+offset) -> value.f32  = dataword;
+        if (page                   == V32_PAGE_MEMC)
+        {
+            memc_touch (offset);
+        }
     }
 }

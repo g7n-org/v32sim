@@ -53,6 +53,10 @@ uint8_t   nextflag;
 uint8_t   derefaddr;
 uint8_t   errorcheck;
 uint8_t   haltflag;
+uint8_t   exitstatus;      // process exit status: 0 HLT, 2 frame limit, 3 system error (-x)
+uint8_t   exitflag;        // -x: the exit status reports how the program ended
+int8_t   *kbdinput;        // --kbd-input: host source of v32kbd keys
+int32_t   kbdport;         // --v32kbd: gamepad port of the keyboard, -1 = none
 uint8_t   turboflag;
 uint8_t   waitflag;
 uint8_t   wordsize;
@@ -138,6 +142,11 @@ int32_t   main (int32_t  argc, char **argv)
     wordsize                        = 4;
     derefaddr                       = FALSE;
     haltflag                        = FALSE;
+    exitstatus                      = 0;
+    exitflag                        = FALSE;
+    kbdinput                        = NULL;
+    kbdport                         = -1;
+    frame_us                        = 1000000 / 60;
     turboflag                       = FALSE;
     waitflag                        = FALSE;
     errorcheck                      = FALSE;
@@ -351,6 +360,24 @@ int32_t   main (int32_t  argc, char **argv)
     {
         exit (FILE_POSITION_ERROR);
     }
+    memc_power_on ();   // a live v32dev mailbox is synchronized before the first instruction
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // v32io keyboard, on the requested gamepad port, and its host input
+    //
+    if (kbdport                    >= 0)
+    {
+        v32io_kbd_attach (kbdport);
+    }
+    if (kbdinput                   != NULL)
+    {
+        if (kbdport                <  0)
+        {
+            v32io_kbd_attach (0);
+        }
+        v32io_kbd_source ((const char *) kbdinput);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -436,6 +463,11 @@ int32_t   main (int32_t  argc, char **argv)
         fprintf (stdout, "Vircon32 Simulator / Debugger  (v32sim %s)\n", VERSION);
         fprintf (stdout, "=======================================\n");
         fprintf (stdout, "[ OFFSET ] [HEXVALUES] [OPC] [DST]\n");
+    }
+
+    if (runflag                       == TRUE)
+    {
+        v32io_term_resume ();
     }
 
     while ((action                    != INPUT_QUIT) &&
@@ -676,6 +708,11 @@ int32_t   main (int32_t  argc, char **argv)
 
             }
             while (processflag        == FALSE);
+
+            if (runflag               == TRUE)
+            {
+                v32io_term_resume ();
+            }
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -721,6 +758,13 @@ int32_t   main (int32_t  argc, char **argv)
             // To check: does  the cycle counter of  the instruction that
             // the error occurred on get incremented?
             //
+            if (exitflag               == TRUE)
+            {
+                fprintf (stderr, "[v32sim] system error %d at IP=0x%.8X\n", (int) sys_error, REG(IP));
+                exitstatus             = 3;
+                haltflag               = TRUE;
+                continue;
+            }
             REG(R0)                    = sys_error;
             REG(R1)                    = REG(IP) + (((REG(IR) & IMMVAL_MASK) != 0) ? 2 : 1);
             REG(R2)                    = REG(IR);
@@ -843,6 +887,11 @@ int32_t   main (int32_t  argc, char **argv)
         }
     }
 
+    if ((frame_limit == TRUE) && (exitstatus == 0) && (exitflag == TRUE))
+    {
+        exitstatus                  = 2;
+    }
+    v32io_shutdown ();
     memc_save ();   // flush any memory card changes to its file
 
     fprintf (stdout, "------------------------------------\n");
@@ -873,5 +922,5 @@ int32_t   main (int32_t  argc, char **argv)
         fclose (verbose);
     }
 
-    return (0);
+    return ((int32_t) exitstatus);
 }

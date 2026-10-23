@@ -1,6 +1,6 @@
 # TODO
 
-Status as of version `20261018-dev`.
+Status as of version `20261018-dev` plus the v32dev / v32io work.
 
 ## DONE (removed from this list)
 
@@ -13,7 +13,15 @@ Status as of version `20261018-dev`.
     after every instruction and on state changes.
   * **GPU framebuffer and `screenshot`** - software renderer, PNG writer.
   * **SPU and VSND** - channel/sound model and loading of VSND data; no audio.
-  * **MEMC** - header and size validated, changes written back.
+  * **MEMC** - header and size validated; changes written at every frame end;
+    live **v32dev mailbox** (heartbeat, host area read back each frame,
+    commit-ordered writes); `mailbox` command.
+  * **v32io keyboard** - `v32kbd` on a gamepad port, `kbd` command,
+    `--v32kbd`, `--kbd-input` (terminal / pipe / FIFO / file).
+  * **Unattended runs** - `--fast`, `--frame-us`, `--max-frames`, `-x`.
+  * **`load bios:PATH`**, **`replace`** refreshes IR/IV, **float disassembly**
+    prints shortest round-trip values.
+  * **Tests** - `tests/run_tests.sh` (v32dev suite, v32kbd, persistence).
   * **TIM leap years**.
   * **Debug file location** - directory of the V32 file, current directory,
     `obj/`, `../obj/`, and `--debug-dir`; loaded automatically (`-n` disables).
@@ -30,19 +38,15 @@ Status as of version `20261018-dev`.
 
 ## STILL LACKING
 
-  * **`load bios:PATH`** - parsed, reports "not supported".
   * **Audio** - the SPU has no output; a WAV capture of the mixed channels
     would be a natural first step.
-  * **`replace`** patches memory but not the instruction already fetched for
-    the current step (`asm` refreshes it; decide whether `replace` should).
   * **Debug-file loader** - `load_labels()` is hand-rolled; it could be moved
     onto flex.
-  * **Disassembly of floats** - immediates print with 3 decimals, which does
-    not round-trip through `asm`; consider printing shortest-exact values.
   * **Entry point** - should the default start be the cartridge
     (`0x20000000`) rather than the BIOS?
-  * **Tests** - no automated suite. The scenario scripts used for the
-    flex/bison change, the BIOS disassemble/assemble round trip, and the
-    save/restore round trip are good starting points.
+  * **Text output** - a terminal for v32nix/V32DOS needs the screen as text:
+    either the v32dev `serial:stdio` channel (works now, with the host tool),
+    or capturing BIOS-font `DrawRegion` calls into a character grid.
+  * **v32mouse** - the protocol is not emulated (only the keyboard).
   * **Cycle accuracy** - `MOVS`/`SETS`/`CMPS` run to completion as one step
     (the console runs one word per cycle).
