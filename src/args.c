@@ -40,6 +40,8 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "fast",           no_argument,       0, 24  },
        { "frame-us",       required_argument, 0, 25  },
        { "max-frames",     required_argument, 0, 26  },
+       { "console-color",  required_argument, 0, 29  },
+       { "cursor-color",   required_argument, 0, 30  },
        { "tty",            no_argument,       0, 28  },
        { "console",        no_argument,       0, 27  },
        { "exit-status",    no_argument,       0, 'x' },
@@ -214,6 +216,22 @@ void  process_args (int32_t  argc, int8_t **argv)
 
             case 26: // max-frames
                 max_frames         = (uint32_t) strtoul (optarg, NULL, 10);
+                break;
+
+            case 29: // console-color
+                if (gpu_console_set_color (optarg) != 0)
+                {
+                    fprintf (stderr, "[ERROR] --console-color: use none, 16, 256, true or auto\n");
+                    exit (1);
+                }
+                break;
+
+            case 30: // cursor-color
+                if (gpu_console_set_cursor (optarg) != 0)
+                {
+                    fprintf (stderr, "[ERROR] --cursor-color: a color name, #RRGGBB, or off\n");
+                    exit (1);
+                }
                 break;
 
             case 28: // tty

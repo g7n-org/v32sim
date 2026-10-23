@@ -554,32 +554,15 @@ static void  tty_leave (void)
 
 static void  tty_paint (void)
 {
-    int            rows = 0, cols = 0, row = 0, col = 0, last = 0, k = 0;
-    const uint8_t *g    = gpu_console_cells (&rows, &cols);
-    char           u8[4];
-    char          *buf  = (char *) malloc ((size_t) (rows * (cols * 3 + 8) + 128));
-    size_t         n    = 0;
+    size_t  n     = 0;
+    char   *text  = gpu_console_render (1, &n);
+    char    foot[] = "\033[J\033[7m v32sim: Ctrl-] = debugger \033[0m";
 
-    if (buf == NULL)  return;
-    memcpy (buf + n, "\033[H", 3);  n = n + 3;
-    for (row = 0; row < rows; row = row + 1)
-    {
-        last = -1;
-        for (col = 0; col < cols; col = col + 1)
-        {
-            if ((g[row * cols + col] != 0) && (g[row * cols + col] != ' '))  last = col;
-        }
-        for (col = 0; col <= last; col = col + 1)
-        {
-            k  = gpu_console_utf8 (g[row * cols + col], u8);
-            memcpy (buf + n, u8, (size_t) k);  n = n + (size_t) k;
-        }
-        memcpy (buf + n, "\033[K\n", 4);  n = n + 4;
-    }
-    k  = sprintf (buf + n, "\033[J\033[7m v32sim: Ctrl-] = debugger \033[0m");
-    n  = n + (size_t) k;
-    tty_write (buf, n);
-    free (buf);
+    if (text == NULL)  return;
+    tty_write ("\033[H", 3);
+    tty_write (text, n);
+    tty_write (foot, sizeof (foot) - 1);
+    free (text);
 }
 
 //

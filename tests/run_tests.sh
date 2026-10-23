@@ -95,6 +95,14 @@ if [ -n "$CXX" ]; then
       && ./tc/compile hello_v.c -o hello.asm >/dev/null && ./tc/assemble hello.asm -o hello_v.vbin >/dev/null \
       && ./tc/packrom hello_v.xml -o hello.v32 >/dev/null ) || bad "v32c++ build"
     t=$("$SIM" -r -x -n --fast --max-frames=300 --console -B "$BIOS" "$W/cxx/hello.v32" 2>&1 | head -4)
+    mkdir -p "$W/cxx2" && cp -r "$W/roms/tc" "$W/cxx2/" && cp "$HERE/carts/color80.c" "$W/cxx2/color.c"
+    ( cd "$W/cxx2" && "$CXX/bin/v32c" -I "$CXX/libc" color.c -o color_v.c >/dev/null 2>&1 \
+      && ./tc/compile color_v.c -o color.asm >/dev/null && ./tc/assemble color.asm -o color_v.vbin >/dev/null \
+      && ./tc/packrom color_v.xml -o color.v32 >/dev/null ) || bad "color build"
+    c=$("$SIM" -r -x -n --fast --max-frames=300 --console --console-color=256 --cursor-color=off -B "$BIOS" "$W/cxx2/color.v32" 2>&1 | head -2 | cat -v)
+    check "colors (256) and reverse video" "$c" "$(printf '^[[0;38;5;203mRED^[[0m ^[[0;38;5;77mGREEN^[[0m\n^[[0;38;5;16;48;5;69mR^[[0;38;5;16;48;5;251mV^[[0m ^[[0;38;5;221mM-bM-^VM-^H^[[0m')"
+    c=$("$SIM" -r -x -n --fast --max-frames=300 --console --console-color=16 --cursor-color=#00ff00 -B "$BIOS" "$W/cxx2/color.v32" 2>&1 | sed -n 2p | cat -v)
+    check "cursor recolored (16)" "$c" "$(printf '^[[0;30;104mR^[[0;30;47mV^[[0m ^[[0;92mM-bM-^VM-^H^[[0m')"
     check "v32term text captured" "$t" "$(printf 'Hello from v32libc, an 80x24 terminal\nline 0: gjpqy,Q_ 0\nline 1: gjpqy,Q_ 7\nline 2: gjpqy,Q_ 14')"
 fi
 

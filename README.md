@@ -456,7 +456,21 @@ also kept as text. Two layouts are recognized:
 
 The layout drawn to last is the one shown. `console` prints it (UTF-8; BIOS box
 drawing characters become Unicode), `--console` prints it when the run ends, and
-ClearScreen empties it. Colors and attributes are not kept, only characters.
+ClearScreen empties it.
+
+**Colors.** The GPU multiply color of each draw is kept: the glyph's color is the
+cell's foreground and, for the 80x24 terminal, its "paper" draw is the background
+(so reverse video works). They are shown with plain ANSI color sequences, no
+curses library needed, reduced to the level you choose: `none`, `16`, `256` or
+`true` (24 bit), nearest color by RGB distance. `--console-color=MODE` or
+`console color MODE` sets it; `auto` follows `NO_COLOR`, `COLORTERM` and `TERM`.
+Unset, `--tty` uses auto and the `console` dump is plain text (so it can go to a
+file). White text and a black background are the terminal's own defaults.
+
+**Cursor.** A program draws its cursor itself, usually the solid block (BIOS
+character 20). `--cursor-color=COLOR` / `console cursor COLOR [CODE...]` recolors
+those cells (a name, `#RRGGBB`, or `off`); more character codes, such as a hollow
+box outline, can be listed after the color.
 
 ### Interactive mode
 

@@ -98,6 +98,7 @@ command
     | T_KBD                             { CMD -> id = CMD_KBD; }
     | T_KBD T_PATH                      { CMD -> id = CMD_KBD; CMD -> path = $2.text; }
     | T_CONSOLE                         { CMD -> id = CMD_CONSOLE; }
+    | T_CONSOLE T_PATH                  { CMD -> id = CMD_CONSOLE; CMD -> path = $2.text; }
     | T_MAILBOX                         { CMD -> id = CMD_MAILBOX; }
     | T_MAILBOX T_NUM                   { CMD -> id = CMD_MAILBOX; CMD -> has_num = TRUE; CMD -> num = $2.u; }
     | help_cmd

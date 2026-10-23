@@ -140,21 +140,44 @@ static uint32_t  gpu_texel (vtex_t *tex, int x, int y)
 #define  CON_B_COLS  80
 #define  CON_B_ROWS  24
 
-static uint8_t   console_a[CON_A_ROWS][CON_A_COLS];
-static uint8_t   console_b[CON_B_ROWS][CON_B_COLS];
-static uint8_t   console_use_b  = FALSE;
-uint32_t         console_gen    = 0;           // changes whenever the text does
-
-static void  console_cell (uint8_t *cell, uint8_t value)
+//
+// A cell: the character and the colors it was drawn with. Colors are the GPU's
+// multiply color (0xAABBGGRR); the foreground is the glyph draw's, the background the
+// "paper" draw's (v32term). Alpha is ignored.
+//
+typedef struct
 {
-    if (*cell != value)
+    uint8_t   ch;
+    uint32_t  fg;
+    uint32_t  bg;
+} ccell_t;
+
+#define  CON_WHITE  0xFFFFFFFFu
+
+static ccell_t   console_a[CON_A_ROWS][CON_A_COLS];
+static ccell_t   console_b[CON_B_ROWS][CON_B_COLS];
+static uint8_t   console_use_b  = FALSE;
+uint32_t         console_gen    = 0;           // changes whenever the text or its colors do
+
+int8_t           console_color   = -1;         // -1 unset (tty: auto, dump: none), 0 none, 1 16, 2 256, 3 true
+uint32_t         console_cursor  = 0;          // 0xAABBGGRR, 0 = leave the guest's color
+uint8_t          console_cursor_codes[8] = { 20 };
+int              console_ncursor = 1;
+
+static void  console_cell (ccell_t *c, uint8_t ch, uint32_t fg, int setbg, uint32_t bg)
+{
+    fg  = fg & 0x00FFFFFF;
+    bg  = bg & 0x00FFFFFF;
+    if ((c -> ch != ch) || (c -> fg != fg) || ((setbg != 0) && (c -> bg != bg)))
     {
-        *cell        = value;
+        c -> ch  = ch;
+        c -> fg  = fg;
+        if (setbg != 0)  c -> bg  = bg;
         console_gen  = console_gen + 1;
     }
 }
 
-static void  console_put (int32_t region, int32_t x, int32_t y)
+static void  console_put (int32_t region, int32_t x, int32_t y, uint32_t mult)
 {
     if ((x < 0) || (y < 0))
     {
@@ -165,7 +188,7 @@ static void  console_put (int32_t region, int32_t x, int32_t y)
         if (((x % 10) == 0) && ((y % 20) == 0) && ((x / 10) < CON_A_COLS) && ((y / 20) < CON_A_ROWS))
         {
             console_use_b  = FALSE;
-            console_cell (&console_a[y / 20][x / 10], (uint8_t) region);
+            console_cell (&console_a[y / 20][x / 10], (uint8_t) region, mult, 0, 0);
         }
         return;
     }
@@ -176,17 +199,17 @@ static void  console_put (int32_t region, int32_t x, int32_t y)
     if (region == 768)                                   // paper: the cell starts blank
     {
         console_use_b  = TRUE;
-        console_cell (&console_b[y / 15][x / 8], 0);
+        console_cell (&console_b[y / 15][x / 8], 0, CON_WHITE, 1, mult);
     }
     else if ((region >= 256 + 14) && (region <= 256 + 255))
     {
         console_use_b  = TRUE;
-        console_cell (&console_b[y / 15][x / 8], (uint8_t) (region - 256));
+        console_cell (&console_b[y / 15][x / 8], (uint8_t) (region - 256), mult, 0, 0);
     }
     else if ((region >= 769) && (region <= 776))        // shade blocks 17-20
     {
         console_use_b  = TRUE;
-        console_cell (&console_b[y / 15][x / 8], (uint8_t) (17 + (region - 769) / 2));
+        console_cell (&console_b[y / 15][x / 8], (uint8_t) (17 + (region - 769) / 2), mult, 0, 0);
     }
 }
 
@@ -197,10 +220,7 @@ static void  console_clear (void)
     console_gen  = console_gen + 1;
 }
 
-//
-// gpu_console_cells(): the character grid that is current
-//
-const uint8_t *gpu_console_cells (int *rows, int *cols)
+static const ccell_t *console_cells (int *rows, int *cols)
 {
     if (console_use_b == TRUE)
     {
@@ -216,7 +236,7 @@ const uint8_t *gpu_console_cells (int *rows, int *cols)
 //
 // gpu_console_utf8(): the text of a BIOS font code, as UTF-8; returns the byte count
 //
-int  gpu_console_utf8 (uint8_t c, char *out)
+static int  console_utf8 (uint8_t c, char *out)
 {
     uint16_t  u  = (c == 0) ? ' ' : (c >= 32 && c < 127) ? c : 0;
     int       k  = 0;
@@ -235,39 +255,246 @@ int  gpu_console_utf8 (uint8_t c, char *out)
     return (3);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
 //
-// gpu_console_show(): the grid as text, trailing blanks and blank lines at the end
-// removed. Returns the number of lines shown
+// Colors on a terminal. No curses library is needed: all the terminal is asked for is
+// SGR color sequences, and the three levels every modern terminal knows are produced
+// directly (16 colors, the 256 color cube and grays, 24 bit). A GPU color is brought
+// to the nearest color of the level by distance in RGB.
 //
-int  gpu_console_show (FILE *out)
+static const uint8_t  ansi16[16][3] =
 {
-    int            rows = 0, cols = 0, row = 0, col = 0, last = -1, end = 0, n = 0, len = 0;
-    const uint8_t *g    = gpu_console_cells (&rows, &cols);
+    {   0,   0,   0 }, { 205,   0,   0 }, {   0, 205,   0 }, { 205, 205,   0 },
+    {   0,   0, 238 }, { 205,   0, 205 }, {   0, 205, 205 }, { 229, 229, 229 },
+    { 127, 127, 127 }, { 255,   0,   0 }, {   0, 255,   0 }, { 255, 255,   0 },
+    {  92,  92, 255 }, { 255,   0, 255 }, {   0, 255, 255 }, { 255, 255, 255 }
+};
+
+static int  dist2 (int r, int g, int b, int pr, int pg, int pb)
+{
+    return ((r - pr) * (r - pr) + (g - pg) * (g - pg) + (b - pb) * (b - pb));
+}
+
+static int  nearest16 (uint32_t c)
+{
+    int  r = (int) (c & 0xFF), g = (int) ((c >> 8) & 0xFF), b = (int) ((c >> 16) & 0xFF);
+    int  i = 0, best = 0, bd = 1 << 30, d = 0;
+
+    for (i = 0; i < 16; i = i + 1)
+    {
+        d  = dist2 (r, g, b, ansi16[i][0], ansi16[i][1], ansi16[i][2]);
+        if (d < bd)  { bd = d;  best = i; }
+    }
+    return (best);
+}
+
+static int  nearest256 (uint32_t c)
+{
+    static const int  lv[6]  = { 0, 95, 135, 175, 215, 255 };
+    int  r = (int) (c & 0xFF), g = (int) ((c >> 8) & 0xFF), b = (int) ((c >> 16) & 0xFF);
+    int  ri = 0, gi = 0, bi = 0, i = 0, gray = 0, gl = 0;
+    int  dc = 0, dg = 0;
+
+    for (i = 1; i < 6; i = i + 1)
+    {
+        if (abs (r - lv[i]) < abs (r - lv[ri]))  ri = i;
+        if (abs (g - lv[i]) < abs (g - lv[gi]))  gi = i;
+        if (abs (b - lv[i]) < abs (b - lv[bi]))  bi = i;
+    }
+    dc    = dist2 (r, g, b, lv[ri], lv[gi], lv[bi]);
+    gray  = (r + g + b) / 3;
+    gl    = (gray - 8 + 5) / 10;
+    if (gl < 0)  gl = 0;
+    if (gl > 23) gl = 23;
+    dg    = dist2 (r, g, b, 8 + 10 * gl, 8 + 10 * gl, 8 + 10 * gl);
+    return ((dg < dc) ? 232 + gl : 16 + 36 * ri + 6 * gi + bi);
+}
+
+//
+// sgr(): the escape sequence that sets a foreground and background (0 = default)
+//
+static int  sgr (char *out, int mode, uint32_t fg, uint32_t bg)
+{
+    int  n = 0, f = 0, b = 0;
+
+    n  = sprintf (out, "\033[0");
+    if ((fg & 0xFFFFFF) != 0xFFFFFF)
+    {
+        if (mode == 3)       n += sprintf (out + n, ";38;2;%u;%u;%u", fg & 0xFF, (fg >> 8) & 0xFF, (fg >> 16) & 0xFF);
+        else if (mode == 2)  n += sprintf (out + n, ";38;5;%d", nearest256 (fg));
+        else                 { f = nearest16 (fg);  n += sprintf (out + n, ";%d", (f < 8) ? 30 + f : 90 + f - 8); }
+    }
+    if ((bg & 0xFFFFFF) != 0)
+    {
+        if (mode == 3)       n += sprintf (out + n, ";48;2;%u;%u;%u", bg & 0xFF, (bg >> 8) & 0xFF, (bg >> 16) & 0xFF);
+        else if (mode == 2)  n += sprintf (out + n, ";48;5;%d", nearest256 (bg));
+        else                 { b = nearest16 (bg);  n += sprintf (out + n, ";%d", (b < 8) ? 40 + b : 100 + b - 8); }
+    }
+    n += sprintf (out + n, "m");
+    return (n);
+}
+
+//
+// gpu_console_auto(): the color level the terminal advertises
+//
+int  gpu_console_auto (void)
+{
+    const char *ct = getenv ("COLORTERM");
+    const char *tm = getenv ("TERM");
+
+    if ((getenv ("NO_COLOR") != NULL) && (getenv ("NO_COLOR")[0] != '\0'))  return (0);
+    if ((ct != NULL) && (strstr (ct, "truecolor") || strstr (ct, "24bit")))  return (3);
+    if ((tm != NULL) && strstr (tm, "256color"))                              return (2);
+    if ((tm != NULL) && (strcmp (tm, "dumb") != 0) && (tm[0] != '\0'))        return (1);
+    return (0);
+}
+
+int  gpu_console_set_color (const char *name)
+{
+    if      (0 == strcmp (name, "none") || 0 == strcmp (name, "off") || 0 == strcmp (name, "0"))  console_color = 0;
+    else if (0 == strcmp (name, "16"))                                                             console_color = 1;
+    else if (0 == strcmp (name, "256"))                                                            console_color = 2;
+    else if (0 == strcmp (name, "true") || 0 == strcmp (name, "24") || 0 == strcmp (name, "truecolor") || 0 == strcmp (name, "on"))  console_color = 3;
+    else if (0 == strcmp (name, "auto"))                                                           console_color = (int8_t) gpu_console_auto ();
+    else  return (-1);
+    console_gen  = console_gen + 1;
+    return (0);
+}
+
+//
+// gpu_console_set_cursor(): the color the cursor is shown in (a name, #RRGGBB or
+// 0xRRGGBB), or "off". The cursor is a drawn solid block, character 20 unless more
+// codes are listed
+//
+int  gpu_console_set_cursor (const char *name)
+{
+    static const struct { const char *n; uint32_t rgb; } names[] =
+    {
+        { "black", 0x000000 }, { "red", 0xCD0000 }, { "green", 0x00CD00 }, { "yellow", 0xCDCD00 },
+        { "blue", 0x5C5CFF }, { "magenta", 0xCD00CD }, { "cyan", 0x00CDCD }, { "white", 0xE5E5E5 },
+        { "orange", 0xFF8000 }, { "gray", 0x7F7F7F }, { NULL, 0 }
+    };
+    unsigned long  v  = 0;
+    char          *e  = NULL;
+    int            i  = 0;
+
+    if (0 == strcmp (name, "off"))  { console_cursor = 0;  console_gen = console_gen + 1;  return (0); }
+    for (i = 0; names[i].n != NULL; i = i + 1)
+    {
+        if (0 == strcmp (name, names[i].n))  { v = names[i].rgb;  goto have; }
+    }
+    if (name[0] == '#')  name = name + 1;
+    v  = strtoul (name, &e, 16);
+    if ((e == name) || (*e != '\0') || (v > 0xFFFFFF))  return (-1);
+have:
+    console_cursor  = 0x01000000u | (((v >> 16) & 0xFF) | (v & 0xFF00) | ((v & 0xFF) << 16));   // to 0xAABBGGRR
+    console_gen     = console_gen + 1;
+    return (0);
+}
+
+void  gpu_console_set_cursor_codes (const uint8_t *codes, int n)
+{
+    int  i  = 0;
+
+    console_ncursor  = 0;
+    for (i = 0; (i < n) && (i < 8); i = i + 1)  console_cursor_codes[console_ncursor++]  = codes[i];
+}
+
+void  gpu_console_status (FILE *out)
+{
+    static const char *lv[]  = { "none", "16 colors", "256 colors", "24 bit" };
+
+    fprintf (out, "console: %s layout, color %s%s, cursor %s",
+                  (console_use_b == TRUE) ? "80x24" : "64x18",
+                  (console_color < 0) ? "unset (tty: auto, dump: none)" : lv[(int) console_color],
+                  "", (console_cursor == 0) ? "as drawn" : "recolored");
+    if (console_cursor != 0)  fprintf (out, " (#%02X%02X%02X)", console_cursor & 0xFF, (console_cursor >> 8) & 0xFF, (console_cursor >> 16) & 0xFF);
+    fprintf (out, "\n");
+}
+
+//
+// gpu_console_render(): the screen as text for a terminal. tty = 1 emits every row
+// (each cleared to its end, ready to be placed at the top of the screen); 0 trims
+// blank rows at the end and blanks at the end of each row. Returns a malloc'd string
+//
+char *gpu_console_render (int tty, size_t *length)
+{
+    int            rows = 0, cols = 0, row = 0, col = 0, last = -1, end = 0, k = 0, i = 0;
+    int            mode = (console_color < 0) ? ((tty != 0) ? gpu_console_auto () : 0) : console_color;
+    const ccell_t *g    = console_cells (&rows, &cols);
+    char          *out  = (char *) malloc ((size_t) (rows * cols * 40 + rows * 16 + 64));
+    size_t         n    = 0;
+    uint32_t       cf = CON_WHITE, cb = 0, fg = 0, bg = 0;
     char           u8[4];
 
+    if (out == NULL)  return (NULL);
     for (row = 0; row < rows; row = row + 1)
     {
         for (col = 0; col < cols; col = col + 1)
         {
-            if ((g[row * cols + col] != 0) && (g[row * cols + col] != ' '))  last = row;
+            const ccell_t *c = g + row * cols + col;
+            if (((c -> ch != 0) && (c -> ch != ' ')) || (((c -> bg & 0xFFFFFF) != 0) && (mode > 0)))  last = row;
         }
     }
-    for (row = 0; row <= last; row = row + 1)
+    for (row = 0; row < ((tty != 0) ? rows : last + 1); row = row + 1)
     {
         end = -1;
         for (col = 0; col < cols; col = col + 1)
         {
-            if ((g[row * cols + col] != 0) && (g[row * cols + col] != ' '))  end = col;
+            const ccell_t *c = g + row * cols + col;
+            if (((c -> ch != 0) && (c -> ch != ' ')) || (((c -> bg & 0xFFFFFF) != 0) && (mode > 0)))  end = col;
         }
+        cf = CON_WHITE;  cb = 0;
         for (col = 0; col <= end; col = col + 1)
         {
-            len  = gpu_console_utf8 (g[row * cols + col], u8);
-            fwrite (u8, 1, (size_t) len, out);
+            const ccell_t *c = g + row * cols + col;
+
+            fg = c -> fg;  bg = c -> bg;
+            if (console_cursor != 0)
+            {
+                for (i = 0; i < console_ncursor; i = i + 1)
+                {
+                    if (c -> ch == console_cursor_codes[i])  fg = console_cursor;
+                }
+            }
+            if (mode > 0)
+            {
+                if (((fg & 0xFFFFFF) != (cf & 0xFFFFFF)) || ((bg & 0xFFFFFF) != (cb & 0xFFFFFF)))
+                {
+                    n   = n + (size_t) sgr (out + n, mode, fg, bg);
+                    cf  = fg;  cb  = bg;
+                }
+            }
+            k  = console_utf8 (c -> ch, u8);
+            memcpy (out + n, u8, (size_t) k);  n = n + (size_t) k;
         }
-        fputc ('\n', out);
-        n = n + 1;
+        if ((mode > 0) && ((cf & 0xFFFFFF) != 0xFFFFFF || (cb & 0xFFFFFF) != 0))
+        {
+            memcpy (out + n, "\033[0m", 4);  n = n + 4;
+        }
+        if (tty != 0)  { memcpy (out + n, "\033[K", 3);  n = n + 3; }
+        out[n++]  = '\n';
     }
-    return (n);
+    if (length != NULL)  *length = n;
+    out[n]  = '\0';
+    return (out);
+}
+
+//
+// gpu_console_show(): the screen as text on a stream (blank rows at the end trimmed)
+//
+int  gpu_console_show (FILE *out)
+{
+    size_t  n    = 0;
+    char   *text = gpu_console_render (0, &n);
+    size_t  i    = 0;
+    int     rows = 0;
+
+    if (text == NULL)  return (0);
+    fwrite (text, 1, n, out);
+    for (i = 0; i < n; i = i + 1)  if (text[i] == '\n')  rows = rows + 1;
+    free (text);
+    return (rows);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -352,7 +579,7 @@ static void  gpu_draw (uint8_t scaling, uint8_t rotation)
     }
     if (seltex == -1)
     {
-        console_put (IPORTGET(GPU_SelectedRegion), (int32_t) px - hotX + minX, (int32_t) py - hotY + minY);
+        console_put (IPORTGET(GPU_SelectedRegion), (int32_t) px - hotX + minX, (int32_t) py - hotY + minY, mult);
     }
     if ((tex == NULL) || (tex -> size == 0))
     {

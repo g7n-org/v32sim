@@ -765,6 +765,67 @@ static void  exec_kbd (cmd_t *c)
     }
 }
 
+static void  exec_console (cmd_t *c)
+{
+    char      line[256];
+    char     *verb = NULL, *arg = NULL, *p = NULL;
+    uint8_t   codes[8];
+    int       n = 0;
+
+    if (c -> path == NULL)
+    {
+        gpu_console_show (stdout);
+        return;
+    }
+    snprintf (line, sizeof (line), "%s", c -> path);
+    verb = line;
+    for (p = line; (*p != '\0') && (*p != ' ') && (*p != '\t'); p = p + 1) ;
+    if (*p != '\0')
+    {
+        *p = '\0';
+        for (p = p + 1; (*p == ' ') || (*p == '\t'); p = p + 1) ;
+    }
+    arg = p;
+
+    if (0 == strcmp (verb, "color") || 0 == strcmp (verb, "colour"))
+    {
+        if (gpu_console_set_color (arg) != 0)
+        {
+            fprintf (stderr, "[ERROR] console color: use none, 16, 256, true or auto\n");
+        }
+    }
+    else if (0 == strcmp (verb, "cursor"))
+    {
+        // console cursor COLOR [CODE ...]: recolor the solid block (and the listed codes)
+        char *col = arg, *rest = arg;
+
+        for (; (*rest != '\0') && (*rest != ' '); rest = rest + 1) ;
+        if (*rest != '\0')  { *rest = '\0';  rest = rest + 1; }
+        if (gpu_console_set_cursor (col) != 0)
+        {
+            fprintf (stderr, "[ERROR] console cursor: a color name, #RRGGBB, or off\n");
+            return;
+        }
+        codes[0] = 20;  n = 1;
+        while ((*rest != '\0') && (n < 8))
+        {
+            codes[n++] = (uint8_t) strtoul (rest, &p, 0);
+            if (p == rest)  break;
+            rest = p;
+            while (*rest == ' ')  rest = rest + 1;
+        }
+        gpu_console_set_cursor_codes (codes, n);
+    }
+    else if (0 == strcmp (verb, "status"))
+    {
+        gpu_console_status (stdout);
+    }
+    else
+    {
+        fprintf (stderr, "[ERROR] console: unknown subcommand '%s' (try 'help console')\n", verb);
+    }
+}
+
 static void  exec_mailbox (cmd_t *c)
 {
     if ((c -> has_num == TRUE) && (c -> num >= DEV_CHANNELS))
@@ -1435,7 +1496,7 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_CONTINUE:    action = INPUT_CONTINUE;              break;
         case CMD_DISPLAY:     exec_display (c);                     break;
         case CMD_GAMEPAD:     exec_gamepad (c);                     break;
-        case CMD_CONSOLE:     gpu_console_show (stdout);            break;
+        case CMD_CONSOLE:     exec_console (c);                     break;
         case CMD_KBD:         exec_kbd (c);                         break;
         case CMD_MAILBOX:     exec_mailbox (c);                     break;
         case CMD_ASM:         exec_asm (c);                         break;

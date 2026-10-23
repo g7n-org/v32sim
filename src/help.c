@@ -36,6 +36,8 @@ void  usage (int8_t *program)
     fprintf (stdout, "     --max-frames=N        stop after N frames\n");
     fprintf (stdout, "     --tty                 full-screen interactive mode: the text console on this terminal, keys\n");
     fprintf (stdout, "                           to a v32kbd (port 0 unless --v32kbd=N); Ctrl-] = debugger\n");
+    fprintf (stdout, "     --console-color=MODE  text console colors: none, 16, 256, true, auto (--tty: auto)\n");
+    fprintf (stdout, "     --cursor-color=COLOR  recolor the cursor block (BIOS character 20) on the text console\n");
     fprintf (stdout, "     --console             print the BIOS-font text screen when the run ends\n");
     fprintf (stdout, " -x, --exit-status         exit status tells how the program ended: 0 HLT, 2 frame limit,\n");
     fprintf (stdout, "                           3 system error (stops instead of entering the BIOS handler)\n");
@@ -136,10 +138,19 @@ void  help  (uint8_t  item)
             break;
 
         case INPUT_CONSOLE:
-            fprintf (stdout, "SYNOPSIS:\n    console\n\nDESCRIPTION:\n");
-            fprintf (stdout, "    Show the characters drawn with the BIOS font (texture -1, region = character\n");
-            fprintf (stdout, "    code) on the 10x20 pixel character grid (64x18), as UTF-8 text. ClearScreen\n");
-            fprintf (stdout, "    empties it. With --console the text is also printed when the run ends.\n");
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    console                      show the text screen\n");
+            fprintf (stdout, "    console color MODE           none, 16, 256, true or auto\n");
+            fprintf (stdout, "    console cursor COLOR [CODE]  recolor the cursor block (character 20 and any CODEs);\n");
+            fprintf (stdout, "                                 COLOR: a name, #RRGGBB, or off\n");
+            fprintf (stdout, "    console status\n\nDESCRIPTION:\n");
+            fprintf (stdout, "    Show the characters drawn with the BIOS texture (region = character code):\n");
+            fprintf (stdout, "    the BIOS font on its 64x18 grid, or v32c++'s 80x24 terminal, as UTF-8 text.\n");
+            fprintf (stdout, "    The GPU multiply color of each draw becomes the cell's foreground (the paper\n");
+            fprintf (stdout, "    draw of the 80x24 terminal its background), shown with ANSI colors reduced to\n");
+            fprintf (stdout, "    the level asked: none (default for this command), 16, 256 or true (24 bit);\n");
+            fprintf (stdout, "    --tty uses the level the terminal advertises unless one is set. ClearScreen\n");
+            fprintf (stdout, "    empties the screen. With --console the text is also printed when the run ends.\n");
             break;
 
         case INPUT_MAILBOX:
