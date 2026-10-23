@@ -39,7 +39,7 @@ void  usage (int8_t *program)
     fprintf (stdout, "     --console-color=MODE  text console colors: none, 16, 256, true, auto (--tty: auto)\n");
     fprintf (stdout, "     --cursor-color=COLOR  recolor the cursor block (BIOS character 20) on the text console\n");
     fprintf (stdout, "     --console             print the BIOS-font text screen when the run ends\n");
-    fprintf (stdout, "     --dump=N[@ADDR]       after the run print N RAM words (signed, one per line) from ADDR\n");
+    fprintf (stdout, "     --dump=N[@ADDR]       (or ADDR:N) after the run print N RAM words (signed, one per line) from ADDR\n");
     fprintf (stdout, "                           (hex, or a label; NAME also tries global_NAME), default RAM start\n");
     fprintf (stdout, " -x, --exit-status         exit status tells how the program ended: 0 HLT, 2 frame limit,\n");
     fprintf (stdout, "                           3 system error (stops instead of entering the BIOS handler)\n");

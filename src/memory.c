@@ -313,6 +313,14 @@ void  dump_words (int8_t *spec)
     strncpy (buf, (char *) spec, sizeof (buf) - 1);
     buf[sizeof (buf) - 1]           = '\0';
     at                              = strchr (buf, '@');
+    if ((at == NULL) && ((at = strchr (buf, ':')) != NULL))
+    {
+        // ADDR:COUNT form: swap into COUNT@ADDR
+        *at                         = '\0';
+        snprintf (alt, sizeof (alt), "%s@%s", at + 1, buf);
+        strncpy (buf, alt, sizeof (buf) - 1);
+        at                          = strchr (buf, '@');
+    }
     if (at                         != NULL)
     {
         *at                         = '\0';

@@ -67,6 +67,50 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
     return (input_string);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// command_line(): next line of the -C command file, served by prompt() exactly as if
+// it had been typed (so the instruction at the prompt has been fetched, and `step`,
+// `next` and `continue` act); NULL when there is none (left), after which the prompt
+// reads the terminal
+//
+static uint8_t *command_line (void)
+{
+    static FILE *fptr                   = NULL;
+    uint8_t      line[1024];
+    size_t       len                    = 0;
+
+    if ((fptr == NULL) && (commandfile != NULL))
+    {
+        fptr                            = fopen (commandfile, "r");
+        if (fptr                       == NULL)
+        {
+            fprintf (stderr, "[ERROR] Could not open '%s' for reading!\n", commandfile);
+            exit (1);
+        }
+    }
+    while ((fptr != NULL) && (fgets ((char *) line, sizeof (line), fptr) != NULL))
+    {
+        len                             = strlen ((char *) line);
+        if ((len > 0) && (line[len - 1] == '\n'))
+        {
+            line[len - 1]               = '\0';
+        }
+        if (line[0] != '\0')
+        {
+            return ((uint8_t *) strdup ((char *) line));
+        }
+    }
+    if (fptr                           != NULL)
+    {
+        fclose (fptr);
+        fptr                            = NULL;
+    }
+    commandfile                         = NULL;
+
+    return (NULL);
+}
+
 uint8_t  prompt (uint32_t  word)
 {
     int32_t    value                    = 0;
@@ -85,7 +129,11 @@ uint8_t  prompt (uint32_t  word)
         free (input);
     }
 
-    input                               = get_input (stdin, "v32sim> ");
+    input                               = command_line ();
+    if (input                          == NULL)
+    {
+        input                           = get_input (stdin, "v32sim> ");
+    }
 
     if (input                          == NULL)
     {

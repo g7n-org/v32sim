@@ -103,6 +103,28 @@ opcode_t  lookup[64]                =
     { "ACOS" }, { "ATAN2" }, { "LOG"   }, { "POW"  }
 };
 
+static uint8_t  decodeflags         = FLAG_NONE;
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// fetch_instruction(): update IP, IR, IV (and decodeflags) from rom_offset
+//
+static void  fetch_instruction (void)
+{
+    REG(IP)                            = rom_offset;
+    REG(IR)                            = IMEMGET(REG(IP)); // current instruction
+    if ((REG(IR) & IMMVAL_MASK)       == IMMVAL_MASK)
+    {
+        REG(IV)                        = IMEMGET(REG(IP) + 1);
+        decodeflags                    = FLAG_IMMEDIATE;
+    }
+    else
+    {
+        REG(IV)                        = 0x00000000;
+        decodeflags                    = FLAG_NONE;
+    }
+}
+
 int32_t   main (int32_t  argc, char **argv)
 {
     ////////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +135,6 @@ int32_t   main (int32_t  argc, char **argv)
     linked_l *tmp                   = NULL;
     size_t    len                   = 0;
     uint8_t   chk                   = FALSE;
-    uint8_t   decodeflags           = FLAG_NONE;
     uint8_t   errorflag             = FLAG_NONE;
     uint8_t   processflag           = FALSE;
     uint32_t  value                 = 0;
@@ -396,11 +417,7 @@ int32_t   main (int32_t  argc, char **argv)
     //
     // Load commands from command-file
     //
-    if (commandfile                != NULL)
-    {
-        fprintf (verbose, "LOADING COMMAND-FILE\n");
-        load_command ();
-    }
+    // (Unless running unprompted, the command file is read by prompt().)
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -541,22 +558,19 @@ int32_t   main (int32_t  argc, char **argv)
         //
         // Update the InstructionPointer and InstructionRegister
         //
-        REG(IP)                        = rom_offset;
-        REG(IR)                        = IMEMGET(REG(IP)); // current instruction
+        fetch_instruction ();
 
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // Update the ImmediateValue system register (based on instruction in IR)
+        // Running unprompted (-r): there is no prompt to feed the command file, so run
+        // it now that the first instruction is fetched, then fetch again (it may have
+        // moved IP)
         //
-        if ((REG(IR) & IMMVAL_MASK)   == IMMVAL_MASK)
+        if ((commandfile              != NULL) && (runflag == TRUE))
         {
-            REG(IV)                    = IMEMGET(REG(IP) + 1);
-            decodeflags                = FLAG_IMMEDIATE;
-        }
-        else
-        {
-            REG(IV)                    = 0x00000000;
-            decodeflags                = FLAG_NONE;
+            fprintf (verbose, "LOADING COMMAND-FILE\n");
+            load_command ();
+            fetch_instruction ();
         }
 
         ////////////////////////////////////////////////////////////////////////////////

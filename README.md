@@ -494,7 +494,9 @@ v32term's default key source will not see your keys.
   * `-x` / `--exit-status`: the exit status tells how the run ended: 0 the
     program halted, 2 the frame limit was reached, 3 a system error (the run
     stops there instead of entering the BIOS error handler).
-  * `--dump=N[@ADDR|@LABEL]`: when the run ends, print `N` words of memory as
+  * `-C FILE` commands are read by the prompt (after the first instruction is
+    fetched), so `step`, `next` and `continue` act; with `-r` they run once at start.
+  * `--dump=N[@ADDR|@LABEL]` (or `ADDR:N`): when the run ends, print `N` words of memory as
     signed integers, one per line, before the final register banner. `ADDR` is
     hex (default: the start of RAM); a label is looked up as given and then as
     `global_LABEL`, so a v32cc global `counter` can be dumped as
