@@ -301,6 +301,7 @@ void    fmemory_set (uint32_t  address, float  dataword, uint8_t  sys_force)
 void  dump_words (int8_t *spec)
 {
     char      buf[256];
+    char      alt[300];
     char     *at                    = NULL;
     char     *end                   = NULL;
     uint32_t  count                 = 0;
@@ -331,8 +332,8 @@ void  dump_words (int8_t *spec)
             node                    = find_label (lpoint, (int8_t *) at);
             if (node == NULL)
             {
-                snprintf (buf, sizeof (buf), "global_%s", at);
-                node                = find_label (lpoint, (int8_t *) buf);
+                snprintf (alt, sizeof (alt), "global_%s", at);
+                node                = find_label (lpoint, (int8_t *) alt);
             }
             if (node == NULL)
             {
