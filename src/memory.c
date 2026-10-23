@@ -291,3 +291,64 @@ void    fmemory_set (uint32_t  address, float  dataword, uint8_t  sys_force)
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// dump_words(): --dump=N[@ADDR|@LABEL]; print N words of memory, one signed
+// integer per line, after the run (what tools/vrun -d does). A label that is not
+// found as given is also tried as global_LABEL (v32cc's name for a C variable).
+//
+void  dump_words (int8_t *spec)
+{
+    char      buf[256];
+    char     *at                    = NULL;
+    char     *end                   = NULL;
+    uint32_t  count                 = 0;
+    uint32_t  address               = RAM_FIRST_ADDR;
+    uint32_t  idx                   = 0;
+    linked_l *node                  = NULL;
+    word_t   *wptr                  = NULL;
+
+    strncpy (buf, (char *) spec, sizeof (buf) - 1);
+    buf[sizeof (buf) - 1]           = '\0';
+    at                              = strchr (buf, '@');
+    if (at                         != NULL)
+    {
+        *at                         = '\0';
+        at                          = at + 1;
+    }
+    count                           = (uint32_t) strtoul (buf, &end, 0);
+    if ((end == buf) || (*end != '\0'))
+    {
+        fprintf (stderr, "[ERROR] --dump: expected N[@ADDR|@LABEL]\n");
+        return;
+    }
+    if (at                         != NULL)
+    {
+        address                     = (uint32_t) strtoul (at, &end, 16);
+        if ((end == at) || (*end != '\0'))
+        {
+            node                    = find_label (lpoint, (int8_t *) at);
+            if (node == NULL)
+            {
+                snprintf (buf, sizeof (buf), "global_%s", at);
+                node                = find_label (lpoint, (int8_t *) buf);
+            }
+            if (node == NULL)
+            {
+                fprintf (stderr, "[ERROR] --dump: unknown address or label '%s'\n", at);
+                return;
+            }
+            address                 = node -> RAW;
+        }
+    }
+    for (idx = 0; idx < count; idx = idx + 1)
+    {
+        wptr                        = memory_get (address + idx, TRUE);
+        if (wptr == NULL)
+        {
+            break;
+        }
+        fprintf (stdout, "%d\n", (int) wptr -> i32);
+    }
+}

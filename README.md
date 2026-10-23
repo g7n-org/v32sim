@@ -494,6 +494,13 @@ v32term's default key source will not see your keys.
   * `-x` / `--exit-status`: the exit status tells how the run ended: 0 the
     program halted, 2 the frame limit was reached, 3 a system error (the run
     stops there instead of entering the BIOS error handler).
+  * `--dump=N[@ADDR|@LABEL]`: when the run ends, print `N` words of memory as
+    signed integers, one per line, before the final register banner. `ADDR` is
+    hex (default: the start of RAM); a label is looked up as given and then as
+    `global_LABEL`, so a v32cc global `counter` can be dumped as
+    `--dump=1@counter` when its debug file is loaded. Together with `-r -x --fast
+    --max-frames=N` this is a headless "run to HLT and dump RAM" mode, as
+    `tools/vrun -d N` in v32cc.
 
 ## Tests
 

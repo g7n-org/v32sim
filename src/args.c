@@ -44,6 +44,7 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "cursor-color",   required_argument, 0, 30  },
        { "tty",            no_argument,       0, 28  },
        { "console",        no_argument,       0, 27  },
+       { "dump",           required_argument, 0, 31  },
        { "exit-status",    no_argument,       0, 'x' },
        { "help",           no_argument,       0, 'h' },
        { 0,                0,                 0,  0  }
@@ -241,6 +242,10 @@ void  process_args (int32_t  argc, int8_t **argv)
 
             case 27: // console
                 consoleflag        = TRUE;
+                break;
+
+            case 31: // dump
+                dumpspec           = optarg;
                 break;
 
             case 'x':

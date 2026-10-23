@@ -177,6 +177,7 @@ extern uint32_t   frames_run;
 extern uint8_t    frame_limit;
 extern uint8_t    exitstatus;
 extern uint8_t    exitflag;
+extern int8_t    *dumpspec;
 extern uint8_t    consoleflag;
 extern int8_t    *kbdinput;
 extern int32_t    kbdport;
@@ -222,6 +223,7 @@ uint32_t  load_labels    (uint8_t *,   uint8_t,     uint8_t);
 uint8_t   load_memory    (uint32_t,    int8_t *);             // load file into memory
 uint8_t   unload_memory  (uint32_t);
 uint8_t   memory_chk     (uint32_t,    uint8_t,     uint8_t);
+void      dump_words    (int8_t *);                                  // --dump=N[@ADDR|@LABEL]
 word_t   *memory_get     (uint32_t,    uint8_t);              // get value from memory
 void      memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory
 void      fmemory_set    (uint32_t,    float,       uint8_t);
