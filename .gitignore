@@ -113,3 +113,4 @@ errors
 v32sim
 bin/*
 obj/*
+bios/*

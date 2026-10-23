@@ -127,11 +127,14 @@ sysinstall: $(BIN)
 		echo "Skipping: /usr/local/bin does not exist"; \
 	fi
 
+archive:
+	@zip -r ../v32sim-project.zip inc/ Makefile README.md src/ TODO.md
+
 clean:
-	@rm -vf .*.sw[op] *.save* *~ core errors
+	@rm -vf .*.sw[op] *.save* *~ core errors *.patch *.zip ../v32sim-project.zip
 	@rm -vf $(OBJ) $(DEPS) $(GENSRC) $(GENHDR) $(BINDIR)/$(TARGET)
 
-.PHONY: all debug asan version install sysinstall clean
+.PHONY: all debug asan version install sysinstall clean archive
 
 -include $(DEPS)
 
