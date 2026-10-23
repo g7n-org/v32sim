@@ -16,6 +16,7 @@
 #include "globals.h"
 #include "ioports.h"
 #include "vtex.h"
+#include "biosfont.h"
 #include <math.h>
 #include <time.h>
 
@@ -120,6 +121,82 @@ static uint32_t  gpu_texel (vtex_t *tex, int x, int y)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
+// The text console: draws with the BIOS texture (id -1) put the character whose code is
+// the region number at a cell of the BIOS font grid (10x20 pixels, 64x18 cells, as
+// print_at() lays text out). The grid is kept as text so that a text interface can be
+// read without looking at pixels; ClearScreen empties it.
+//
+#define  CON_COLS    64
+#define  CON_ROWS    18
+#define  CON_CELL_W  10
+#define  CON_CELL_H  20
+
+static uint8_t  console_grid[CON_ROWS][CON_COLS];
+
+static void  console_put (int32_t region, int32_t x, int32_t y)
+{
+    if ((region < 14) || (region > 255) || (x < 0) || (y < 0))
+    {
+        return;
+    }
+    if (((x % CON_CELL_W) != 0) || ((y % CON_CELL_H) != 0))
+    {
+        return;     // not on the character grid: some other BIOS graphic
+    }
+    if (((x / CON_CELL_W) < CON_COLS) && ((y / CON_CELL_H) < CON_ROWS))
+    {
+        console_grid[y / CON_CELL_H][x / CON_CELL_W]  = (uint8_t) region;
+    }
+}
+
+//
+// gpu_console_show(): the grid as UTF-8 text, trailing blanks and blank lines at the
+// end removed. Returns the number of lines shown
+//
+int  gpu_console_show (FILE *out)
+{
+    int  row = 0, col = 0, last = -1, end = 0, k = 0, n = 0;
+    uint16_t  u = 0;
+
+    for (row = 0; row < CON_ROWS; row = row + 1)
+    {
+        for (col = 0; col < CON_COLS; col = col + 1)
+        {
+            if ((console_grid[row][col] != 0) && (console_grid[row][col] != ' '))  last = row;
+        }
+    }
+    for (row = 0; row <= last; row = row + 1)
+    {
+        end = -1;
+        for (col = 0; col < CON_COLS; col = col + 1)
+        {
+            if ((console_grid[row][col] != 0) && (console_grid[row][col] != ' '))  end = col;
+        }
+        for (col = 0; col <= end; col = col + 1)
+        {
+            uint8_t  c = console_grid[row][col];
+
+            u = (c == 0) ? ' ' : (c >= 32 && c < 127) ? c : 0;
+            if ((u == 0) && (c != 0))
+            {
+                for (k = 0; k < (int) BIOS_CHARS; k = k + 1)
+                {
+                    if (bios_chars[k].code == c)  { u = bios_chars[k].unicode;  break; }
+                }
+                if (u == 0)  u = '?';
+            }
+            if (u < 0x80)        fputc (u, out);
+            else if (u < 0x800)  { fputc (0xC0 | (u >> 6), out);  fputc (0x80 | (u & 0x3F), out); }
+            else                 { fputc (0xE0 | (u >> 12), out);  fputc (0x80 | ((u >> 6) & 0x3F), out);  fputc (0x80 | (u & 0x3F), out); }
+        }
+        fputc ('\n', out);
+        n = n + 1;
+    }
+    return (n);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
 // gpu_draw(): DrawRegion with optional scaling and rotation
 //
 static void  gpu_draw (uint8_t scaling, uint8_t rotation)
@@ -197,6 +274,10 @@ static void  gpu_draw (uint8_t scaling, uint8_t rotation)
     else if ((seltex >= 0) && (cart_vtex != NULL) && ((uint32_t) seltex < cart_vtex -> qty))
     {
         tex = cart_vtex + seltex;
+    }
+    if (seltex == -1)
+    {
+        console_put (IPORTGET(GPU_SelectedRegion), (int32_t) px - hotX + minX, (int32_t) py - hotY + minY);
     }
     if ((tex == NULL) || (tex -> size == 0))
     {
@@ -369,6 +450,7 @@ void  gpu_command (int32_t command)
             }
             SYSPORTSET(GPU_RemainingPixels, remaining);
             gpu_clear ();
+            memset (console_grid, 0, sizeof (console_grid));
             break;
 
         case GPUCommand_DrawRegion:            gpu_draw (FALSE, FALSE); break;

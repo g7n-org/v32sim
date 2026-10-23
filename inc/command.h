@@ -28,6 +28,7 @@ enum cmd_id
     CMD_ASM,
     CMD_BACKTRACE,
     CMD_BREAK,
+    CMD_CONSOLE,
     CMD_CONTINUE,
     CMD_DISPLAY,
     CMD_GAMEPAD,

@@ -40,6 +40,7 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "fast",           no_argument,       0, 24  },
        { "frame-us",       required_argument, 0, 25  },
        { "max-frames",     required_argument, 0, 26  },
+       { "console",        no_argument,       0, 27  },
        { "exit-status",    no_argument,       0, 'x' },
        { "help",           no_argument,       0, 'h' },
        { 0,                0,                 0,  0  }
@@ -212,6 +213,10 @@ void  process_args (int32_t  argc, int8_t **argv)
 
             case 26: // max-frames
                 max_frames         = (uint32_t) strtoul (optarg, NULL, 10);
+                break;
+
+            case 27: // console
+                consoleflag        = TRUE;
                 break;
 
             case 'x':

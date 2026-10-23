@@ -24,10 +24,11 @@ check() { if [ "$2" = "$3" ]; then ok; else bad "$1: got '$2', want '$3'"; fi; }
 echo "== build test cartridges"
 bash "$IOD/tests/v32dev/rom/build-roms.sh" "$TCD" "$IOD/lib/v32dev" "$W/roms" >/dev/null || { echo "build-roms failed"; exit 2; }
 cp "$IOD"/lib/v32io/*.h "$W/roms/tc/include/"
-( cd "$W/roms/carts" && cp "$HERE/carts/t_kbd.c" . \
+( cd "$W/roms/carts" && cp "$HERE/carts/t_kbd.c" "$HERE/carts/t_con.c" . \
   && ../tc/compile t_kbd.c -o t_kbd.asm && ../tc/assemble t_kbd.asm -o t_kbd.vbin \
   && printf '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n<rom-definition version="1.0">\n<rom type="cartridge" title="t_kbd" version="1.0" />\n<binary path="t_kbd.vbin" />\n<textures /><sounds />\n</rom-definition>\n' > t_kbd.xml \
-  && ../tc/packrom t_kbd.xml -o t_kbd.v32 >/dev/null ) || { echo "t_kbd build failed"; exit 2; }
+  && ../tc/packrom t_kbd.xml -o t_kbd.v32 >/dev/null \
+  && ../tc/compile t_con.c -o t_con.asm && ../tc/assemble t_con.asm -o t_con.vbin && sed s/t_kbd/t_con/g t_kbd.xml > t_con.xml && ../tc/packrom t_con.xml -o t_con.v32 >/dev/null ) || { echo "t_kbd build failed"; exit 2; }
 BIOS=$W/roms/bios.v32
 KBD=$W/roms/carts/t_kbd.v32
 
@@ -81,6 +82,10 @@ fl=$(printf 'asm fadd R1, 1.0e-5\nasm fadd R1, 0.1\nquit\n' | "$SIM" -n -B "$BIO
 check "float immediates print shortest round-trip" "$fl" "1.0e-05 0.1 "
 bi=$(printf 'load bios:%s\nquit\n' "$BIOS" | "$SIM" -n -B "$BIOS" "$KBD" 2>&1 | grep -c "ERROR")
 check "load bios: at the prompt" "$bi" "0"
+
+echo "== text console"
+con=$("$SIM" -r -x -n --fast --max-frames=20 --console -B "$BIOS" "$W/roms/carts/t_con.v32" 2>&1 | head -3)
+check "BIOS-font text captured" "$con" "$(printf 'Hello, v32 console\nline two\n  x=?é')"
 
 echo "== memory card persistence"
 ( cd "$W/roms/carts" && cp "$HERE/carts/memwrite.asm" . && ../tc/assemble memwrite.asm -o memwrite.vbin >/dev/null \

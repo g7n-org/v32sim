@@ -69,6 +69,7 @@ software — and to automate cart testing.
 - [Commands](#commands)
 - [Memory Card and v32dev](#memory-card-and-v32dev)
 - [The v32io Keyboard](#the-v32io-keyboard)
+- [The Text Console](#the-text-console)
 - [Running Unattended](#running-unattended)
 - [Tests](#tests)
 - [IOPORTS](#ioports)
@@ -442,6 +443,15 @@ used as input is put in raw mode while the program runs: arrow keys, Delete,
 F1-F12, Ctrl and Alt combinations are translated, and **Ctrl-]** returns to the
 debugger prompt (which gets the terminal back). Text that arrives faster than
 one event per frame waits, nothing is lost.
+
+## The Text Console
+
+Characters drawn with the BIOS font (`print_at()` and friends: texture -1, region =
+character code, on the 10x20 pixel grid) are also kept as text in a 64x18 grid.
+`console` shows it (UTF-8; BIOS box drawing characters become Unicode),
+`--console` prints it when the run ends, and ClearScreen empties it. With the
+keyboard and `-x`/`--max-frames` this makes a v32nix or V32DOS session scriptable:
+type with `kbd type`, run some frames, read the screen with `console`.
 
 ## Running Unattended
 

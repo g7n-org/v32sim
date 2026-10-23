@@ -189,6 +189,7 @@ static int  lex_command (void)
     {
         case CMD_BACKTRACE:   return (T_BACKTRACE);
         case CMD_BREAK:       return (T_BREAK);
+        case CMD_CONSOLE:     return (T_CONSOLE);
         case CMD_CONTINUE:    return (T_CONTINUE);
         case CMD_DISPLAY:     return (T_DISPLAY);
         case CMD_GAMEPAD:     return (T_GAMEPAD);

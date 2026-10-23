@@ -130,6 +130,7 @@
 #define  INPUT_ASM               33
 #define  INPUT_KBD               34
 #define  INPUT_MAILBOX           35
+#define  INPUT_CONSOLE           36
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A

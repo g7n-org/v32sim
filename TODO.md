@@ -21,6 +21,7 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
   * **Unattended runs** - `--fast`, `--frame-us`, `--max-frames`, `-x`.
   * **`load bios:PATH`**, **`replace`** refreshes IR/IV, **float disassembly**
     prints shortest round-trip values.
+  * **Text console** - `console` / `--console` capture BIOS-font text.
   * **Tests** - `tests/run_tests.sh` (v32dev suite, v32kbd, persistence).
   * **TIM leap years**.
   * **Debug file location** - directory of the V32 file, current directory,
@@ -44,9 +45,8 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
     onto flex.
   * **Entry point** - should the default start be the cartridge
     (`0x20000000`) rather than the BIOS?
-  * **Text output** - a terminal for v32nix/V32DOS needs the screen as text:
-    either the v32dev `serial:stdio` channel (works now, with the host tool),
-    or capturing BIOS-font `DrawRegion` calls into a character grid.
+  * **Text console** - only BIOS-font draws on the 10x20 grid are captured;
+    text a program renders with its own font is not.
   * **v32mouse** - the protocol is not emulated (only the keyboard).
   * **Cycle accuracy** - `MOVS`/`SETS`/`CMPS` run to completion as one step
     (the console runs one word per cycle).

@@ -54,6 +54,7 @@ uint8_t   derefaddr;
 uint8_t   errorcheck;
 uint8_t   haltflag;
 uint8_t   exitstatus;      // process exit status: 0 HLT, 2 frame limit, 3 system error (-x)
+uint8_t   consoleflag;     // --console: print the text screen when the run ends
 uint8_t   exitflag;        // -x: the exit status reports how the program ended
 int8_t   *kbdinput;        // --kbd-input: host source of v32kbd keys
 int32_t   kbdport;         // --v32kbd: gamepad port of the keyboard, -1 = none
@@ -144,6 +145,7 @@ int32_t   main (int32_t  argc, char **argv)
     haltflag                        = FALSE;
     exitstatus                      = 0;
     exitflag                        = FALSE;
+    consoleflag                     = FALSE;
     kbdinput                        = NULL;
     kbdport                         = -1;
     frame_us                        = 1000000 / 60;
@@ -890,6 +892,10 @@ int32_t   main (int32_t  argc, char **argv)
     if ((frame_limit == TRUE) && (exitstatus == 0) && (exitflag == TRUE))
     {
         exitstatus                  = 2;
+    }
+    if (consoleflag == TRUE)
+    {
+        gpu_console_show (stdout);
     }
     v32io_shutdown ();
     memc_save ();   // flush any memory card changes to its file

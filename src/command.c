@@ -39,6 +39,7 @@ static const struct
     { "break",       1, CMD_BREAK     },
     { "backtrace",   2, CMD_BACKTRACE },
     { "bt",          2, CMD_BACKTRACE },
+    { "console",     3, CMD_CONSOLE   },
     { "continue",    1, CMD_CONTINUE  },
     { "display",     1, CMD_DISPLAY   },
     { "gamepad",     1, CMD_GAMEPAD   },
@@ -1389,6 +1390,7 @@ static void  exec_help (cmd_t *c)
         case CMD_CONTINUE:    help (INPUT_CONTINUE);   break;
         case CMD_DISPLAY:     help (INPUT_DISPLAY);    break;
         case CMD_GAMEPAD:     help (INPUT_GAMEPAD);    break;
+        case CMD_CONSOLE:     help (INPUT_CONSOLE);    break;
         case CMD_KBD:         help (INPUT_KBD);        break;
         case CMD_MAILBOX:     help (INPUT_MAILBOX);    break;
         case CMD_IGNORE:      help (INPUT_IGNORE);     break;
@@ -1433,6 +1435,7 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_CONTINUE:    action = INPUT_CONTINUE;              break;
         case CMD_DISPLAY:     exec_display (c);                     break;
         case CMD_GAMEPAD:     exec_gamepad (c);                     break;
+        case CMD_CONSOLE:     gpu_console_show (stdout);            break;
         case CMD_KBD:         exec_kbd (c);                         break;
         case CMD_MAILBOX:     exec_mailbox (c);                     break;
         case CMD_ASM:         exec_asm (c);                         break;

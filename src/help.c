@@ -34,6 +34,7 @@ void  usage (int8_t *program)
     fprintf (stdout, "     --fast                do not throttle to real time (frames run as fast as possible)\n");
     fprintf (stdout, "     --frame-us=N          wall-clock microseconds per frame (default 16666; 0 = --fast)\n");
     fprintf (stdout, "     --max-frames=N        stop after N frames\n");
+    fprintf (stdout, "     --console             print the BIOS-font text screen when the run ends\n");
     fprintf (stdout, " -x, --exit-status         exit status tells how the program ended: 0 HLT, 2 frame limit,\n");
     fprintf (stdout, "                           3 system error (stops instead of entering the BIOS handler)\n");
     fprintf (stdout, " -h, --help                display this information\n\n");
@@ -73,6 +74,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  save [FILE]             write the machine state to a file\n");
             fprintf (stdout, "  restore FILE            restore a saved machine state\n");
             fprintf (stdout, "  gamepad [#] [COMMAND]   view/simulate gamepad state\n");
+            fprintf (stdout, "  console                 show BIOS-font text drawn on the screen, as text\n");
             fprintf (stdout, "  kbd [SUBCOMMAND]        v32kbd keyboard: type text, press keys, host input\n");
             fprintf (stdout, "  mailbox [CHANNEL]       v32dev mailbox state of the memory card\n");
             fprintf (stdout, "  load cart|memc:file     load component into memory\n");
@@ -129,6 +131,13 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    code. One key event is delivered per frame. Characters outside a US layout\n");
             fprintf (stdout, "    are sent as BIOS-font typed characters. With a terminal as host input the\n");
             fprintf (stdout, "    terminal is raw while the program runs; Ctrl-] returns to the prompt.\n");
+            break;
+
+        case INPUT_CONSOLE:
+            fprintf (stdout, "SYNOPSIS:\n    console\n\nDESCRIPTION:\n");
+            fprintf (stdout, "    Show the characters drawn with the BIOS font (texture -1, region = character\n");
+            fprintf (stdout, "    code) on the 10x20 pixel character grid (64x18), as UTF-8 text. ClearScreen\n");
+            fprintf (stdout, "    empties it. With --console the text is also printed when the run ends.\n");
             break;
 
         case INPUT_MAILBOX:
