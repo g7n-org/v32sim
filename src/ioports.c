@@ -99,7 +99,7 @@ void  init_ioports  (void)
             case TIM_CurrentTime:
                 value                      = current_time_tm -> tm_hour * 3600;
                 value                     += current_time_tm -> tm_min  * 60;
-                value                     += current_time_tm -> tm_sec  * 60;
+                value                     += current_time_tm -> tm_sec;
                 if (fixed_clock           == TRUE)
                 {
                     value                  = fixed_secs;

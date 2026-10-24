@@ -128,9 +128,9 @@ void update_frame(void) {
                 uint32_t  daysinyear = ((((year % 4) == 0) && ((year % 100) != 0)) ||
                                         ((year % 400) == 0)) ? 366 : 365;
 
-                if (value >= daysinyear)
+                if (value > daysinyear)          // days are numbered from 1
                 {
-                    value  = 0;                  // new year, reset the day to 0
+                    value  = 1;                  // new year, back to day 1
                     upper  = upper + 0x00010000; // increment the year
                 }
                 value = upper | value;           // recombine YEAR and DAY

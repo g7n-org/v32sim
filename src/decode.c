@@ -1277,7 +1277,7 @@ void  decode_process (uint32_t  instruction,
             value           = (immflag == TRUE)  ? immediate  : SRCREG;
             if (value      != 0)
             {
-                DSTREG      = DSTREG / value;
+                DSTREG      = (value == -1) ? (int32_t) (0u - (uint32_t) DSTREG) : DSTREG / value;   // INT_MIN / -1 traps on the host
             }
             else
             {
@@ -1289,7 +1289,7 @@ void  decode_process (uint32_t  instruction,
             value           = (immflag == TRUE)  ? immediate  : SRCREG;
             if (value      != 0)
             {
-                DSTREG      = DSTREG % value;
+                DSTREG      = (value == -1) ? 0 : DSTREG % value;
             }
             else
             {
@@ -1543,7 +1543,7 @@ uint8_t  decode_check (uint32_t  instruction,
             break;
 
         case JT:
-            if (DSTREG     == TRUE)
+            if (DSTREG     != FALSE)
             {
                 data        = (immflag == TRUE)   ? immediate  : SRCREG;
                 result      = memory_chk  (data,               FLAG_READ,  FALSE);
@@ -1621,7 +1621,7 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case MOVS:
             for (value      = 0;
-                 value     <  ((REG(CR) > 0) ? REG(CR) : 1);   // CR <= 0 runs once
+                 ((value   <  ((REG(CR) > 0) ? REG(CR) : 1)) && (result == TRUE));   // CR <= 0 runs once
                  value      = value + 1)
             {
                 result      = memory_chk  ((REG(SR)+value),   FLAG_READ,  FALSE);
@@ -1634,7 +1634,7 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case SETS:
             for (value      = 0;
-                 value     <  ((REG(CR) > 0) ? REG(CR) : 1);   // CR <= 0 runs once
+                 ((value   <  ((REG(CR) > 0) ? REG(CR) : 1)) && (result == TRUE));   // CR <= 0 runs once
                  value      = value + 1)
             {
                 result      = memory_chk  ((REG(DR)+value),   FLAG_WRITE, FALSE);
@@ -1643,7 +1643,7 @@ uint8_t  decode_check (uint32_t  instruction,
 
         case CMPS:
             for (value      = 0;
-                 value     <  ((REG(CR) > 0) ? REG(CR) : 1);   // CR <= 0 runs once
+                 ((value   <  ((REG(CR) > 0) ? REG(CR) : 1)) && (result == TRUE));   // CR <= 0 runs once
                  value      = value + 1)
             {
                 result      = memory_chk  ((REG(DR)+value),   FLAG_READ,  FALSE);
