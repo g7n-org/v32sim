@@ -128,7 +128,7 @@ sysinstall: $(BIN)
 	fi
 
 archive:
-	@zip -r ../v32sim-project.zip inc/ Makefile README.md src/ TODO.md
+	@zip -r ../v32sim-project.zip inc/ Makefile *.md src/ tests/
 
 clean:
 	@rm -vf .*.sw[op] *.save* *~ core errors *.patch *.zip ../v32sim-project.zip
