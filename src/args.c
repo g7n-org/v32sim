@@ -45,6 +45,8 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "tty",            no_argument,       0, 28  },
        { "console",        no_argument,       0, 27  },
        { "dump",           required_argument, 0, 31  },
+       { "fixed-clock",    optional_argument, 0, 32  },
+       { "seed",           required_argument, 0, 33  },
        { "exit-status",    no_argument,       0, 'x' },
        { "help",           no_argument,       0, 'h' },
        { 0,                0,                 0,  0  }
@@ -217,6 +219,26 @@ void  process_args (int32_t  argc, int8_t **argv)
 
             case 26: // max-frames
                 max_frames         = (uint32_t) strtoul (optarg, NULL, 10);
+                break;
+
+            case 32: // fixed-clock[=YEAR,DAY,SECONDS]
+                fixed_clock        = TRUE;
+                fixed_year         = 2026;
+                fixed_day          = 1;
+                fixed_secs         = 0;
+                if (optarg        != NULL)
+                {
+                    if (sscanf (optarg, "%u,%u,%u", &fixed_year, &fixed_day, &fixed_secs) != 3)
+                    {
+                        fprintf (stderr, "[ERROR] --fixed-clock: use YEAR,DAY,SECONDS (e.g. 2026,1,0)\n");
+                        exit (1);
+                    }
+                }
+                break;
+
+            case 33: // seed
+                rng_seed_set       = TRUE;
+                rng_seed           = (uint32_t) strtoul (optarg, NULL, 0);
                 break;
 
             case 29: // console-color

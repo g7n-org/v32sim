@@ -173,6 +173,10 @@ extern uint8_t    turboflag;
 extern uint8_t    waitflag;
 extern uint32_t   frame_us;
 extern uint32_t   max_frames;
+extern uint8_t    fixed_clock;                 // --fixed-clock: TIM ports start at a fixed date/time
+extern uint32_t   fixed_year, fixed_day, fixed_secs;
+extern uint8_t    rng_seed_set;                // --seed: RNG_CurrentValue generator seeded at startup
+extern uint32_t   rng_seed;
 extern uint32_t   frames_run;
 extern uint8_t    frame_limit;
 extern uint8_t    exitstatus;

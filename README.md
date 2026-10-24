@@ -175,6 +175,8 @@ Mandatory arguments to long options are mandatory for short options too.
  --fast                    do not throttle to real time
  --frame-us=N              wall-clock microseconds per frame (default 16666)
  --max-frames=N            stop after N frames
+ --fixed-clock[=Y,D,S]     start TIM_CurrentDate/Time at year Y, day D, S seconds (default 2026,1,0)
+ --seed=N                  seed the RNG_CurrentValue generator with N
  -x, --exit-status         exit status tells how the program ended
  -h, --help                display this information
 FILE   is any path plus the filename desired
@@ -503,6 +505,11 @@ v32term's default key source will not see your keys.
     `--dump=1@counter` when its debug file is loaded. Together with `-r -x --fast
     --max-frames=N` this is a headless "run to HLT and dump RAM" mode, as
     `tools/vrun -d N` in v32cc.
+  * `--fixed-clock[=YEAR,DAY,SECONDS]` and `--seed=N` make runs reproducible: the
+    date/time ports start from a fixed value instead of the host clock, and the
+    RNG is seeded at startup. Two runs of the same cartridge then give identical
+    RAM dumps (a program that seeds itself from `TIM_CycleCounter` still differs
+    between builds of different speed, as the cycle count differs).
 
 ## Tests
 

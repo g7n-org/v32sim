@@ -64,6 +64,10 @@ void  init_ioports  (void)
 
     current_time_raw                       = time (NULL); // obtain current time (raw)
     current_time_tm                        = localtime (&current_time_raw);
+    if (rng_seed_set                      == TRUE)
+    {
+        srand (rng_seed);
+    }
 
     for (index                             = 0;
          index                            <  NUM_TIM_PORTS;
@@ -83,6 +87,10 @@ void  init_ioports  (void)
                 value                      = current_time_tm -> tm_year + 1900;
                 value                      = value << 16;
                 value                     |= current_time_tm -> tm_yday + 1;
+                if (fixed_clock           == TRUE)
+                {
+                    value                  = (fixed_year << 16) | (fixed_day & 0xFFFF);
+                }
                 (pptr+index) -> value.i32  = value;
                 (pptr+index) -> fmt        = FORMAT_DEFAULT;
                 sprintf (nptr, "TIM_CurrentDate");
@@ -92,6 +100,10 @@ void  init_ioports  (void)
                 value                      = current_time_tm -> tm_hour * 3600;
                 value                     += current_time_tm -> tm_min  * 60;
                 value                     += current_time_tm -> tm_sec  * 60;
+                if (fixed_clock           == TRUE)
+                {
+                    value                  = fixed_secs;
+                }
                 (pptr+index) -> value.i32  = value;
                 (pptr+index) -> fmt        = FORMAT_DEFAULT;
                 sprintf (nptr, "TIM_CurrentTime");

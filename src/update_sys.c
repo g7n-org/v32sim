@@ -26,6 +26,10 @@ static uint64_t frame_start_ns = 0;
 //
 uint32_t  frame_us      = 1000000 / V32_FRAMES_PER_SECOND;
 uint32_t  max_frames    = 0;       // 0 = no limit
+uint8_t   fixed_clock   = 0;       // --fixed-clock
+uint32_t  fixed_year    = 2026, fixed_day = 1, fixed_secs = 0;
+uint8_t   rng_seed_set  = 0;       // --seed
+uint32_t  rng_seed      = 0;
 uint32_t  frames_run    = 0;       // frames completed since start
 uint8_t   frame_limit   = FALSE;   // set when max_frames was reached
 
