@@ -13,6 +13,13 @@ ordered by how likely an ordinary program is to notice them.
 
 Line numbers refer to v32sim at the commit this file was added in.
 
+**Policy (decided by the v32sim maintainer): v32sim matches the DesktopEmulator's
+behavior, including its quirks.** Where the stock emulator does something odd, the
+simulator should do the same, and note the oddity in a comment. The "Upstream quirks"
+section at the end is therefore a list of behaviors to *mirror*, not to avoid. The one
+exception is host-undefined behavior (G12, shift counts of 32 or more), where there is
+no defined console behavior to copy.
+
 | ID  | Area                                   | Visible to ordinary programs? |
 | --- | -------------------------------------- | ----------------------------- |
 | G1  | RNG algorithm and seeding              | yes (any use of `RNG_CurrentValue`) |
@@ -105,9 +112,10 @@ is not a leap year there). `V32Console::SetCurrentDate` accepts days 0 to 365.
 day computed by the stock `date_*` helpers in `time.h` are one day off.
 
 **Suggested change.** Use `tm_yday` (0-based) and treat `--fixed-clock Y,D,S` day `D`
-as 0-based (default day 0). The leap year rule is a quirk of the console: matching it
-only matters for programs that run across a year boundary in a year divisible by 400;
-decide whether to mirror the quirk or keep the correct rule (and then document it).
+as 0-based (default day 0). Per the policy above, also mirror the leap year rule
+(`Year % 4 == 0 && Year % 100 != 0`, no 400-year rule) and the rollover test
+`Days >= DaysThisYear`, with a comment saying the year 2000 is deliberately not a
+leap year, as on the console.
 
 ## G5. GPU port writes are not clamped or ignored
 
@@ -343,8 +351,8 @@ For reference, these were compared and no difference was found:
 
 ## Upstream quirks you may or may not want to mirror
 
-These are properties of the DesktopEmulator source that look like oversights; they are
-listed so you can decide whether "identical to the stock emulator" includes them:
+These are properties of the DesktopEmulator source that look like oversights. Per the
+policy at the top, v32sim should **reproduce them** (with a comment naming the quirk):
 
   * The leap year test lacks the 400-year rule (G4).
   * `V32GPU::Reset` clears each region's `MinX` twice and never clears `MinY`
