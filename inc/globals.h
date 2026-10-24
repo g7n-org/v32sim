@@ -178,6 +178,10 @@ extern uint32_t   fixed_year, fixed_day, fixed_secs;
 extern uint8_t    rng_seed_set;                // --seed: RNG_CurrentValue generator seeded at startup
 extern uint32_t   rng_seed;
 extern uint32_t   frames_run;
+extern int8_t    *profile_out;                 // --profile-out=FILE: per-address execution counts
+extern uint8_t    profile_bin;                 // --profile-format=bin
+extern uint32_t   profile_top;                 // --profile-top=N
+extern uint8_t    fixed_cycles;                // --fixed-cycles: TIM_CycleCounter reads 0
 extern uint8_t    frame_limit;
 extern uint8_t    exitstatus;
 extern uint8_t    exitflag;
@@ -273,6 +277,10 @@ void      output_mem     (uint32_t,    uint8_t,     uint8_t,  uint8_t *);
 void      output_iop     (uint32_t,    uint8_t,     uint8_t *);
 word_t   *new_word_i32   (uint32_t *,  uint8_t);
 void      update_cycle   (void);                              // updating CycleCounter
+void      addrprof_init  (void);                               // address profile (addrprofile.c)
+uint8_t   addrprof_enabled (void);
+void      addrprof_count (uint32_t);
+void      addrprof_write (void);
 void      update_frame   (void);                              // updating FrameCounter
 uint32_t  word2int       (word_t *);
 float     word2float     (word_t *);

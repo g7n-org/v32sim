@@ -1144,7 +1144,7 @@ void  decode_process (uint32_t  instruction,
 
         case IN:
             fprintf (debug, "[decode_process] IN: ioports_get (0x%.3X)\n", port);
-            DSTREG          = IPORTGET(port);
+            DSTREG          = ((fixed_cycles == TRUE) && (port == TIM_CycleCounter)) ? 0 : IPORTGET(port);
             break;
 
         case OUT:

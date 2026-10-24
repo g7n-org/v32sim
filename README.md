@@ -511,6 +511,31 @@ v32term's default key source will not see your keys.
     RAM dumps (a program that seeds itself from `TIM_CycleCounter` still differs
     between builds of different speed, as the cycle count differs).
 
+### Address profile
+
+`--profile-out=FILE` writes, when the run ends, how many times the instruction at each
+address was executed. It needs no prompt, no `-p` and no debug files, and works with
+`-r -x --max-frames=N` (a run stopped by the frame limit still writes it) as well as a
+run that reaches `HLT`:
+
+```
+# v32sim address profile v1
+# cycles 403 frames 0
+0x00000004 100
+0x00000006 100
+```
+
+  * One line per executed address (BIOS included), sorted by address; the address is that
+    of the instruction's first word. `# cycles` is the number of instructions executed
+    (a `WAIT` counts once), so the counts add up to it. With a cartridge asm debug file
+    loaded, a third column names the label covering the address.
+  * `--profile-format=bin` writes the line `V32PROF1`, then little-endian 32-bit
+    `address, count` pairs.
+  * `--profile-top=N` prints the N hottest addresses (with labels, when known) to stderr.
+  * `--fixed-cycles` makes a program's reads of `TIM_CycleCounter` return 0, so code that
+    seeds from it behaves the same across builds; with `--fixed-clock` and `--seed` the
+    profile is reproducible, byte for byte.
+
 ## Tests
 
 `tests/run_tests.sh TOOLCHAIN V32IO_PROJECT` builds the test cartridges with

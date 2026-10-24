@@ -485,6 +485,8 @@ int32_t   main (int32_t  argc, char **argv)
     signal (SIGFPE,  sigcrash);
     signal (SIGABRT, sigcrash);
 
+    addrprof_init ();      // the page sizes are known once the BIOS, cart and card are loaded
+
     /*
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     */
@@ -758,6 +760,7 @@ int32_t   main (int32_t  argc, char **argv)
             //
             // Execute the current instruction
             //
+            addrprof_count (REG(IP));
             decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_PROCESS);
 
             // Check for watchpoint triggers
@@ -918,6 +921,7 @@ int32_t   main (int32_t  argc, char **argv)
     {
         exitstatus                  = 2;
     }
+    addrprof_write ();
     if (consoleflag == TRUE)
     {
         gpu_console_show (stdout);

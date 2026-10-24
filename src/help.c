@@ -44,6 +44,11 @@ void  usage (int8_t *program)
     fprintf (stdout, "     --console             print the BIOS-font text screen when the run ends\n");
     fprintf (stdout, "     --dump=N[@ADDR]       (or ADDR:N) after the run print N RAM words (signed, one per line) from ADDR\n");
     fprintf (stdout, "                           (hex, or a label; NAME also tries global_NAME), default RAM start\n");
+    fprintf (stdout, "     --profile-out=FILE    when the run ends write how many times each instruction address was\n");
+    fprintf (stdout, "                           executed (needs no prompt and no -p); debug labels add a third column\n");
+    fprintf (stdout, "     --profile-format=FMT  text (default) or bin (V32PROF1 header, then LE32 address,count pairs)\n");
+    fprintf (stdout, "     --profile-top=N       print the N hottest addresses to stderr when the run ends\n");
+    fprintf (stdout, "     --fixed-cycles        reads of TIM_CycleCounter return 0 (programs seeding from it repeat)\n");
     fprintf (stdout, " -x, --exit-status         exit status tells how the program ended: 0 HLT, 2 frame limit,\n");
     fprintf (stdout, "                           3 system error (stops instead of entering the BIOS handler)\n");
     fprintf (stdout, " -h, --help                display this information\n\n");

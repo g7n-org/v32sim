@@ -47,6 +47,10 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "dump",           required_argument, 0, 31  },
        { "fixed-clock",    optional_argument, 0, 32  },
        { "seed",           required_argument, 0, 33  },
+       { "profile-out",    required_argument, 0, 34  },
+       { "profile-format", required_argument, 0, 35  },
+       { "profile-top",    required_argument, 0, 36  },
+       { "fixed-cycles",   no_argument,       0, 37  },
        { "exit-status",    no_argument,       0, 'x' },
        { "help",           no_argument,       0, 'h' },
        { 0,                0,                 0,  0  }
@@ -234,6 +238,34 @@ void  process_args (int32_t  argc, int8_t **argv)
                         exit (1);
                     }
                 }
+                break;
+
+            case 34: // profile-out
+                profile_out        = optarg;
+                break;
+
+            case 35: // profile-format
+                if (0             == strcmp (optarg, "bin"))
+                {
+                    profile_bin    = TRUE;
+                }
+                else if (0        != strcmp (optarg, "text"))
+                {
+                    fprintf (stderr, "[ERROR] --profile-format: use text or bin\n");
+                    exit (1);
+                }
+                else
+                {
+                    profile_bin    = FALSE;
+                }
+                break;
+
+            case 36: // profile-top
+                profile_top        = (uint32_t) strtoul (optarg, NULL, 10);
+                break;
+
+            case 37: // fixed-cycles
+                fixed_cycles       = TRUE;
                 break;
 
             case 33: // seed
