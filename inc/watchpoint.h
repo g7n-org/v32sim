@@ -22,14 +22,15 @@ typedef struct wloc
     uint32_t  id;                   // register id / address / port number / immediate
 } wloc_t;
 
-// Watchpoint structure. A watchpoint triggers when its condition (target OP rhs, all
-// compared as unsigned 32-bit values) becomes true; it does not trigger again until
+// Watchpoint structure. A watchpoint triggers when its condition (target OP rhs, compared
+// as unsigned 32-bit values, or as signed ones with is_signed) becomes true; it does not trigger again until
 // the condition has been false and then true once more.
 typedef struct wpoint
 {
     wloc_t         target;      // what is watched
     wloc_t         rhs;         // what it is compared against
     uint8_t        operator;    // WATCH_OP_* constant
+    uint8_t        is_signed;   // compare as signed 32-bit values (watch/d)
     uint8_t        active;      // Enable/disable flag
     uint8_t        was_true;    // condition state at the last check
     int8_t        *label;       // Optional label for display
@@ -39,13 +40,14 @@ typedef struct wpoint
 // Function prototypes
 extern wpoint_t *wpoint; // Watchpoint list (declared in globals.h)
 
-wpoint_t     *wpoint_new             (wloc_t,      uint8_t,        wloc_t);
+wpoint_t     *wpoint_new             (wloc_t,      uint8_t,        wloc_t,  uint8_t);
 void          wpoint_add             (wpoint_t **, wpoint_t     *);
 uint8_t       wpoint_remove          (wpoint_t **, int);                 // TRUE if removed
 uint8_t       wpoint_remove_by_label (wpoint_t **, const int8_t *);      // TRUE if removed
 uint8_t       wpoint_check           (void);
 void          wpoint_display         (void);
 void          wpoint_describe        (wpoint_t *,  char *, size_t);      // "SP < 0x003FFFFF"
+uint8_t       wcond_eval             (wloc_t, uint8_t, wloc_t, uint8_t, uint32_t *, uint32_t *); // one-off condition (expect)
 void          wpoint_clear           (wpoint_t **);
 const int8_t *wpoint_op_to_string    (uint8_t );
 

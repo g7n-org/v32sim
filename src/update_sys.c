@@ -169,6 +169,12 @@ void update_frame(void) {
         haltflag     = TRUE;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // 'run N' and 'until TEXT' (runctl.c) look at the end of every frame
+    //
+    runctl_frame ();
+
     // === NEW: Frame-based throttling with busy-wait ===
     uint64_t now_ns = get_ns();
     uint64_t elapsed_ns = now_ns - frame_start_ns;

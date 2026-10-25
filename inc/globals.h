@@ -183,6 +183,14 @@ extern uint8_t    profile_bin;                 // --profile-format=bin
 extern uint32_t   profile_top;                 // --profile-top=N
 extern uint8_t    fixed_cycles;                // --fixed-cycles: TIM_CycleCounter reads 0
 extern uint8_t    frame_limit;
+extern uint8_t    batchflag;                   // --batch: quiet scripted mode (runctl.c)
+extern FILE      *status_out;                  // acknowledgements, stop reasons: stdout, or stderr with --batch
+extern uint32_t   script_errors;               // command lines that failed to parse (--batch)
+extern uint32_t   check_failures;              // failed expect / timed-out until
+extern uint8_t    quit_status_set;             // 'quit N'
+extern uint8_t    quit_status;
+extern uint8_t    profile_by_function;         // --profile-by=function
+extern int8_t    *symbolfile;                  // --symbol-file=FILE
 extern uint8_t    exitstatus;
 extern uint8_t    exitflag;
 extern int8_t    *dumpspec;
@@ -266,6 +274,9 @@ void      gpu_console_set_cursor_codes (const uint8_t *, int);
 void      gpu_console_status (FILE *);
 extern uint32_t console_gen;
 void      gpu_command    (int32_t);
+char     *gpu_console_snapshot (void);                       // the screen as plain text (until)
+int       gpu_console_match (const char *, uint32_t);        // is the text on the screen (until, expect console)
+void      gpu_console_attrs (FILE *, int);                   // color grids (console --attrs)
 uint8_t   gpu_screenshot (const char *);
 word_t   *reg_get        (uint8_t,     uint8_t);
 int8_t   *reg_get_name   (uint8_t);
@@ -275,6 +286,8 @@ void      reg_set        (uint8_t,     uint32_t,    uint8_t);
 void      output_reg     (uint8_t,     uint8_t,     uint8_t,  uint8_t *);
 void      output_mem     (uint32_t,    uint8_t,     uint8_t,  uint8_t *);
 void      output_iop     (uint32_t,    uint8_t,     uint8_t *);
+void      output_mem_named (const char *, uint32_t,   uint8_t,  uint8_t,  uint8_t *);
+void      output_val     (const char *, uint32_t,     uint8_t);
 word_t   *new_word_i32   (uint32_t *,  uint8_t);
 void      update_cycle   (void);                              // updating CycleCounter
 void      addrprof_init  (void);                               // address profile (addrprofile.c)
@@ -296,6 +309,19 @@ void      process_args   (int32_t,     int8_t  **);
 void      usage          (int8_t   *);
 void      help           (uint8_t);
 uint8_t  *get_input      (FILE     *,  const uint8_t *);
+FILE     *open_search_file (const char *, const char *, char *, size_t);
+uint32_t  sym_load_cart  (const char *);                      // symbols.c: data symbols of a C program
+uint32_t  sym_load_file  (const char *);
+int       sym_lookup     (const char *, uint32_t *, uint32_t *);
+int       sym_name_for   (uint32_t,    char *,      size_t);
+void      runctl_init    (void);                              // runctl.c: batch mode, run/until/expect
+void      runctl_reset   (void);
+void      runctl_run     (uint32_t);
+void      runctl_until   (const char *, uint32_t,   uint32_t);
+void      runctl_frame   (void);
+void      runctl_expect_value   (wloc_t, uint8_t, wloc_t, uint8_t);
+void      runctl_expect_console (const char *, uint32_t);
+void      status_printf  (const char *, ...);
 uint8_t   prompt         (uint32_t);
 linked_l *find_label     (linked_l *,  int8_t *);
 linked_l *find_value     (linked_l *,  uint32_t);

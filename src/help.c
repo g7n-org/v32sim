@@ -48,9 +48,18 @@ void  usage (int8_t *program)
     fprintf (stdout, "                           executed (needs no prompt and no -p); debug labels add a third column\n");
     fprintf (stdout, "     --profile-format=FMT  text (default) or bin (V32PROF1 header, then LE32 address,count pairs)\n");
     fprintf (stdout, "     --profile-top=N       print the N hottest addresses to stderr when the run ends\n");
+    fprintf (stdout, "     --profile-by=KIND     address (default) or function: with function, --profile-top and the text\n");
+    fprintf (stdout, "                           --profile-out add up the addresses of each function (the closest label)\n");
     fprintf (stdout, "     --fixed-cycles        reads of TIM_CycleCounter return 0 (programs seeding from it repeat)\n");
+    fprintf (stdout, "     --symbol-file=FILE    also read data symbols from FILE (v32cc's NAME.asm.sym format); the ones\n");
+    fprintf (stdout, "                           next to the V32 file are read automatically\n");
+    fprintf (stdout, " -q, --batch               for scripts: commands from stdin or -C without prompt or echo; no banner,\n");
+    fprintf (stdout, "                           instruction line, display list or register summary; stdout holds only what\n");
+    fprintf (stdout, "                           print, console, ... print; acknowledgements and stop reasons go to stderr;\n");
+    fprintf (stdout, "                           a failed expect or timed-out until ends the run with status 1\n");
     fprintf (stdout, " -x, --exit-status         exit status tells how the program ended: 0 HLT, 2 frame limit,\n");
     fprintf (stdout, "                           3 system error (stops instead of entering the BIOS handler)\n");
+    fprintf (stdout, "                           (always: 1 a check failed, 4 --batch could not parse a command, N 'quit N')\n");
     fprintf (stdout, " -h, --help                display this information\n\n");
     fprintf (stdout, "FILE   is any path plus the filename desired\n");
     fprintf (stdout, "OFFSET is the full 32-bit/4-byte memory addres (hex)\n");
@@ -70,11 +79,15 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  break [0xMEM|LABEL]     set breakpoint (or list them)\n");
             fprintf (stdout, "  unbreak #               remove breakpoint #\n");
             fprintf (stdout, "  continue                resume execution\n");
+            fprintf (stdout, "  run N                   resume for N frames (also: wait N)\n");
+            fprintf (stdout, "  until \"TEXT\" [timeout N]  resume until the text console shows TEXT\n");
+            fprintf (stdout, "  expect ...              check a value or the text console (exit status 1 if it fails)\n");
             fprintf (stdout, "  step                    step to next instruction\n");
             fprintf (stdout, "  next                    next (skip subroutines)\n");
             fprintf (stdout, "  ignore                  ignore this instruction\n");
             fprintf (stdout, "  backtrace               display list of calls\n");
-            fprintf (stdout, "  print[/F] XYZ           one-time display of XYZ\n");
+            fprintf (stdout, "  print[/F] XYZ           one-time display of XYZ (register, address, label, C global)\n");
+            fprintf (stdout, "  x[/F] XYZ [COUNT]       display COUNT words from XYZ\n");
             fprintf (stdout, "  display[/F] XYZ [LABEL] add displaylist item\n");
             fprintf (stdout, "  undisplay #             remove displaylist item #\n");
             fprintf (stdout, "  label [0xMEM LABEL]     list or add label list item\n");
@@ -88,7 +101,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  save [FILE]             write the machine state to a file\n");
             fprintf (stdout, "  restore FILE            restore a saved machine state\n");
             fprintf (stdout, "  gamepad [#] [COMMAND]   view/simulate gamepad state\n");
-            fprintf (stdout, "  console                 show BIOS-font text drawn on the screen, as text\n");
+            fprintf (stdout, "  console [FILE]          show BIOS-font text drawn on the screen, as text (or write it to FILE)\n");
             fprintf (stdout, "  kbd [SUBCOMMAND]        v32kbd keyboard: type text, press keys, host input\n");
             fprintf (stdout, "  mailbox [CHANNEL]       v32dev mailbox state of the memory card\n");
             fprintf (stdout, "  load cart|memc:file     load component into memory\n");
@@ -97,7 +110,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  profile                 show profiling report\n");
             fprintf (stdout, "  version                 show the simulator version\n");
             fprintf (stdout, "  help [COMMAND] / ?      display this help\n");
-            fprintf (stdout, "  quit                    exit the simulator\n\n");
+            fprintf (stdout, "  quit [N]                exit the simulator (with exit status N)\n\n");
             fprintf (stdout, "Commands may be abbreviated (s = step, n = next, c = continue, p = print,\n");
             fprintf (stdout, "se = set, pro = profile, in = inventory, lo = load, ...). Blank lines repeat\n");
             fprintf (stdout, "the previous step/next/continue. Lines starting with # are comments.\n");
@@ -150,6 +163,9 @@ void  help  (uint8_t  item)
         case INPUT_CONSOLE:
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    console                      show the text screen\n");
+            fprintf (stdout, "    console FILE                 write the text screen to FILE\n");
+            fprintf (stdout, "    console --attrs[=fg|bg|all] [FILE]\n");
+            fprintf (stdout, "                                 the text screen followed by grids of its colors\n");
             fprintf (stdout, "    console color MODE           none, 16, 256, true or auto\n");
             fprintf (stdout, "    console cursor COLOR [CODE]  recolor the cursor block (character 20 and any CODEs);\n");
             fprintf (stdout, "                                 COLOR: a name, #RRGGBB, or off\n");
@@ -160,7 +176,14 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    draw of the 80x24 terminal its background), shown with ANSI colors reduced to\n");
             fprintf (stdout, "    the level asked: none (default for this command), 16, 256 or true (24 bit);\n");
             fprintf (stdout, "    --tty uses the level the terminal advertises unless one is set. ClearScreen\n");
-            fprintf (stdout, "    empties the screen. With --console the text is also printed when the run ends.\n");
+            fprintf (stdout, "    empties the screen. With --console the text is also printed when the run ends.\n\n");
+            fprintf (stdout, "    --attrs adds, after the text, a grid per attribute: \"-- fg --\" (the text color)\n");
+            fprintf (stdout, "    and with =bg or =all \"-- bg --\" (the background). A grid has the same rows and\n");
+            fprintf (stdout, "    columns as the text; every cell is the hex digit of its color among the 16 ANSI\n");
+            fprintf (stdout, "    colors (0 black, 1 red, 2 green, 3 yellow, 4 blue, 5 magenta, 6 cyan, 7 light gray,\n");
+            fprintf (stdout, "    8-F the bright versions: 9 bright red, F white, the default), or '.' for a blank,\n");
+            fprintf (stdout, "    so a test can check that a word is red. A name that is not one of the words above is\n");
+            fprintf (stdout, "    a file to write (the screenshot command writes the pixels to a PNG).\n");
             break;
 
         case INPUT_MAILBOX:
@@ -389,7 +412,11 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    print/fmt [0xMEMADDR1-0xMEMADDR2]\n");
             fprintf (stdout, "    print/fmt 0xIOP\n");
             fprintf (stdout, "    print/fmt IOPORT_SYMBOL\n");
-            fprintf (stdout, "    print/fmt reg\n\n");
+            fprintf (stdout, "    print/fmt reg\n");
+            fprintf (stdout, "    print/fmt SYMBOL[+N]       a label or C global: the word it names\n");
+            fprintf (stdout, "    print/fmt [SYMBOL[+N]]     the same\n");
+            fprintf (stdout, "    print/fmt [[SYMBOL]]       the word that the variable SYMBOL points to\n");
+            fprintf (stdout, "    print/fmt &SYMBOL[+N]      the address of the symbol\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
             fprintf (stdout, "    A hexadecimal number of up to 3 digits is an IOPort, longer ones a\n");
             fprintf (stdout, "    memory address. REGISTER is R0-R15, BP, SP, CR, SR, DR, IP, IR, IV\n");
@@ -411,7 +438,19 @@ void  help  (uint8_t  item)
             fprintf (stdout, "EXAMPLES:\n");
             fprintf (stdout, "    print/o R4            print R4's contents as octal\n");
             fprintf (stdout, "    print   0x500         print CAR_Connected IOPort value\n");
-            fprintf (stdout, "    print   [0x003FFFFE]  dereference address, show contents\n\n");
+            fprintf (stdout, "    print   [0x003FFFFE]  dereference address, show contents\n");
+            fprintf (stdout, "    print/d counter       the C global 'counter' as a signed number\n");
+            fprintf (stdout, "    print   buf+2         the third word of the array 'buf'\n");
+            fprintf (stdout, "    print   &f            the address of the function f\n\n");
+            fprintf (stdout, "SYMBOLS:\n");
+            fprintf (stdout, "    A symbol is a label of the debug files (functions, assembly labels) or a global\n");
+            fprintf (stdout, "    variable of a C program: v32cc -g writes NAME.asm.sym, which is read automatically\n");
+            fprintf (stdout, "    when it is next to the V32 file (or --symbol-file=FILE; without it, the\n");
+            fprintf (stdout, "    '%%define global_NAME' lines of NAME.asm are used). NAME is also tried as global_NAME,\n");
+            fprintf (stdout, "    and a name that matches exactly wins over one that differs in case. 'label 0xADDR NAME'\n");
+            fprintf (stdout, "    defines a symbol by hand. A register name or an IOPort symbol cannot be used as a symbol\n");
+            fprintf (stdout, "    name. '+N' / '-N' (decimal or 0x) is a number of words. The same forms are accepted by\n");
+            fprintf (stdout, "    display, x, watch, expect and --dump.\n\n");
             break;
 
         case INPUT_DISPLAY:
@@ -461,9 +500,12 @@ void  help  (uint8_t  item)
 
         case INPUT_QUIT:
             fprintf (stdout, "SYNOPSIS:\n");
-            fprintf (stdout, "    quit\n\n");
+            fprintf (stdout, "    quit [STATUS]\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
-            fprintf (stdout, "    Leave the simulator (end of input, ie Ctrl-D, does the same).\n\n");
+            fprintf (stdout, "    Leave the simulator (end of input, ie Ctrl-D, does the same). STATUS is the\n");
+            fprintf (stdout, "    exit status of the process (0-255); without it the status says how the run\n");
+            fprintf (stdout, "    went: 1 if an expect failed or an until timed out, 4 if --batch could not\n");
+            fprintf (stdout, "    parse a command, otherwise as described by -x.\n\n");
             break;
 
         case INPUT_VERSION:
@@ -475,26 +517,30 @@ void  help  (uint8_t  item)
 
 		case INPUT_WATCH:
 			fprintf (stdout, "SYNOPSIS:\n");
-			fprintf (stdout, "    watch LOCATION OP VALUE [LABEL]\n\n");
+			fprintf (stdout, "    watch[/d] LOCATION OP VALUE [LABEL]\n\n");
 			fprintf (stdout, "DESCRIPTION:\n");
 			fprintf (stdout, "    Set a watchpoint. Execution breaks when the comparison BECOMES\n");
 			fprintf (stdout, "    true (it is edge-triggered: a condition that stays true does not\n");
 			fprintf (stdout, "    break again until it has been false in between).\n\n");
 			fprintf (stdout, "    LOCATION: a register (R0-R15, BP, SP, CR, SR, DR, IP, IR, IV),\n");
 			fprintf (stdout, "              an IOPort (symbol, or 0x with up to 3 digits), or a\n");
-			fprintf (stdout, "              memory word (0x with more digits)\n");
+			fprintf (stdout, "              memory word (0x with more digits), or a symbol: counter or\n");
+			fprintf (stdout, "              [counter] (also [buf+2]), see 'help print'\n");
 			fprintf (stdout, "    OP:       =, ==, !=, <, >, <=, >=\n");
 			fprintf (stdout, "    VALUE:    a number, a register, an IOPort symbol, or [0xMEM],\n");
-			fprintf (stdout, "              [IOPORT], [REG] to compare with another location\n");
+			fprintf (stdout, "              [IOPORT], [REG], [SYMBOL] to compare with another location;\n");
+			fprintf (stdout, "              a bare symbol or &SYMBOL is the symbol's address\n");
 			fprintf (stdout, "    LABEL:    optional name for the watchpoint\n\n");
 			fprintf (stdout, "EXAMPLES:\n");
 			fprintf (stdout, "    watch SP <= 0x20000000 stack_underflow\n");
 			fprintf (stdout, "    watch 0x20001000 != 0\n");
 			fprintf (stdout, "    watch TIM_FrameCounter = 60\n");
-			fprintf (stdout, "    watch R1 > [0x20000010]\n\n");
+			fprintf (stdout, "    watch R1 > [0x20000010]\n");
+			fprintf (stdout, "    watch [counter] == 6 w         watch the C global 'counter'\n");
+			fprintf (stdout, "    watch/d [neg] < 0              signed comparison\n\n");
 			fprintf (stdout, "NOTES:\n");
 			fprintf (stdout, "    With no arguments, watch lists the watchpoints. Comparisons are\n");
-			fprintf (stdout, "    unsigned 32-bit.\n\n");
+			fprintf (stdout, "    unsigned 32-bit, or signed with /d (watch/d [counter] < 0).\n\n");
 			break;
 
 		case INPUT_WATCHLIST:
@@ -513,6 +559,61 @@ void  help  (uint8_t  item)
 			fprintf (stdout, "EXAMPLES:\n");
 			fprintf (stdout, "    unwatch 0\n");
 			fprintf (stdout, "    unwatch stack_underflow\n\n");
+			break;
+
+		case INPUT_RUN:
+			fprintf (stdout, "SYNOPSIS:\n");
+			fprintf (stdout, "    run N\n");
+			fprintf (stdout, "    wait N\n\n");
+			fprintf (stdout, "DESCRIPTION:\n");
+			fprintf (stdout, "    Continue for N frames, then stop at the prompt (a breakpoint or watchpoint that\n");
+			fprintf (stdout, "    triggers first stops it earlier). Frames are counted from now, so no frame number\n");
+			fprintf (stdout, "    has to be worked out: 'run 60' is a second of the console.\n\n");
+			break;
+
+		case INPUT_UNTIL:
+			fprintf (stdout, "SYNOPSIS:\n");
+			fprintf (stdout, "    until \"TEXT\" [timeout FRAMES] [rows N]\n\n");
+			fprintf (stdout, "DESCRIPTION:\n");
+			fprintf (stdout, "    Continue until the text console (see 'help console') shows TEXT, then stop at the\n");
+			fprintf (stdout, "    prompt. TEXT is looked for inside every row; a TEXT starting with ^ must start the\n");
+			fprintf (stdout, "    row, one ending with $ must end it. 'rows N' looks at the last N rows only (the rows\n");
+			fprintf (stdout, "    'console' prints). The cursor block is read as a blank.\n\n");
+			fprintf (stdout, "    The screen is looked at at the end of each frame, and only once it has CHANGED since\n");
+			fprintf (stdout, "    the command was given: what is on the screen already does not end the wait (use\n");
+			fprintf (stdout, "    'expect console' for the screen as it is). After 'timeout' frames (default 3600) the\n");
+			fprintf (stdout, "    wait is given up with a message; with --batch that ends the run with exit status 1.\n\n");
+			fprintf (stdout, "EXAMPLES:\n");
+			fprintf (stdout, "    kbd type \"dir\\n\"\n");
+			fprintf (stdout, "    until \"A:\\>$\" rows 1 timeout 600       the next DOS prompt, on the last row\n\n");
+			break;
+
+		case INPUT_EXPECT:
+			fprintf (stdout, "SYNOPSIS:\n");
+			fprintf (stdout, "    expect[/d] LOCATION OP VALUE\n");
+			fprintf (stdout, "    expect print[/d] LOCATION OP VALUE\n");
+			fprintf (stdout, "    expect console \"TEXT\" [rows N]\n\n");
+			fprintf (stdout, "DESCRIPTION:\n");
+			fprintf (stdout, "    Check a condition now. LOCATION, OP and VALUE are those of 'watch'; TEXT is looked\n");
+			fprintf (stdout, "    for as 'until' does (^ and $ anchor it to a row). When the check fails a message\n");
+			fprintf (stdout, "    goes to stderr (for the console, with the screen), the exit status of the simulator\n");
+			fprintf (stdout, "    becomes 1, and with --batch the run ends at once. A passing check is silent.\n\n");
+			fprintf (stdout, "EXAMPLES:\n");
+			fprintf (stdout, "    expect R0 == 5\n");
+			fprintf (stdout, "    expect/d [neg] < 0\n");
+			fprintf (stdout, "    expect console \"Volume in drive\"\n\n");
+			break;
+
+		case INPUT_EXAMINE:
+			fprintf (stdout, "SYNOPSIS:\n");
+			fprintf (stdout, "    x[/fmt] SYMBOL|0xADDR [COUNT]\n\n");
+			fprintf (stdout, "DESCRIPTION:\n");
+			fprintf (stdout, "    Show COUNT words of memory from the symbol or address, one per line, as 'print'\n");
+			fprintf (stdout, "    does (/D lists instructions). COUNT defaults to the size of a C variable (the whole\n");
+			fprintf (stdout, "    array), otherwise 1. See 'help print' for symbols.\n\n");
+			fprintf (stdout, "EXAMPLES:\n");
+			fprintf (stdout, "    x/d buf               the array buf\n");
+			fprintf (stdout, "    x/D work 10           the first ten instructions of work\n\n");
 			break;
     }
 }

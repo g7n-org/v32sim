@@ -499,6 +499,192 @@ int  gpu_console_show (FILE *out)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
+// Reading the text console from the command language (until, expect console).
+//
+// console_rows(): the rows `console` would print, as plain text: no colors, trailing
+// blanks removed, and the solid block (character 20, the cursor) read as a blank so that
+// a blinking cursor never changes what the screen says. The rows run to the last one
+// with anything on it. Returns the number of rows; *text receives a malloc'd array of
+// malloc'd strings (free with console_rows_free()).
+//
+static int  console_rows (char ***text)
+{
+    int            rows = 0, cols = 0, row = 0, col = 0, last = -1, end = 0, k = 0;
+    const ccell_t *g    = console_cells (&rows, &cols);
+    char         **out  = (char **) calloc ((size_t) rows + 1, sizeof (char *));
+    char           u8[4];
+    size_t         n    = 0;
+
+    if (out == NULL)  { *text = NULL;  return (0); }
+    for (row = 0; row < rows; row = row + 1)
+    {
+        out[row]  = (char *) malloc ((size_t) cols * 3 + 1);
+        if (out[row] == NULL)  continue;
+        end = -1;
+        for (col = 0; col < cols; col = col + 1)
+        {
+            const ccell_t *c = g + row * cols + col;
+            if ((c -> ch != 0) && (c -> ch != ' ') && (c -> ch != 20))  end = col;
+        }
+        n = 0;
+        for (col = 0; col <= end; col = col + 1)
+        {
+            const ccell_t *c = g + row * cols + col;
+            if (c -> ch == 20)  { out[row][n++] = ' ';  continue; }
+            k  = console_utf8 (c -> ch, u8);
+            memcpy (out[row] + n, u8, (size_t) k);  n = n + (size_t) k;
+        }
+        out[row][n]  = '\0';
+        if (end >= 0)  last = row;
+    }
+    *text  = out;
+    return (last + 1);
+}
+
+static void  console_rows_free (char **text, int allocated)
+{
+    int  row  = 0;
+
+    if (text == NULL)  return;
+    for (row = 0; row < allocated; row = row + 1)  free (text[row]);
+    free (text);
+}
+
+static int  console_row_count (void)
+{
+    int  rows = 0, cols = 0;
+
+    console_cells (&rows, &cols);
+    return (rows);
+}
+
+//
+// gpu_console_snapshot(): the screen as one plain string (rows joined by newlines), what
+// `until` compares from frame to frame. malloc'd.
+//
+char *gpu_console_snapshot (void)
+{
+    char   **text  = NULL;
+    int      used  = console_rows (&text);
+    int      row   = 0;
+    size_t   len   = 1;
+    char    *out   = NULL;
+
+    for (row = 0; row < used; row = row + 1)  len = len + strlen (text[row]) + 1;
+    out  = (char *) calloc (len, 1);
+    for (row = 0; (out != NULL) && (row < used); row = row + 1)
+    {
+        strcat (out, text[row]);
+        strcat (out, "\n");
+    }
+    console_rows_free (text, console_row_count ());
+    return (out);
+}
+
+//
+// gpu_console_match(): is PATTERN on the screen? The pattern is looked for inside each of
+// the last `lastrows` rows (0 = all of them) in turn: a pattern that starts with '^' must
+// match from the start of a row, one that ends with '$' up to its end (so "A:\>$" is a
+// row that ends with the DOS prompt and "^Ready" a row that starts with Ready).
+//
+int  gpu_console_match (const char *pattern, uint32_t lastrows)
+{
+    char     **text    = NULL;
+    int        used    = console_rows (&text);
+    int        first   = 0;
+    int        row     = 0;
+    size_t     plen    = strlen (pattern);
+    size_t     rlen    = 0;
+    int        head    = FALSE;
+    int        tail    = FALSE;
+    int        found   = FALSE;
+    char       want[512];
+    const char *hit    = NULL;
+
+    if ((plen > 0) && (pattern[0] == '^'))                    { head = TRUE;  pattern = pattern + 1;  plen = plen - 1; }
+    if ((plen > 0) && (pattern[plen - 1] == '$'))             { tail = TRUE;  plen = plen - 1; }
+    snprintf (want, sizeof (want), "%.*s", (int) plen, pattern);
+    plen  = strlen (want);
+
+    if ((lastrows > 0) && ((int) lastrows < used))  first = used - (int) lastrows;
+    for (row = first; (row < used) && (found == FALSE); row = row + 1)
+    {
+        rlen = strlen (text[row]);
+        if (plen > rlen)  continue;
+        if ((head == TRUE) && (tail == TRUE))      found = (rlen == plen) && (0 == strcmp (text[row], want));
+        else if (head == TRUE)                     found = (0 == strncmp (text[row], want, plen));
+        else if (tail == TRUE)                     found = (0 == strcmp (text[row] + (rlen - plen), want));
+        else
+        {
+            hit    = (plen == 0) ? text[row] : strstr (text[row], want);
+            found  = (hit != NULL);
+        }
+    }
+    console_rows_free (text, console_row_count ());
+    return (found);
+}
+
+//
+// gpu_console_attrs(): the colors of the cells `console` prints, as grids of one character
+// per cell laid out exactly like the text (so row N, column M of a grid describes row N,
+// column M of the text): the 16-color index of the cell's color as a hex digit (0 black,
+// 1 red, 2 green, 3 yellow, 4 blue, 5 magenta, 6 cyan, 7 light gray, 8-F the bright
+// versions, F being the default white), or '.' for a blank. WHAT is 1 for the foreground,
+// 2 for the background, 3 for both (each preceded by a line "-- fg --" / "-- bg --").
+//
+void  gpu_console_attrs (FILE *out, int what)
+{
+    int            rows = 0, cols = 0, row = 0, col = 0, last = -1, end = 0, pass = 0, i = 0;
+    const ccell_t *g    = console_cells (&rows, &cols);
+    uint32_t       color = 0;
+
+    for (row = 0; row < rows; row = row + 1)
+    {
+        for (col = 0; col < cols; col = col + 1)
+        {
+            const ccell_t *c = g + row * cols + col;
+            if ((c -> ch != 0) && (c -> ch != ' ') && (c -> ch != 20))  last = row;
+        }
+    }
+    for (pass = 1; pass <= 2; pass = pass + 1)
+    {
+        if ((what & pass) == 0)  continue;
+        fprintf (out, "-- %s --\n", (pass == 1) ? "fg" : "bg");
+        for (row = 0; row <= last; row = row + 1)
+        {
+            end = -1;
+            for (col = 0; col < cols; col = col + 1)
+            {
+                const ccell_t *c = g + row * cols + col;
+                if ((c -> ch != 0) && (c -> ch != ' ') && (c -> ch != 20))  end = col;
+            }
+            for (col = 0; col <= end; col = col + 1)
+            {
+                const ccell_t *c = g + row * cols + col;
+                color  = (pass == 1) ? c -> fg : c -> bg;
+                if (pass == 1)
+                {
+                    for (i = 0; i < console_ncursor; i = i + 1)
+                    {
+                        if ((console_cursor != 0) && (c -> ch == console_cursor_codes[i]))  color = console_cursor;
+                    }
+                }
+                if ((c -> ch == 0) || (c -> ch == ' ') || (c -> ch == 20))
+                {
+                    fputc ((pass == 2) ? (int) "0123456789ABCDEF"[nearest16 (color)] : '.', out);
+                }
+                else
+                {
+                    fputc ("0123456789ABCDEF"[nearest16 (color)], out);
+                }
+            }
+            fputc ('\n', out);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
 // gpu_draw(): DrawRegion with optional scaling and rotation
 //
 static void  gpu_draw (uint8_t scaling, uint8_t rotation)

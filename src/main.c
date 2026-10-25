@@ -57,6 +57,7 @@ uint8_t   exitstatus;      // process exit status: 0 HLT, 2 frame limit, 3 syste
 uint8_t   consoleflag;     // --console: print the text screen when the run ends
 int8_t   *dumpspec;        // --dump=N[@ADDR|@LABEL]: print N RAM words after the run
 uint8_t   exitflag;        // -x: the exit status reports how the program ended
+int8_t   *symbolfile;      // --symbol-file=FILE: data symbols (v32cc NAME.asm.sym format)
 int8_t   *kbdinput;        // --kbd-input: host source of v32kbd keys
 int32_t   kbdport;         // --v32kbd: gamepad port of the keyboard, -1 = none
 uint8_t   turboflag;
@@ -168,6 +169,7 @@ int32_t   main (int32_t  argc, char **argv)
     exitstatus                      = 0;
     exitflag                        = FALSE;
     dumpspec                        = NULL;
+    symbolfile                      = NULL;
     consoleflag                     = FALSE;
     kbdinput                        = NULL;
     kbdport                         = -1;
@@ -232,6 +234,7 @@ int32_t   main (int32_t  argc, char **argv)
     // Process command-line arguments
     //
     process_args ((int32_t) argc, (int8_t **) argv);
+    runctl_init ();             // --batch decides where acknowledgements go
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -337,6 +340,22 @@ int32_t   main (int32_t  argc, char **argv)
         (cartfile                  != NULL))
     {
         load_labels (cartfile, V32_PAGE_CART, FLAG_SEARCH | FLAG_C);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // data symbols (the C globals of the cartridge), unless debug files are off (-n)
+    //
+    if ((cartasmdebugflag != MU) && (chk == TRUE) && (cartfile != NULL))
+    {
+        sym_load_cart (cartfile);
+    }
+    if (symbolfile != NULL)
+    {
+        if (sym_load_file (symbolfile) == 0)
+        {
+            fprintf (stderr, "[WARNING] --symbol-file: no usable symbols in '%s'\n", symbolfile);
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -490,7 +509,8 @@ int32_t   main (int32_t  argc, char **argv)
     /*
     fprintf (stdout, "rom_offset: %.8X\n", rom_offset);
     */
-    if (runflag                       == FALSE)
+    if ((runflag                      == FALSE) &&
+        (batchflag                    == FALSE))
     {
         fprintf (stdout, "Vircon32 Simulator / Debugger  (v32sim %s)\n", VERSION);
         fprintf (stdout, "=======================================\n");
@@ -519,7 +539,7 @@ int32_t   main (int32_t  argc, char **argv)
                 {
                     fprintf (stdout, "\e[1;31m");
                 }
-                fprintf (stdout, "[breakpoint] triggered on 0x%.8X\n", value);
+                status_printf ("[breakpoint] triggered on 0x%.8X\n", value);
                 if (colorflag         == TRUE)
                 {
                     fprintf (stdout, "\e[m");
@@ -539,7 +559,7 @@ int32_t   main (int32_t  argc, char **argv)
             {
                 fprintf (stdout, "\e[1;31m");
             }
-            fprintf (stdout, "[watchfor] trigger encountered (0x%.8X)\n", watch_word);
+            status_printf ("[watchfor] trigger encountered (0x%.8X)\n", watch_word);
             if (colorflag             == TRUE)
             {
                 fprintf (stdout, "\e[m");
@@ -653,55 +673,14 @@ int32_t   main (int32_t  argc, char **argv)
             //
             do
             {
-                source_overlay (REG(IP));
-
-                if (sys_reg_show      == TRUE)
+                if (batchflag         == FALSE)
                 {
-                    show_sysregs ();
-                    switch ((REG(IP) & 0x30000000) >> 28)
+                    source_overlay (REG(IP));
+
+                    if (sys_reg_show      == TRUE)
                     {
-                        case V32_PAGE_RAM:
-                            fprintf (stdout, " [RAM]");
-                            break;
-                        case V32_PAGE_BIOS:
-                            fprintf (stdout, "[BIOS]");
-                            break;
-                        case V32_PAGE_CART:
-                            fprintf (stdout, "[CART]");
-                            break;
-                        case V32_PAGE_MEMC:
-                            fprintf (stdout, "[MEMC]");
-                            break;
-                    }
-
-                    fprintf (stdout, "[%.8X]: ", REG(IP));
-                }
-                else
-                {
-                    put_word (REG(IR), FLAG_DISPLAY);
-                }
-
-                ////////////////////////////////////////////////////////////////////////
-                //
-                // If enabled, check for error generating instruction
-                //
-                if (errorcheck        == TRUE)
-                {
-                    errorflag          = decode (REG(IR), REG(IV), FREG(IV),
-                                                 decodeflags    | FLAG_ERROR);
-
-                    if (errorflag     == FALSE)
-                    {
-                        decodeflags    = decodeflags            | FLAG_ERROR;
-                    }
-                }
-                decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
-
-                if (FLAG_IMMEDIATE    == (decodeflags & FLAG_IMMEDIATE))
-                {
-                    if (sys_reg_show  == TRUE)
-                    {
-                        switch ((REG(IP) & V32_PAGE_MASK) >> 28)
+                        show_sysregs ();
+                        switch ((REG(IP) & 0x30000000) >> 28)
                         {
                             case V32_PAGE_RAM:
                                 fprintf (stdout, " [RAM]");
@@ -716,18 +695,66 @@ int32_t   main (int32_t  argc, char **argv)
                                 fprintf (stdout, "[MEMC]");
                                 break;
                         }
-                        fprintf  (stdout, "[%.8X]: 0x%.8X", (REG(IP) + 1), REG(IV));
+
+                        fprintf (stdout, "[%.8X]: ", REG(IP));
                     }
                     else
                     {
-                        put_word (REG(IV), FLAG_DISPLAY | FLAG_IMMEDIATE);
+                        put_word (REG(IR), FLAG_DISPLAY);
                     }
-                    fprintf  (stdout, "\n");
-                }
 
+                    ////////////////////////////////////////////////////////////////////////
+                    //
+                    // If enabled, check for error generating instruction
+                    //
+                    if (errorcheck        == TRUE)
+                    {
+                        errorflag          = decode (REG(IR), REG(IV), FREG(IV),
+                                                     decodeflags    | FLAG_ERROR);
+
+                        if (errorflag     == FALSE)
+                        {
+                            decodeflags    = decodeflags            | FLAG_ERROR;
+                        }
+                    }
+                    decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
+
+                    if (FLAG_IMMEDIATE    == (decodeflags & FLAG_IMMEDIATE))
+                    {
+                        if (sys_reg_show  == TRUE)
+                        {
+                            switch ((REG(IP) & V32_PAGE_MASK) >> 28)
+                            {
+                                case V32_PAGE_RAM:
+                                    fprintf (stdout, " [RAM]");
+                                    break;
+                                case V32_PAGE_BIOS:
+                                    fprintf (stdout, "[BIOS]");
+                                    break;
+                                case V32_PAGE_CART:
+                                    fprintf (stdout, "[CART]");
+                                    break;
+                                case V32_PAGE_MEMC:
+                                    fprintf (stdout, "[MEMC]");
+                                    break;
+                            }
+                            fprintf  (stdout, "[%.8X]: 0x%.8X", (REG(IP) + 1), REG(IV));
+                        }
+                        else
+                        {
+                            put_word (REG(IV), FLAG_DISPLAY | FLAG_IMMEDIATE);
+                        }
+                        fprintf  (stdout, "\n");
+                    }
+
+
+                }
                 processflag            = FALSE;
 
-                displayshow  (dpoint, 0);
+                if (batchflag         == FALSE)
+                {
+                    displayshow  (dpoint, 0);
+                }
 
                 ////////////////////////////////////////////////////////////////////////
                 //
@@ -742,6 +769,16 @@ int32_t   main (int32_t  argc, char **argv)
             {
                 v32io_term_resume ();
             }
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // 'quit' (or the end of the input, or a failed 'expect' in batch mode): do not
+        // run one more instruction
+        //
+        if (action                    == INPUT_QUIT)
+        {
+            break;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -921,6 +958,18 @@ int32_t   main (int32_t  argc, char **argv)
     {
         exitstatus                  = 2;
     }
+    if ((check_failures > 0) && (exitstatus == 0))
+    {
+        exitstatus                  = 1;     // an expect failed, or an until timed out
+    }
+    if ((script_errors > 0) && (exitstatus == 0) && (batchflag == TRUE))
+    {
+        exitstatus                  = 4;     // a command of the script could not be understood
+    }
+    if (quit_status_set              == TRUE)
+    {
+        exitstatus                  = quit_status;
+    }
     addrprof_write ();
     if (consoleflag == TRUE)
     {
@@ -933,16 +982,20 @@ int32_t   main (int32_t  argc, char **argv)
     {
         dump_words (dumpspec);
     }
-    fprintf (stdout, "------------------------------------\n");
-    fprintf (stdout, "IP: 0x%.8X\n", REG(IP));
-    fprintf (stdout, "IR: 0x%.8X\n", REG(IR));
-    fprintf (stdout, "IV: 0x%.8X\n", REG(IV));
-    fprintf (stdout, "------------------------------------\n");
-    if (displayshow  (dpoint, 0)      != 0)
+    if (batchflag                    == FALSE)
     {
         fprintf (stdout, "------------------------------------\n");
+        fprintf (stdout, "IP: 0x%.8X\n", REG(IP));
+        fprintf (stdout, "IR: 0x%.8X\n", REG(IR));
+        fprintf (stdout, "IV: 0x%.8X\n", REG(IV));
+        fprintf (stdout, "------------------------------------\n");
+        if (displayshow  (dpoint, 0)  != 0)
+        {
+            fprintf (stdout, "------------------------------------\n");
+        }
+        fprintf (stdout, "SYSTEM HALTED\n");
     }
-    fprintf (stdout, "SYSTEM HALTED\n");
+    fflush (stdout);
 
     rfree (reg);
     rfree (memory);

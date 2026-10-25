@@ -14,6 +14,7 @@ int8_t   *profile_out        = NULL;     // --profile-out=FILE
 uint8_t   profile_bin        = FALSE;    // --profile-format=bin
 uint32_t  profile_top        = 0;        // --profile-top=N
 uint8_t   fixed_cycles       = FALSE;    // --fixed-cycles
+uint8_t   profile_by_function = FALSE;   // --profile-by=function
 
 static uint32_t *counts[NUM_MEMORY_PAGES];
 static uint64_t  total       = 0;
@@ -82,6 +83,46 @@ static int  cmp_hot (const void *a, const void *b)
     return ((x -> addr > y -> addr) - (x -> addr < y -> addr));
 }
 
+//
+// per-function totals (--profile-by=function): a function is what the debug files call
+// the closest label at or before an address (for C compiled with v32cc -g and assembled
+// with v32as --map, that is the C function; hand-written assembly gives one entry per
+// label). Addresses before the first label of their page are one "(no label)" entry.
+//
+typedef struct
+{
+    int8_t    *name;        // NULL: no label covers the addresses
+    uint32_t   page;        // the page, for the unlabeled ones
+    uint32_t   addr;        // the lowest executed address
+    uint64_t   count;       // instructions executed in the function
+    uint32_t   naddr;       // distinct addresses executed
+}  func_t;
+
+static int  cmp_func_name (const void *a, const void *b)
+{
+    const func_t *x = (const func_t *) a;
+    const func_t *y = (const func_t *) b;
+
+    if ((x -> name == NULL) || (y -> name == NULL))
+    {
+        if (x -> name != y -> name)  return ((x -> name == NULL) ? 1 : -1);
+        return ((x -> page > y -> page) - (x -> page < y -> page));
+    }
+    return (strcmp ((char *) x -> name, (char *) y -> name));
+}
+
+static int  cmp_func_hot (const void *a, const void *b)
+{
+    const func_t *x = (const func_t *) a;
+    const func_t *y = (const func_t *) b;
+
+    if (x -> count != y -> count)
+    {
+        return ((x -> count < y -> count) ? 1 : -1);
+    }
+    return ((x -> addr > y -> addr) - (x -> addr < y -> addr));
+}
+
 static int  cmp_lab (const void *a, const void *b)
 {
     const lab_t *x = (const lab_t *) a;
@@ -119,6 +160,83 @@ static int8_t *cover (lab_t *labs, size_t nlabs, uint32_t address)
     return (NULL);
 }
 
+//
+// build_funcs(): the per-function totals of the executed addresses (ascending), sorted by
+// the lowest address of each function
+//
+static func_t  *build_funcs (prof_t *prof, size_t nprof, lab_t *labs, size_t nlabs, size_t *nfuncs)
+{
+    func_t   *funcs  = (func_t *) calloc ((nprof > 0) ? nprof : 1, sizeof (func_t));
+    size_t    n      = 0;
+    size_t    i      = 0;
+    size_t    j      = 0;
+    int8_t   *name   = NULL;
+    uint32_t  page   = 0;
+
+    *nfuncs = 0;
+    if (funcs == NULL)
+    {
+        return (NULL);
+    }
+    for (i = 0; i < nprof; i = i + 1)       // runs of consecutive addresses covered by the same label
+    {
+        name  = (labs != NULL) ? cover (labs, nlabs, prof[i].addr) : NULL;
+        page  = prof[i].addr >> 28;
+        if ((n > 0) && (funcs[n-1].name == name) && ((name != NULL) || (funcs[n-1].page == page)))
+        {
+            funcs[n-1].count  = funcs[n-1].count + prof[i].count;
+            funcs[n-1].naddr  = funcs[n-1].naddr + 1;
+            continue;
+        }
+        funcs[n].name   = name;
+        funcs[n].page   = page;
+        funcs[n].addr   = prof[i].addr;
+        funcs[n].count  = prof[i].count;
+        funcs[n].naddr  = 1;
+        n               = n + 1;
+    }
+
+    qsort (funcs, n, sizeof (func_t), cmp_func_name);     // the same name at several places is one function
+    for (i = 0, j = 0; i < n; i = i + 1)
+    {
+        if ((j > 0) && (cmp_func_name (&funcs[j-1], &funcs[i]) == 0))
+        {
+            funcs[j-1].count  = funcs[j-1].count + funcs[i].count;
+            funcs[j-1].naddr  = funcs[j-1].naddr + funcs[i].naddr;
+            if (funcs[i].addr < funcs[j-1].addr)  funcs[j-1].addr = funcs[i].addr;
+        }
+        else
+        {
+            funcs[j]  = funcs[i];
+            j         = j + 1;
+        }
+    }
+    *nfuncs = j;
+    return (funcs);
+}
+
+static int  cmp_func_addr (const void *a, const void *b)
+{
+    const func_t *x = (const func_t *) a;
+    const func_t *y = (const func_t *) b;
+
+    return ((x -> addr > y -> addr) - (x -> addr < y -> addr));
+}
+
+static void  func_label (const func_t *f, char *out, size_t len)
+{
+    static const char *pages[] = { "RAM", "BIOS", "CART", "MEMC" };
+
+    if (f -> name != NULL)
+    {
+        snprintf (out, len, "%s", (char *) f -> name);
+    }
+    else
+    {
+        snprintf (out, len, "(no label, %s)", (f -> page < 4) ? pages[f -> page] : "?");
+    }
+}
+
 void  addrprof_write (void)
 {
     uint32_t   page   = 0;
@@ -131,6 +249,9 @@ void  addrprof_write (void)
     linked_l  *node   = NULL;
     FILE      *fptr   = NULL;
     int8_t    *name   = NULL;
+    func_t    *funcs  = NULL;
+    size_t     nfuncs = 0;
+    char       fname[400];
 
     if (addrprof_enabled () == FALSE)
     {
@@ -203,12 +324,34 @@ void  addrprof_write (void)
         qsort (labs, nlabs, sizeof (lab_t), cmp_lab);   // qsort is not stable: ties are rare and
     }                                                   // only matter to the label shown
 
+    if (profile_by_function == TRUE)
+    {
+        funcs = build_funcs (prof, nprof, labs, nlabs, &nfuncs);
+        if ((labs == NULL) && (nprof > 0))
+        {
+            fprintf (stderr, "[WARNING] --profile-by=function: no labels are loaded (a debug file made with "
+                             "v32as --map is needed; -n turns them off)\n");
+        }
+    }
+
     if (profile_out != NULL)
     {
         fptr = fopen ((char *) profile_out, "wb");
         if (fptr == NULL)
         {
             fprintf (stderr, "[ERROR] could not write the profile '%s'\n", profile_out);
+        }
+        else if ((profile_by_function == TRUE) && (profile_bin == FALSE) && (funcs != NULL))
+        {
+            qsort (funcs, nfuncs, sizeof (func_t), cmp_func_addr);
+            fprintf (fptr, "# v32sim function profile v1\n");
+            fprintf (fptr, "# cycles %llu frames %u\n", (unsigned long long) total, frames_run);
+            for (i = 0; i < nfuncs; i = i + 1)
+            {
+                func_label (&funcs[i], fname, sizeof (fname));
+                fprintf (fptr, "0x%.8X %llu %u %s\n", funcs[i].addr, (unsigned long long) funcs[i].count,
+                                                      funcs[i].naddr, fname);
+            }
         }
         else if (profile_bin == TRUE)
         {
@@ -245,7 +388,20 @@ void  addrprof_write (void)
         }
     }
 
-    if (profile_top > 0)
+    if ((profile_top > 0) && (funcs != NULL))
+    {
+        qsort (funcs, nfuncs, sizeof (func_t), cmp_func_hot);
+        fprintf (stderr, "# %llu instructions executed; hottest functions:\n", (unsigned long long) total);
+        for (i = 0; (i < nfuncs) && (i < profile_top); i = i + 1)
+        {
+            func_label (&funcs[i], fname, sizeof (fname));
+            fprintf (stderr, "%12llu %5.1f%% %6u addresses  %s  (from 0x%.8X)\n",
+                             (unsigned long long) funcs[i].count,
+                             (total > 0) ? (100.0 * funcs[i].count / (double) total) : 0.0,
+                             funcs[i].naddr, fname, funcs[i].addr);
+        }
+    }
+    else if (profile_top > 0)
     {
         qsort (prof, nprof, sizeof (prof_t), cmp_hot);
         fprintf (stderr, "# %llu instructions executed; hottest addresses:\n", (unsigned long long) total);
@@ -258,6 +414,7 @@ void  addrprof_write (void)
         }
     }
 
+    free (funcs);
     free (prof);
     free (labs);
 }

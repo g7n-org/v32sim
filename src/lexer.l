@@ -86,7 +86,7 @@ reg|regs|register|registers { return lex_value (T_REGS, 0); }
 "!="                        { return T_NE;   }
 "<="                        { return T_LE;   }
 ">="                        { return T_GE;   }
-"<"|">"|"="|"["|"]"|"-"|"+"|":"  { return yytext[0]; }
+"<"|">"|"="|"["|"]"|"-"|"+"|":"|"&"  { return yytext[0]; }
 
 .                           { cmd_seterr ("unexpected character '%s'", yytext); return T_BAD; }
 }
@@ -219,6 +219,10 @@ static int  lex_command (void)
         case CMD_VERSION:     return (T_VERSION);
         case CMD_WATCH:       return (T_WATCH);
         case CMD_WATCHLIST:   return (T_WATCHLIST);
+        case CMD_RUN:         return (T_RUN);
+        case CMD_UNTIL:       return (T_UNTIL);
+        case CMD_EXPECT:      return (T_EXPECT);
+        case CMD_EXAMINE:     return (T_EXAMINE);
         default:
             snprintf (cmd -> badword, sizeof (cmd -> badword), "%s", yytext);
             return (T_BADCMD);

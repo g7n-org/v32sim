@@ -49,6 +49,7 @@ static uint8_t wloc_read(const wloc_t *loc, uint32_t *value)
 static void wloc_name(const wloc_t *loc, char *out, size_t len)
 {
     int8_t *name = NULL;
+    char    symbuf[96];
 
     switch (loc->kind)
     {
@@ -56,7 +57,14 @@ static void wloc_name(const wloc_t *loc, char *out, size_t len)
             snprintf(out, len, "%s", reg_get_name((uint8_t) loc->id));
             break;
         case WLOC_MEM:
-            snprintf(out, len, "[0x%.8X]", loc->id);
+            if (sym_name_for(loc->id, symbuf, sizeof(symbuf)) == TRUE)
+            {
+                snprintf(out, len, "[%s]", symbuf);
+            }
+            else
+            {
+                snprintf(out, len, "[0x%.8X]", loc->id);
+            }
             break;
         case WLOC_IOPORT:
             name = (*(ioports + ((loc->id & 0x0700) >> 8)) + (loc->id & 0x00FF))->name;
@@ -77,31 +85,56 @@ static void wloc_name(const wloc_t *loc, char *out, size_t len)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// wpoint_eval() - evaluate the condition of a watchpoint; optionally returns the
-// current values of both sides. An unreadable location makes the condition false.
+// wcond_eval() - evaluate "target OP rhs" (unsigned, or signed with is_signed);
+// optionally returns the current values of both sides. An unreadable location makes
+// the condition false. wpoint_eval() does the same for a watchpoint.
 //
-static uint8_t wpoint_eval(wpoint_t *wp, uint32_t *lhs_out, uint32_t *rhs_out)
+uint8_t wcond_eval(wloc_t target, uint8_t op, wloc_t rhs, uint8_t is_signed, uint32_t *lhs_out, uint32_t *rhs_out)
 {
     uint32_t l = 0;
     uint32_t r = 0;
     uint8_t  result = FALSE;
 
-    if (wloc_read(&wp->target, &l) == TRUE && wloc_read(&wp->rhs, &r) == TRUE)
+    if (wloc_read(&target, &l) == TRUE && wloc_read(&rhs, &r) == TRUE)
     {
-        switch (wp->operator)
+        if (is_signed == TRUE)
         {
-            case WATCH_OP_EQUAL:         result = (l == r); break;
-            case WATCH_OP_NOT_EQUAL:     result = (l != r); break;
-            case WATCH_OP_LESS:          result = (l <  r); break;
-            case WATCH_OP_GREATER:       result = (l >  r); break;
-            case WATCH_OP_LESS_EQUAL:    result = (l <= r); break;
-            case WATCH_OP_GREATER_EQUAL: result = (l >= r); break;
-            default: break;
+            int32_t  sl = (int32_t) l;
+            int32_t  sr = (int32_t) r;
+
+            switch (op)
+            {
+                case WATCH_OP_EQUAL:         result = (sl == sr); break;
+                case WATCH_OP_NOT_EQUAL:     result = (sl != sr); break;
+                case WATCH_OP_LESS:          result = (sl <  sr); break;
+                case WATCH_OP_GREATER:       result = (sl >  sr); break;
+                case WATCH_OP_LESS_EQUAL:    result = (sl <= sr); break;
+                case WATCH_OP_GREATER_EQUAL: result = (sl >= sr); break;
+                default: break;
+            }
+        }
+        else
+        {
+            switch (op)
+            {
+                case WATCH_OP_EQUAL:         result = (l == r); break;
+                case WATCH_OP_NOT_EQUAL:     result = (l != r); break;
+                case WATCH_OP_LESS:          result = (l <  r); break;
+                case WATCH_OP_GREATER:       result = (l >  r); break;
+                case WATCH_OP_LESS_EQUAL:    result = (l <= r); break;
+                case WATCH_OP_GREATER_EQUAL: result = (l >= r); break;
+                default: break;
+            }
         }
     }
     if (lhs_out != NULL) *lhs_out = l;
     if (rhs_out != NULL) *rhs_out = r;
     return result;
+}
+
+static uint8_t wpoint_eval(wpoint_t *wp, uint32_t *lhs_out, uint32_t *rhs_out)
+{
+    return wcond_eval(wp->target, wp->operator, wp->rhs, wp->is_signed, lhs_out, rhs_out);
 }
 
 void wpoint_describe(wpoint_t *wp, char *out, size_t len)
@@ -111,14 +144,15 @@ void wpoint_describe(wpoint_t *wp, char *out, size_t len)
 
     wloc_name(&wp->target, a, sizeof(a));
     wloc_name(&wp->rhs, b, sizeof(b));
-    snprintf(out, len, "%s %s %s", a, wpoint_op_to_string(wp->operator), b);
+    snprintf(out, len, "%s %s %s%s", a, wpoint_op_to_string(wp->operator), b,
+             (wp->is_signed == TRUE) ? " [signed]" : "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 // wpoint_new() - Create a new wpoint node
 //
-wpoint_t *wpoint_new(wloc_t target, uint8_t op, wloc_t rhs)
+wpoint_t *wpoint_new(wloc_t target, uint8_t op, wloc_t rhs, uint8_t is_signed)
 {
     wpoint_t *wp = NULL;
 
@@ -132,6 +166,7 @@ wpoint_t *wpoint_new(wloc_t target, uint8_t op, wloc_t rhs)
     wp->target = target;
     wp->rhs = rhs;
     wp->operator = op;
+    wp->is_signed = is_signed;
     wp->active = TRUE;
     wp->label = NULL;
     wp->next = NULL;
@@ -275,17 +310,17 @@ uint8_t wpoint_check(void)
                 wpoint_describe(tmp, desc, sizeof(desc));
                 if (colorflag == TRUE)
                 {
-                    fprintf(stdout, "\e[1;31m");
+                    status_printf("\e[1;31m");
                 }
-                fprintf(stdout, "[wpoint] triggered: ");
+                status_printf("[wpoint] triggered: ");
                 if (tmp->label != NULL)
                 {
-                    fprintf(stdout, "%s ", tmp->label);
+                    status_printf("%s ", tmp->label);
                 }
-                fprintf(stdout, "%s (current: 0x%.8X vs 0x%.8X)\n", desc, l, r);
+                status_printf("%s (current: 0x%.8X vs 0x%.8X)\n", desc, l, r);
                 if (colorflag == TRUE)
                 {
-                    fprintf(stdout, "\e[m");
+                    status_printf("\e[m");
                 }
             }
             tmp->was_true = cond;

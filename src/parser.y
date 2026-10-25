@@ -19,8 +19,14 @@
  *   gamepad [N] [COMMAND]         help [COMMAND]            screenshot [FILE]
  *   save [FILE]                   restore FILE
  *
+ *   run N | wait N                until "TEXT" [timeout N] [rows N]
+ *   expect [/d] LOCATION OP VALUE   expect console "TEXT" [rows N]     quit [N]
+ *   x[/F] LOCATION [COUNT]
+ *
  *   OPERAND  := BASE | '[' BASE ']'                   ('[ ]' dereferences)
+ *             | SYMREF | '[' SYMREF ']' | '[[' SYMREF ']]' | '&' SYMREF
  *   BASE     := REGISTER | reg | IOPORT_SYMBOL | HEXNUM | HEXNUM '-' HEXNUM
+ *   SYMREF   := NAME | NAME '+' NUMBER | NAME '-' NUMBER      (a label or a C global)
  *   F        := b B d D f o s u x X
  */
 #include "defines.h"
@@ -35,6 +41,12 @@ static void  set_fmt        (char ch);
 static int   set_lhs_word   (tok_t *t);
 static int   loc_number     (tok_t *t, wloc_t *loc);
 static int   loc_iosym      (tok_t *t, wloc_t *loc);
+static int   sym_resolve    (tok_t *t, int sign, tok_t *offset, symv_t *out);
+static void  set_operand_sym (symv_t *sym, uint8_t deref);
+static int   console_form   (tok_t *word, tok_t *text);
+static int   print_form     (tok_t *word);
+static int   add_option     (tok_t *word, tok_t *value);
+static int   check_signed   (void);
 %}
 
 %union
@@ -42,6 +54,7 @@ static int   loc_iosym      (tok_t *t, wloc_t *loc);
     tok_t   t;
     char    ch;
     int     op;
+    symv_t  s;
 }
 
 %token <t>   T_NUM T_REG T_IOSYM T_WORD T_PATH
@@ -53,10 +66,12 @@ static int   loc_iosym      (tok_t *t, wloc_t *loc);
 %token       T_ASM T_RESTORE T_SAVE T_SCREENSHOT T_SET T_STEP T_UNBREAK T_UNDISPLAY T_UNLABEL T_UNLOAD
 %token       T_UNWATCH T_VERSION T_WATCH T_WATCHLIST
 %token       T_KBD T_MAILBOX T_CONSOLE
+%token       T_RUN T_UNTIL T_EXPECT T_EXAMINE
 %token       T_BADCMD T_BAD
 
 %type  <t>   name
 %type  <op>  relop
+%type  <s>   symref
 
 %%
 
@@ -72,6 +87,7 @@ command
     | T_STEP                            { CMD -> id = CMD_STEP;      }
     | T_IGNORE                          { CMD -> id = CMD_IGNORE;    }
     | T_QUIT                            { CMD -> id = CMD_QUIT;      }
+    | T_QUIT T_NUM                      { CMD -> id = CMD_QUIT;      CMD -> has_num = TRUE; CMD -> num = $2.u; }
     | T_PROFILE                         { CMD -> id = CMD_PROFILE;   }
     | T_INVENTORY                       { CMD -> id = CMD_INVENTORY; }
     | T_VERSION                         { CMD -> id = CMD_VERSION;   }
@@ -94,6 +110,10 @@ command
     | set_cmd
     | replace_cmd
     | watch_cmd
+    | run_cmd
+    | until_cmd
+    | expect_cmd
+    | examine_cmd
     | gamepad_cmd
     | T_KBD                             { CMD -> id = CMD_KBD; }
     | T_KBD T_PATH                      { CMD -> id = CMD_KBD; CMD -> path = $2.text; }
@@ -157,6 +177,23 @@ display_cmd
 operand
     : base                              { CMD -> opd.deref = FALSE; }
     | '[' base ']'                      { CMD -> opd.deref = TRUE;  }
+    | symref                            { set_operand_sym (&$1, FALSE); }
+    | '[' symref ']'                    { set_operand_sym (&$2, FALSE); }
+    | '[' '[' symref ']' ']'            { set_operand_sym (&$3, TRUE);  }
+    | '&' symref                        { set_operand (OPD_VALUE, 0, $2.addr, 0);
+                                          CMD -> opd.name = $2.text; }
+    ;
+
+/*
+ * A symbol (a label of the debug files or a C global, see symbols.c) stands for the
+ * variable it names: 'print counter' and 'print [counter]' both show its value, and
+ * '[[p]]' follows a pointer variable. '&counter' is its address. One '+' or '-' with a
+ * number (decimal or hexadecimal) reaches into arrays and structures.
+ */
+symref
+    : T_WORD                            { if (sym_resolve (&$1, 0, NULL, &$$)) YYERROR; }
+    | T_WORD '+' T_NUM                  { if (sym_resolve (&$1, +1, &$3, &$$)) YYERROR; }
+    | T_WORD '-' T_NUM                  { if (sym_resolve (&$1, -1, &$3, &$$)) YYERROR; }
     ;
 
 base
@@ -235,25 +272,30 @@ repl_item
 
 watch_cmd
     : T_WATCH                           { CMD -> id = CMD_WATCHLIST; }
-    | T_WATCH watch_target relop watch_rhs
+    | T_WATCH format watch_target relop watch_rhs
         {
-            CMD -> id = CMD_WATCH; CMD -> watch_op = (uint8_t) $3;
+            CMD -> id = CMD_WATCH; CMD -> watch_op = (uint8_t) $4;
+            if (check_signed ()) YYERROR;
         }
-    | T_WATCH watch_target relop watch_rhs name
+    | T_WATCH format watch_target relop watch_rhs name
         {
-            CMD -> id = CMD_WATCH; CMD -> watch_op = (uint8_t) $3;
-            CMD -> name = $5.text;
+            CMD -> id = CMD_WATCH; CMD -> watch_op = (uint8_t) $4;
+            CMD -> name = $6.text;
+            if (check_signed ()) YYERROR;
         }
     ;
 
-/* what is watched: a register, an IOPort (symbol or 0x...), or a memory word (0x....) */
+/* what is watched: a register, an IOPort (symbol or 0x...), or a memory word (0x.... or a symbol) */
 watch_target
     : T_REG                             { CMD -> watch_target.kind = WLOC_REG;    CMD -> watch_target.id = $1.u; }
     | T_IOSYM                           { if (loc_iosym (&$1, &CMD -> watch_target)) YYERROR; }
     | T_NUM                             { if (loc_number (&$1, &CMD -> watch_target)) YYERROR; }
+    | symref                            { CMD -> watch_target.kind = WLOC_MEM;    CMD -> watch_target.id = $1.addr; }
+    | '[' symref ']'                    { CMD -> watch_target.kind = WLOC_MEM;    CMD -> watch_target.id = $2.addr; }
     ;
 
-/* what it is compared with: a number, a register, an IOPort symbol, or [0x...] contents */
+/* what it is compared with: a number, a register, an IOPort symbol, [0x...] or [SYMBOL] contents,
+ * or the address of a symbol (SYMBOL, &SYMBOL) */
 watch_rhs
     : T_NUM                             { CMD -> watch_rhs.kind = WLOC_IMM; CMD -> watch_rhs.id = $1.u; }
     | '-' T_NUM                         { CMD -> watch_rhs.kind = WLOC_IMM; CMD -> watch_rhs.id = (uint32_t) (0 - $2.u); }
@@ -263,6 +305,9 @@ watch_rhs
     | '[' T_NUM ']'                     { if (loc_number (&$2, &CMD -> watch_rhs)) YYERROR; }
     | '[' T_IOSYM ']'                   { if (loc_iosym (&$2, &CMD -> watch_rhs)) YYERROR; }
     | '[' T_REG ']'                     { CMD -> watch_rhs.kind = WLOC_REG; CMD -> watch_rhs.id = $2.u; }
+    | '[' symref ']'                    { CMD -> watch_rhs.kind = WLOC_MEM; CMD -> watch_rhs.id = $2.addr; }
+    | symref                            { CMD -> watch_rhs.kind = WLOC_IMM; CMD -> watch_rhs.id = $1.addr; }
+    | '&' symref                        { CMD -> watch_rhs.kind = WLOC_IMM; CMD -> watch_rhs.id = $2.addr; }
     ;
 
 relop
@@ -273,6 +318,83 @@ relop
     | '>'                               { $$ = WATCH_OP_GREATER;       }
     | T_LE                              { $$ = WATCH_OP_LESS_EQUAL;    }
     | T_GE                              { $$ = WATCH_OP_GREATER_EQUAL; }
+    ;
+
+/* ------------------------------------------------------------------- run */
+
+run_cmd
+    : T_RUN T_NUM                       { CMD -> id = CMD_RUN; CMD -> has_count = TRUE; CMD -> count = $2.u; }
+    | T_RUN
+        {
+            cmd_seterr ("run: the number of frames is required (run N)");
+            YYERROR;
+        }
+    ;
+
+/* ----------------------------------------------------------------- until */
+
+until_cmd
+    : T_UNTIL name until_opts           { CMD -> id = CMD_UNTIL; CMD -> text = $2.text;
+                                          if ($2.text[0] == '\0') { cmd_seterr ("until: the text is empty"); YYERROR; } }
+    ;
+
+until_opts
+    : /* none */
+    | until_opts T_WORD T_NUM           { if (add_option (&$2, &$3)) YYERROR; }
+    ;
+
+/* ---------------------------------------------------------------- expect */
+
+expect_cmd
+    : T_EXPECT T_WORD T_WORD expect_opts
+        {
+            if (console_form (&$2, &$3)) YYERROR;
+        }
+    | T_EXPECT T_WORD watch_target relop watch_rhs
+        {
+            if (print_form (&$2)) YYERROR;
+            CMD -> id = CMD_EXPECT; CMD -> expect_kind = EXPECT_VALUE; CMD -> watch_op = (uint8_t) $4;
+        }
+    | T_EXPECT T_WORD T_FMT watch_target relop watch_rhs
+        {
+            if (print_form (&$2)) YYERROR;
+            set_fmt ($3); if (CMD -> errmsg[0]) YYERROR;
+            CMD -> id = CMD_EXPECT; CMD -> expect_kind = EXPECT_VALUE; CMD -> watch_op = (uint8_t) $5;
+            if (check_signed ()) YYERROR;
+        }
+    | T_EXPECT watch_target relop watch_rhs
+        {
+            CMD -> id = CMD_EXPECT; CMD -> expect_kind = EXPECT_VALUE; CMD -> watch_op = (uint8_t) $3;
+        }
+    | T_EXPECT T_FMT watch_target relop watch_rhs
+        {
+            set_fmt ($2); if (CMD -> errmsg[0]) YYERROR;
+            CMD -> id = CMD_EXPECT; CMD -> expect_kind = EXPECT_VALUE; CMD -> watch_op = (uint8_t) $4;
+            if (check_signed ()) YYERROR;
+        }
+    ;
+
+expect_opts
+    : /* none */
+    | expect_opts T_WORD T_NUM          { if (add_option (&$2, &$3)) YYERROR; }
+    ;
+
+/* ------------------------------------------------------------------- x */
+
+examine_cmd
+    : T_EXAMINE format examine_loc      { CMD -> id = CMD_EXAMINE; }
+    | T_EXAMINE format examine_loc T_NUM
+        {
+            CMD -> id = CMD_EXAMINE; CMD -> has_count = TRUE; CMD -> count = $4.u;
+        }
+    ;
+
+examine_loc
+    : symref                            { set_operand (OPD_MEM, 0, $1.addr, 0); CMD -> opd.name = $1.text; CMD -> x_words = $1.words; }
+    | '[' symref ']'                    { set_operand (OPD_MEM, 0, $2.addr, 0); CMD -> opd.name = $2.text; CMD -> x_words = $2.words; }
+    | T_NUM                             { uint32_t v = 0;
+                                          if (operand_number (&$1, &v)) YYERROR;
+                                          set_operand (OPD_MEM, 0, v, 0); CMD -> x_words = 1; }
     ;
 
 /* --------------------------------------------------------------- gamepad */
@@ -340,10 +462,18 @@ static int  operand_number (tok_t *t, uint32_t *value)
 
 static int  operand_iosym (tok_t *t)
 {
-    int16_t  port  = ioports_num ((uint8_t *) t -> text);
+    int16_t   port   = ioports_num ((uint8_t *) t -> text);
+    uint32_t  addr   = 0;
+    uint32_t  words  = 0;
 
     if (port < 0)
     {
+        if (sym_lookup (t -> text, &addr, &words))      // a C global that happens to be named like a port group
+        {
+            set_operand (OPD_MEM, 0, addr, 0);
+            CMD -> opd.name  = t -> text;
+            return (0);
+        }
         cmd_seterr ("unknown IOPort '%s'", t -> text);
         return (1);
     }
@@ -369,10 +499,18 @@ static int  loc_number (tok_t *t, wloc_t *loc)
 
 static int  loc_iosym (tok_t *t, wloc_t *loc)
 {
-    int16_t  port  = ioports_num ((uint8_t *) t -> text);
+    int16_t   port   = ioports_num ((uint8_t *) t -> text);
+    uint32_t  addr   = 0;
+    uint32_t  words  = 0;
 
     if (port < 0)
     {
+        if (sym_lookup (t -> text, &addr, &words))      // a C global that happens to be named like a port group
+        {
+            loc -> kind  = WLOC_MEM;
+            loc -> id    = addr;
+            return (0);
+        }
         cmd_seterr ("unknown IOPort '%s'", t -> text);
         return (1);
     }
@@ -440,5 +578,125 @@ static int  set_lhs_word (tok_t *t)
     }
 
     cmd_seterr ("set: unknown setting '%s' (color deref errorchk debug profile verbose)", t -> text);
+    return (1);
+}
+
+/*
+ * sym_resolve(): a name (with an optional '+'/'-' offset) -> the address it stands for.
+ * The offset is a number of words, written in decimal or hexadecimal.
+ */
+static int  sym_resolve (tok_t *t, int sign, tok_t *offset, symv_t *out)
+{
+    uint32_t  addr   = 0;
+    uint32_t  words  = 0;
+    char      text[160];
+
+    if (!sym_lookup (t -> text, &addr, &words))
+    {
+        cmd_seterr ("unknown symbol '%s' (a label of the debug files, or a C global from NAME.asm.sym; "
+                    "'label 0xADDR NAME' defines one by hand)", t -> text);
+        return (1);
+    }
+    out -> text   = t -> text;
+    out -> words  = words;
+    if (offset != NULL)
+    {
+        if (offset -> kind == TOK_FLT)
+        {
+            cmd_seterr ("'%s': an offset must be a whole number", offset -> text);
+            return (1);
+        }
+        addr        = (sign > 0) ? (addr + offset -> u) : (addr - offset -> u);
+        words       = (words > offset -> u) ? (words - offset -> u) : 1;
+        out -> words  = (sign > 0) ? words : 1;
+        snprintf (text, sizeof (text), "%s%c%s", t -> text, (sign > 0) ? '+' : '-', offset -> text);
+        out -> text = cmd_strdup (text, strlen (text));
+    }
+    out -> addr = addr;
+    return (0);
+}
+
+static void  set_operand_sym (symv_t *sym, uint8_t deref)
+{
+    set_operand (OPD_MEM, 0, sym -> addr, 0);
+    CMD -> opd.deref  = deref;
+    CMD -> opd.name   = sym -> text;
+}
+
+/*
+ * expect console "TEXT" -- the first word must say so
+ */
+static int  console_form (tok_t *word, tok_t *text)
+{
+    if (0 != strcasecmp (word -> text, "console"))
+    {
+        cmd_seterr ("expect: use 'expect LOCATION OP VALUE' or 'expect console \"TEXT\"' (got '%s')", word -> text);
+        return (1);
+    }
+    if (text -> text[0] == '\0')
+    {
+        cmd_seterr ("expect console: the text is empty");
+        return (1);
+    }
+    CMD -> id           = CMD_EXPECT;
+    CMD -> expect_kind  = EXPECT_CONSOLE;
+    CMD -> text         = text -> text;
+    return (0);
+}
+
+/*
+ * expect print LOCATION OP VALUE -- 'print' is optional noise, any other word is a mistake
+ */
+static int  print_form (tok_t *word)
+{
+    if (0 != strcasecmp (word -> text, "print"))
+    {
+        cmd_seterr ("expect: use 'expect LOCATION OP VALUE' or 'expect console \"TEXT\"' (got '%s')", word -> text);
+        return (1);
+    }
+    return (0);
+}
+
+/*
+ * until/expect console options: timeout N (frames), rows N (only the last N rows count)
+ */
+static int  add_option (tok_t *word, tok_t *value)
+{
+    if (value -> kind == TOK_FLT)
+    {
+        cmd_seterr ("'%s': a whole number is required", value -> text);
+        return (1);
+    }
+    if (0 == strcasecmp (word -> text, "rows"))
+    {
+        CMD -> rows     = value -> u;
+        return (0);
+    }
+    if (0 == strcasecmp (word -> text, "timeout"))
+    {
+        CMD -> timeout  = value -> u;
+        return (0);
+    }
+    cmd_seterr ("unknown option '%s' (timeout N, rows N)", word -> text);
+    return (1);
+}
+
+/*
+ * watch/d and expect/d compare as signed numbers; /u is the default; other formats make no sense
+ */
+static int  check_signed (void)
+{
+    switch (CMD -> fmt)
+    {
+        case FORMAT_DEFAULT:
+        case FORMAT_UNSIGNED:
+            CMD -> watch_signed = FALSE;
+            return (0);
+
+        case FORMAT_SIGNED:
+            CMD -> watch_signed = TRUE;
+            return (0);
+    }
+    cmd_seterr ("only /d (signed) and /u (unsigned) can be used when comparing");
     return (1);
 }

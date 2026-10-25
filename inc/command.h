@@ -56,7 +56,11 @@ enum cmd_id
     CMD_UNWATCH,
     CMD_VERSION,
     CMD_WATCH,
-    CMD_WATCHLIST
+    CMD_WATCHLIST,
+    CMD_RUN,
+    CMD_UNTIL,
+    CMD_EXPECT,
+    CMD_EXAMINE
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +100,7 @@ typedef struct tok
 #define  OPD_MEM                 3   // memory address (lo)
 #define  OPD_RANGE               4   // memory range (lo - hi)
 #define  OPD_IOPORT              5   // IOPort number (lo)
+#define  OPD_VALUE               6   // a number that is not read from anywhere: &SYMBOL (lo)
 
 typedef struct operand
 {
@@ -104,7 +109,26 @@ typedef struct operand
     uint8_t    reg;                  // register id (OPD_REG)
     uint32_t   lo;
     uint32_t   hi;
+    char      *name;                 // the symbol the address came from, if any ("buf+2")
 } operand_t;
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// a symbol resolved by the parser (symbols.c): its text as written, the address it stands
+// for (offset included) and the number of words the symbol covers from there
+//
+typedef struct symv
+{
+    char      *text;
+    uint32_t   addr;
+    uint32_t   words;
+} symv_t;
+
+//
+// kinds of 'expect'
+//
+#define  EXPECT_VALUE            0   // expect LOCATION OP VALUE
+#define  EXPECT_CONSOLE          1   // expect console "TEXT" [rows N]
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -160,10 +184,20 @@ typedef struct cmd
         uint32_t  value;
     } rep[CMD_MAX_REPLACE];
 
-    // watch
+    // watch, expect
     wloc_t     watch_target;
     wloc_t     watch_rhs;
     uint8_t    watch_op;             // WATCH_OP_*
+    uint8_t    watch_signed;         // compare as signed numbers (watch/d, expect/d)
+
+    // run / until / expect console / x
+    uint32_t   count;                // run: frames; x: words
+    uint8_t    has_count;
+    uint32_t   timeout;              // until: frames (0 = default)
+    uint32_t   rows;                 // until, expect console: only the last N rows (0 = all)
+    char      *text;                 // until, expect console: the text
+    uint8_t    expect_kind;          // EXPECT_*
+    uint32_t   x_words;              // x: words a symbol covers (the default count)
 
     // parsing bookkeeping
     char     **pool;                 // every string allocated while parsing

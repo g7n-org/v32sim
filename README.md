@@ -54,6 +54,10 @@ software — and to automate cart testing.
 - Experimental **Lua mode** (`--langmode=lua`): memory words are inspected for
   Lua value tags (strings, tables, functions, nil/true/false) when displaying
   with `/B` or `/s`
+- **Scripting** (`--batch`): symbols (labels and C globals) wherever a number is
+  accepted, `run N`, `until "TEXT"`, `expect`, `quit N`, exit statuses, `console FILE`
+  and `console --attrs`, signed `watch/d`, and profiles by function; see
+  [Scripting](#scripting)
 - **Debug files** (labels and line numbers) are loaded automatically (see
   [Debug Files](#debug-files)); `-n` turns that off
 
@@ -71,6 +75,7 @@ software — and to automate cart testing.
 - [The v32io Keyboard](#the-v32io-keyboard)
 - [The Text Console](#the-text-console)
 - [Running Unattended](#running-unattended)
+- [Scripting](#scripting)
 - [Tests](#tests)
 - [IOPORTS](#ioports)
 - [Known Limitations and Planned Features](#known-limitations-and-planned-features)
@@ -178,6 +183,9 @@ Mandatory arguments to long options are mandatory for short options too.
  --fixed-clock[=Y,D,S]     start TIM_CurrentDate/Time at year Y, day D, S seconds (default 2026,1,0)
  --seed=N                  seed the RNG_CurrentValue generator with N
  -x, --exit-status         exit status tells how the program ended
+ -q, --batch               scripting mode: no prompt, banners or instruction lines; stderr for diagnostics
+     --profile-by=KIND     address (default) or function: what --profile-top/--profile-out aggregate
+     --symbol-file=FILE    load data symbols (v32cc NAME.asm.sym) from FILE
  -h, --help                display this information
 FILE   is any path plus the filename desired
 OFFSET is the full 32-bit/4-byte memory address (hex)
@@ -196,6 +204,7 @@ v32sim cart.v32                     # start in the debugger
 v32sim -r cart.v32                  # just run the cart
 v32sim -b main -C setup.cmds cart.v32
 v32sim -L lua -r cart.v32           # Lua value display
+v32sim -q --fast cart.v32 < t.cmd   # scripted run, see Scripting
 ```
 
 By  default  the simulator  loads  `StandardBios.v32`  from the  standard
@@ -248,13 +257,18 @@ prefix (`s` = step, `n` = next, `c` = continue, `b` = break, `p` = print,
 | `continue` | resume execution until next trigger |
 | `step` | execute current instruction, stop at next |
 | `next` | execute current instruction, step over subroutines |
-| `print/fmt XYZ` | one-time display of XYZ (register, memory, IOPort) |
+| `print/fmt XYZ` | one-time display of XYZ (register, memory, IOPort, symbol) |
+| `x/fmt SYMBOL\|0xADDR [COUNT]` | show COUNT words from a symbol (default: the whole C variable) |
 | `display/fmt XYZ [LABEL]` | add a displaylist item shown at each stop |
 | `undisplay #` | remove displaylist item by index |
 | `label [0xMEM_ADDR LABEL]` | list or set a label for a memory offset |
 | `unlabel #` | remove label by index |
 | `watch [LOC OP VALUE [LABEL]]` | set a watchpoint on a register, IOPort, or memory word (no arguments: list) |
 | `watchlist` | list active watchpoints |
+| `run N` / `wait N` | continue for N frames, then stop |
+| `until "TEXT" [timeout N] [rows N]` | continue until the text console shows TEXT |
+| `expect [print] LOC OP VALUE` / `expect console "TEXT"` | check a value or the screen; failure sets exit status 1 |
+| `console [FILE]` / `console --attrs[=fg\|bg\|all] [FILE]` | show or write the text screen (with color grids) |
 | `unwatch #\|LABEL` | remove a watchpoint |
 | `backtrace` | list subroutine calls, most recent first |
 | `profile` | show the profiling report (requires `-p`) |
@@ -270,7 +284,7 @@ prefix (`s` = step, `n` = next, `c` = continue, `b` = break, `p` = print,
 | `ignore` | skip the current instruction (it is not executed and the counters do not advance) |
 | `version` | show the simulator version |
 | `help [COMMAND]` / `?` | command help |
-| `quit` | exit the simulator |
+| `quit [N]` | exit the simulator (with exit status N) |
 
 ### Formatting Suffixes
 
@@ -532,9 +546,97 @@ run that reaches `HLT`:
   * `--profile-format=bin` writes the line `V32PROF1`, then little-endian 32-bit
     `address, count` pairs.
   * `--profile-top=N` prints the N hottest addresses (with labels, when known) to stderr.
+  * `--profile-by=function` sums the counts over the addresses of each function (the
+    label that covers them in the loaded debug files; BIOS addresses without a label
+    are one group): `--profile-top=N` then lists the N hottest functions with their
+    share and the number of addresses, and the text `--profile-out` has one line per
+    function (`# v32sim function profile v1`, then `0xFIRST COUNT NADDR NAME`). Load
+    the C map (`-L C`, or the `.vbin.debug` made by `v32as --map`) to get C names;
+    without labels the output says so. The binary format is unchanged.
   * `--fixed-cycles` makes a program's reads of `TIM_CycleCounter` return 0, so code that
     seeds from it behaves the same across builds; with `--fixed-clock` and `--seed` the
     profile is reproducible, byte for byte.
+
+## Scripting
+
+Everything a script needs to drive a headless run and to say what went wrong. A script
+is the standard input of the simulator (or `-C FILE`).
+
+### Batch mode
+
+`--batch` (`-q`, `--quiet`) makes stdout hold exactly what the script asked for:
+
+  * no `v32sim>` prompt and no echo of the commands, no `[ADDR] HH HH HH HH OPC`
+    instruction line after a stop, no register banner at the end, no end-of-run
+    banner (`regs`, `print` and `console` still print, on stdout);
+  * acknowledgements (`[watch] ...`, `[console] wrote ...`, why a run stopped) and all
+    diagnostics go to stderr, so a script's stdout never has to be filtered;
+  * a blank line is skipped and the end of the input ends the run (no endless loop);
+  * the first failed `expect`, or an `until` that times out, ends the run.
+
+Exit status (always, `-x` adds the frame-limit and system-error codes): 0 success;
+1 an `expect` failed or an `until` timed out; 2 the frame limit was reached (`-x`);
+3 a system error (`-x`); 4 a command line could not be parsed (batch mode); `quit N`
+overrides all of them. Without `--batch` nothing about the interactive output changes
+(scripts that filter the prompt and instruction lines keep working).
+
+### Symbols
+
+A name is accepted wherever a number is: `print`, `display`, `watch` (target and right
+side), `expect`, `x`, `break` and `--dump`. A symbol is looked up as a data symbol,
+then as a label of the loaded debug files, each as given and then as `global_NAME`
+(the assembler's name for a C global), and last ignoring case.
+
+  * Data symbols come from `NAME.asm.sym` (written by `v32cc -g`, with the size of each
+    variable) or from the `%define global_NAME ADDRESS` lines of `NAME.asm`, found next
+    to the V32 file or as the debug files are (see [Debug Files](#debug-files)).
+    `--symbol-file=FILE` names a `.asm.sym` file explicitly. `-n` turns them off.
+  * `print counter` shows the word at the address `counter` stands for, with the
+    name in the header: `counter(0x00000002): 0x00000096`; `[counter]` is the same;
+    `[[ptr]]` follows a pointer; `&counter` is the address itself; `buf+2` and `buf-1`
+    add a constant (one `+`/`-` constant is accepted).
+  * `x/d buf` lists the words of a variable (the whole array by default),
+    `x/D work 10` ten instructions of a function.
+  * `watch [counter] == 6`, `watch/d [neg] < 0` and the watchpoint list name the
+    variable (`counter`, `buf+2`) instead of an address.
+
+### Waiting and checking
+
+  * `run N` (alias `wait N`): continue for N frames. A breakpoint or watchpoint that
+    triggers first stops it earlier; a `continue` afterwards is not limited.
+  * `until "TEXT" [timeout N] [rows N]`: continue until the text console shows TEXT
+    (anywhere in a row; `^` and `$` anchor to the start and end of a row), looking at
+    the last N rows only when `rows` is given. The screen is checked at the end of every
+    frame and has to have changed since the command (so what is already there does not
+    end the wait). Default timeout: 3600 frames.
+  * `expect LOC OP VALUE` (as `watch`, evaluated now; `expect print R0 == 5` also
+    works) and `expect console "TEXT" [rows N]`. A passing check is silent in batch mode.
+  * `watch/d` (or `watch/D`) compares as signed 32-bit numbers: `watch/d [neg] < 0`.
+    The list marks it `[signed]`. Plain `watch` stays unsigned.
+
+### Console to a file
+
+`console FILE` writes the text screen to FILE. `console --attrs[=fg|bg|all] [FILE]`
+adds, after the text, `-- fg --` and `-- bg --` grids with the same rows and columns
+as the text; every cell is the hex digit of the nearest ANSI colour (0 black, 1 red,
+2 green, 3 yellow, 4 blue, 5 magenta, 6 cyan, 7 light gray, 8-F bright versions, F
+white), `.` for a blank in the foreground grid. A test can check that a word is red.
+`screenshot FILE` writes the pixels as PNG.
+
+### Example
+
+```
+$ cat session.cmd
+kbd attach 2
+until "^MEM:\>$" rows 1 timeout 1500
+run 60
+kbd type "ver\n"
+run 120
+expect console "Vircon32 Disk Operating System"
+console --attrs=fg screen.txt
+quit
+$ v32sim --batch --fast -B StandardBios.v32 --v32kbd dos.v32 < session.cmd; echo $?
+```
 
 ## Tests
 
@@ -545,6 +647,12 @@ and serial devices, host crash and recovery, plain and unformatted cards), the
 v32kbd checks (commands, host input with escape sequences, typed characters,
 event order), the disassembly round trip of float immediates, `load bios:`, and
 card persistence when the simulator is killed with `kill -9`.
+
+`tests/run_batch_tests.sh [TOOLCHAIN]` builds `tests/batch/prog.c` with `v32cc`, `v32as`
+and `packrom` (from TOOLCHAIN or the PATH, with `StandardBios.v32` or `$V32BIOS`) and
+checks the scripting features: symbols, `x`, `run`, `until`, `expect`, `quit N`, the exit
+statuses, signed watch, `console FILE`/`--attrs`, `--profile-by=function`, and that the
+interactive prompt is unchanged.
 
 ## IOPORTS
 

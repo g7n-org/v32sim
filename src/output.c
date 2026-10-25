@@ -452,6 +452,8 @@ void  output_reg (uint8_t  id, uint8_t  fmt, uint8_t  flag, uint8_t *label)
 // (string, table, function, or primitive) so that /B and /s can present
 // the underlying Lua value rather than raw bits.
 //
+static const char  *mem_symbol  = NULL;   // set by output_mem_named() for the duration of one call
+
 void  output_mem (uint32_t  value, uint8_t  fmt, uint8_t  flag, uint8_t *label)
 {
     int32_t   check         = FALSE;
@@ -542,6 +544,10 @@ void  output_mem (uint32_t  value, uint8_t  fmt, uint8_t  flag, uint8_t *label)
                 sprintf (addr, "[0x%.8X(invalid)]", value);
             }
         }
+    }
+    else if (mem_symbol    != NULL)
+    {
+        sprintf (addr, "%.24s(0x%.8X)", mem_symbol, value);   // a name was given: print NAME
     }
     else
     {
@@ -698,5 +704,38 @@ void  output_iop (uint32_t  value, uint8_t  fmt, uint8_t *label)
     {
         fprintf (stdout, " (%s)", label);
     }
+    fprintf (stdout, "\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// output_mem_named(): output_mem() for a location the user named (a symbol): the entry
+// reads "counter(0x00000002)" instead of "0x00000002". A dereference keeps its usual
+// entry, which already shows both addresses.
+//
+void  output_mem_named (const char *name, uint32_t value, uint8_t fmt, uint8_t flag, uint8_t *label)
+{
+    mem_symbol  = name;
+    output_mem (value, fmt, flag, label);
+    mem_symbol  = NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// output_val(): print a value that is not read from anywhere, the address of a symbol
+// ("print &f"): the entry reads "&f". FORMAT_DECODE has no meaning for a number and
+// shows hexadecimal.
+//
+void  output_val (const char *name, uint32_t value, uint8_t fmt)
+{
+    char      addr[96];
+    uint8_t   entry[128];
+    float     fvalue  = 0.0f;
+
+    memcpy (&fvalue, &value, sizeof (fvalue));
+    snprintf (addr, sizeof (addr), "&%.80s", name);
+    build_entry   ((uint8_t *) addr, fmt, entry);
+    output_header (entry);
+    output_render (value, fvalue, 0, (fmt == FORMAT_DECODE) ? FORMAT_HEX : fmt, FLAG_DATA | FLAG_DISPLAY);
     fprintf (stdout, "\n");
 }

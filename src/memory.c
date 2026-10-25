@@ -307,7 +307,6 @@ void  dump_words (int8_t *spec)
     uint32_t  count                 = 0;
     uint32_t  address               = RAM_FIRST_ADDR;
     uint32_t  idx                   = 0;
-    linked_l *node                  = NULL;
     word_t   *wptr                  = NULL;
 
     strncpy (buf, (char *) spec, sizeof (buf) - 1);
@@ -337,18 +336,11 @@ void  dump_words (int8_t *spec)
         address                     = (uint32_t) strtoul (at, &end, 16);
         if ((end == at) || (*end != '\0'))
         {
-            node                    = find_label (lpoint, (int8_t *) at);
-            if (node == NULL)
+            if (sym_lookup (at, &address, NULL) == FALSE)    // a label, or a C global (also as global_NAME)
             {
-                snprintf (alt, sizeof (alt), "global_%s", at);
-                node                = find_label (lpoint, (int8_t *) alt);
-            }
-            if (node == NULL)
-            {
-                fprintf (stderr, "[ERROR] --dump: unknown address or label '%s'\n", at);
+                fprintf (stderr, "[ERROR] --dump: unknown address or symbol '%s'\n", at);
                 return;
             }
-            address                 = node -> RAW;
         }
     }
     for (idx = 0; idx < count; idx = idx + 1)

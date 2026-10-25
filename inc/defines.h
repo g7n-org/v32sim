@@ -131,6 +131,10 @@
 #define  INPUT_KBD               34
 #define  INPUT_MAILBOX           35
 #define  INPUT_CONSOLE           36
+#define  INPUT_RUN               37
+#define  INPUT_UNTIL             38
+#define  INPUT_EXPECT            39
+#define  INPUT_EXAMINE           40
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A

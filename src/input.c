@@ -14,6 +14,34 @@ uint8_t *get_input (FILE *fptr, const uint8_t *prompt)
 
     ////////////////////////////////////////////////////////////////////////////////
     //
+    // Batch mode (--batch): the commands are read plainly from the file: no prompt, no
+    // echo, no history, no colors; blank lines are skipped (they would otherwise
+    // repeat the previous action); the end of the input quits
+    //
+    if (batchflag         == TRUE)
+    {
+        static char   *line   = NULL;
+        static size_t  cap    = 0;
+        ssize_t        got    = 0;
+
+        while ((got = getline (&line, &cap, fptr)) >= 0)
+        {
+            while ((got > 0) && ((line[got-1] == '\n') || (line[got-1] == '\r')))
+            {
+                got = got - 1;
+                line[got] = '\0';
+            }
+            if (got > 0)
+            {
+                return ((uint8_t *) strdup (line));
+            }
+        }
+        action             = INPUT_QUIT;
+        return (NULL);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    //
     // If colors are enabled, highlight the decoded instruction
     //
     if (colorflag         == TRUE)
@@ -119,6 +147,7 @@ uint8_t  prompt (uint32_t  word)
     uint8_t    processflag              = FALSE;
 
     v32io_term_suspend ();      // the prompt takes the host terminal back (if v32kbd had it)
+    runctl_reset ();            // a 'run N' or 'until' that did not finish is over
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -215,23 +244,21 @@ uint8_t  prompt (uint32_t  word)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
-// open_debug_file(): find and open the debug file that goes with a V32 file.
-//
-// With FLAG_SEARCH, 'datafile' is the V32 file (e.g. dir/game.v32) and the debug file
-// is named game.vbin.debug (assembler) or game.asm.debug (C compiler). These
-// directories are tried in order:
+// open_search_file(): find and open a file that goes with a V32 file: DATAFILE with its
+// extension replaced by SUFFIX (e.g. game.v32 -> game.vbin.debug). These directories
+// are tried in order:
 //
 //     --debug-dir=DIR (if given)      next to the V32 file       DIR/obj
 //     obj/ below the V32 file's dir   ../obj/ from the V32 file  obj/ and . (cwd)
 //
-// Without FLAG_SEARCH, 'datafile' is the debug file itself.
+// The name of the file that was opened is left in 'found'. Debug files and the symbol
+// file (symbols.c) are looked for this way.
 //
-static FILE  *open_debug_file (const char *datafile, uint8_t flag, char *found, size_t foundlen)
+FILE  *open_search_file (const char *datafile, const char *suffix, char *found, size_t foundlen)
 {
     char        dir[1024];
     char        base[512];
     char        cand[2048];
-    const char *suffix  = ((flag & FLAG_ASM) == FLAG_ASM) ? ".vbin.debug" : ".asm.debug";
     const char *slash   = NULL;
     const char *dot     = NULL;
     FILE       *fptr    = NULL;
@@ -240,11 +267,6 @@ static FILE  *open_debug_file (const char *datafile, uint8_t flag, char *found, 
     int         nsub    = 0;
 
     found[0]  = '\0';
-    if ((flag & FLAG_SEARCH) != FLAG_SEARCH)
-    {
-        snprintf (found, foundlen, "%s", datafile);
-        return (fopen (found, "r"));
-    }
 
     slash  = strrchr (datafile, '/');
     if (slash != NULL)
@@ -283,9 +305,30 @@ static FILE  *open_debug_file (const char *datafile, uint8_t flag, char *found, 
             snprintf (found, foundlen, "%s", cand);
             return (fptr);
         }
-        fprintf (debug, "[load_labels] No debug file '%s' found.\n", cand);
+        fprintf (debug, "[search] No file '%s' found.\n", cand);
     }
     return (NULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// open_debug_file(): find and open the debug file that goes with a V32 file.
+//
+// With FLAG_SEARCH, 'datafile' is the V32 file (e.g. dir/game.v32) and the debug file
+// is named game.vbin.debug (assembler) or game.asm.debug (C compiler), see
+// open_search_file(). Without FLAG_SEARCH, 'datafile' is the debug file itself.
+//
+static FILE  *open_debug_file (const char *datafile, uint8_t flag, char *found, size_t foundlen)
+{
+    const char *suffix  = ((flag & FLAG_ASM) == FLAG_ASM) ? ".vbin.debug" : ".asm.debug";
+
+    found[0]  = '\0';
+    if ((flag & FLAG_SEARCH) != FLAG_SEARCH)
+    {
+        snprintf (found, foundlen, "%s", datafile);
+        return (fopen (found, "r"));
+    }
+    return (open_search_file (datafile, suffix, found, foundlen));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -520,9 +563,17 @@ void load_command(void)
                     nextflag = TRUE;
                     break;
 
+                case INPUT_QUIT:
+                    haltflag = TRUE;     // 'quit' (or a failed 'expect') ends the file and the run
+                    break;
+
                 // Display, break, watch, etc. are handled by process_command itself
                 default:
                     break;
+            }
+            if (haltflag == TRUE)
+            {
+                break;
             }
         }
         commandfile = NULL;

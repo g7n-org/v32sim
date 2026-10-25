@@ -69,6 +69,11 @@ static const struct
     { "version",     3, CMD_VERSION   },
     { "watch",       1, CMD_WATCH     },
     { "watchlist",   6, CMD_WATCHLIST },
+    { "run",         2, CMD_RUN       },
+    { "wait",        4, CMD_RUN       },
+    { "until",       3, CMD_UNTIL     },
+    { "expect",      2, CMD_EXPECT    },
+    { "x",           1, CMD_EXAMINE   },
     { NULL,          0, CMD_NONE      }
 };
 
@@ -238,6 +243,7 @@ int  cmd_parse (const char *line, cmd_t *cmd)
     {
         fprintf (stderr, "[ERROR] %s\n",
                          (cmd -> errmsg[0] != '\0') ? cmd -> errmsg : "malformed command");
+        script_errors  = script_errors + 1;
     }
 
     return (result);
@@ -541,7 +547,18 @@ static void  exec_print (cmd_t *c)
             break;
 
         case OPD_MEM:
-            output_mem (o -> lo, c -> fmt, o -> deref, NULL);
+            if ((o -> name != NULL) && (o -> deref == FALSE))
+            {
+                output_mem_named (o -> name, o -> lo, c -> fmt, FALSE, NULL);
+            }
+            else
+            {
+                output_mem (o -> lo, c -> fmt, o -> deref, NULL);
+            }
+            break;
+
+        case OPD_VALUE:
+            output_val (o -> name, o -> lo, c -> fmt);
             break;
 
         case OPD_REGS:
@@ -595,7 +612,11 @@ static void  exec_display (cmd_t *c)
 
     switch (o -> kind)
     {
-        case OPD_NONE:  // bare 'display': the list is shown at every prompt anyway
+        case OPD_NONE:  // bare 'display': the list is shown at every prompt anyway (--batch: show it now)
+            if (batchflag == TRUE)
+            {
+                displayshow (dpoint, 0);
+            }
             break;
 
         case OPD_RANGE:
@@ -609,7 +630,11 @@ static void  exec_display (cmd_t *c)
 
         case OPD_MEM:
             add_display ((o -> deref == TRUE) ? LIST_MEM_DEREF : LIST_MEM,
-                         o -> lo, c -> fmt, c -> name);
+                         o -> lo, c -> fmt, (c -> name != NULL) ? c -> name : o -> name);
+            break;
+
+        case OPD_VALUE:
+            fprintf (stderr, "[ERROR] display: &%s is a constant, there is nothing to watch change (use print)\n", o -> name);
             break;
 
         case OPD_REGS:
@@ -765,6 +790,37 @@ static void  exec_kbd (cmd_t *c)
     }
 }
 
+//
+// console [FILE]               the text screen, on stdout or in FILE
+// console --attrs[=WHAT] [FILE]  the screen followed by grids of its colors (WHAT: fg, bg or all; fg by default)
+// console color|cursor|status ...
+//
+static void  exec_console_dump (const char *file, int attrs)
+{
+    FILE  *out  = stdout;
+    int    rows = 0;
+
+    if (file != NULL)
+    {
+        out = fopen (file, "w");
+        if (out == NULL)
+        {
+            fprintf (stderr, "[ERROR] console: could not write '%s'\n", file);
+            return;
+        }
+    }
+    rows = gpu_console_show (out);
+    if (attrs != 0)
+    {
+        gpu_console_attrs (out, attrs);
+    }
+    if (file != NULL)
+    {
+        fclose (out);
+        status_printf ("[console] wrote %s (%d rows)\n", file, rows);
+    }
+}
+
 static void  exec_console (cmd_t *c)
 {
     char      line[256];
@@ -774,7 +830,7 @@ static void  exec_console (cmd_t *c)
 
     if (c -> path == NULL)
     {
-        gpu_console_show (stdout);
+        exec_console_dump (NULL, 0);
         return;
     }
     snprintf (line, sizeof (line), "%s", c -> path);
@@ -820,9 +876,35 @@ static void  exec_console (cmd_t *c)
     {
         gpu_console_status (stdout);
     }
+    else if (0 == strncmp (verb, "--attrs", 7))
+    {
+        int  what  = 1;
+
+        if (verb[7] == '=')
+        {
+            if      (0 == strcmp (verb + 8, "fg"))   what = 1;
+            else if (0 == strcmp (verb + 8, "bg"))   what = 2;
+            else if (0 == strcmp (verb + 8, "all"))  what = 3;
+            else
+            {
+                fprintf (stderr, "[ERROR] console --attrs: use fg, bg or all\n");
+                return;
+            }
+        }
+        else if (verb[7] != '\0')
+        {
+            fprintf (stderr, "[ERROR] console: unknown option '%s' (try 'help console')\n", verb);
+            return;
+        }
+        exec_console_dump ((*arg != '\0') ? c -> path + (arg - line) : NULL, what);
+    }
+    else if (verb[0] == '-')
+    {
+        fprintf (stderr, "[ERROR] console: unknown option '%s' (try 'help console')\n", verb);
+    }
     else
     {
-        fprintf (stderr, "[ERROR] console: unknown subcommand '%s' (try 'help console')\n", verb);
+        exec_console_dump (c -> path, 0);      // anything else is a file name
     }
 }
 
@@ -1118,7 +1200,7 @@ static void  exec_replace (cmd_t *c)
 //
 static void  exec_watch (cmd_t *c)
 {
-    wpoint_t  *wp  = wpoint_new (c -> watch_target, c -> watch_op, c -> watch_rhs);
+    wpoint_t  *wp  = wpoint_new (c -> watch_target, c -> watch_op, c -> watch_rhs, c -> watch_signed);
     char       desc[160];
 
     if (wp == NULL)
@@ -1133,12 +1215,12 @@ static void  exec_watch (cmd_t *c)
     wpoint_add (&wpoint, wp);
 
     wpoint_describe (wp, desc, sizeof (desc));
-    fprintf (stdout, "Watchpoint set: %s", desc);
+    status_printf ("Watchpoint set: %s", desc);
     if (wp -> label != NULL)
     {
-        fprintf (stdout, " (%s)", wp -> label);
+        status_printf (" (%s)", wp -> label);
     }
-    fprintf (stdout, "\n");
+    status_printf ("\n");
 }
 
 static void  exec_unwatch (cmd_t *c)
@@ -1147,12 +1229,74 @@ static void  exec_unwatch (cmd_t *c)
     {
         if (wpoint_remove (&wpoint, (int) c -> num) == TRUE)
         {
-            fprintf (stdout, "Watchpoint #%u removed.\n", c -> num);
+            status_printf ("Watchpoint #%u removed.\n", c -> num);
         }
     }
     else if (wpoint_remove_by_label (&wpoint, c -> name) == TRUE)
     {
-        fprintf (stdout, "Watchpoint '%s' removed.\n", c -> name);
+        status_printf ("Watchpoint '%s' removed.\n", c -> name);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// run N / until TEXT / expect ... / x
+//
+static void  exec_run (cmd_t *c)
+{
+    if (c -> count == 0)
+    {
+        return;                      // zero frames: nothing to run
+    }
+    runctl_run (c -> count);
+    action  = INPUT_CONTINUE;
+}
+
+static void  exec_until (cmd_t *c)
+{
+    runctl_until (c -> text, c -> timeout, c -> rows);
+    action  = INPUT_CONTINUE;
+}
+
+static void  exec_expect (cmd_t *c)
+{
+    if (c -> expect_kind == EXPECT_CONSOLE)
+    {
+        runctl_expect_console (c -> text, c -> rows);
+    }
+    else
+    {
+        runctl_expect_value (c -> watch_target, c -> watch_op, c -> watch_rhs, c -> watch_signed);
+    }
+}
+
+#define  EXAMINE_MAX  65536
+
+static void  exec_examine (cmd_t *c)
+{
+    uint32_t  count  = (c -> has_count == TRUE) ? c -> count : c -> x_words;
+    uint32_t  index  = 0;
+    uint32_t  addr   = c -> opd.lo;
+    word_t   *w      = NULL;
+
+    if ((count == 0) || (count > EXAMINE_MAX))
+    {
+        fprintf (stderr, "[ERROR] x: the count must be 1-%d\n", EXAMINE_MAX);
+        return;
+    }
+    for (index = 0; index < count; index = index + 1)
+    {
+        if ((c -> opd.name != NULL) && (index == 0) && (c -> fmt != FORMAT_DECODE))
+        {
+            output_mem_named (c -> opd.name, addr, c -> fmt, FALSE, NULL);
+        }
+        else
+        {
+            output_mem (addr, c -> fmt, FALSE, NULL);
+        }
+        // instructions are one or two words long
+        w     = (c -> fmt == FORMAT_DECODE) ? memory_get (addr, TRUE) : NULL;
+        addr  = addr + (((w != NULL) && (IMMVAL_MASK == (w -> raw & IMMVAL_MASK))) ? 2 : 1);
     }
 }
 
@@ -1262,7 +1406,7 @@ static void  exec_screenshot (cmd_t *c)
     }
     if (gpu_screenshot (name) == TRUE)
     {
-        fprintf (stdout, "[screenshot] wrote %s\n", name);
+        status_printf ("[screenshot] wrote %s\n", name);
     }
     else
     {
@@ -1287,7 +1431,7 @@ static void  exec_save (cmd_t *c)
     }
     if (state_save (name) == TRUE)
     {
-        fprintf (stdout, "[save] wrote %s\n", name);
+        status_printf ("[save] wrote %s\n", name);
     }
     else
     {
@@ -1299,7 +1443,7 @@ static void  exec_restore (cmd_t *c)
 {
     if (state_restore (c -> path) == TRUE)
     {
-        fprintf (stdout, "[restore] state restored from %s\n", c -> path);
+        status_printf ("[restore] state restored from %s\n", c -> path);
     }
 }
 
@@ -1378,12 +1522,12 @@ static void  exec_asm (cmd_t *c)
             REG(IR)  = ir;
             REG(IV)  = iv;
         }
-        fprintf (stdout, "[asm] executed 0x%.8X", words[0]);
+        status_printf ("[asm] executed 0x%.8X", words[0]);
         if (count == 2)
         {
-            fprintf (stdout, " 0x%.8X", words[1]);
+            status_printf (" 0x%.8X", words[1]);
         }
-        fprintf (stdout, "\n");
+        status_printf ("\n");
         return;
     }
 
@@ -1412,14 +1556,14 @@ static void  exec_asm (cmd_t *c)
     {
         // pad with MOV R0, R0 (a one-word no-op) so the next instruction is untouched
         SYSMEMSET(address + 1, (0x13u << OPCODESHIFT) | (1u << MOVADRSHIFT));
-        fprintf (stdout, "[asm] padded with MOV R0, R0\n");
+        status_printf ("[asm] padded with MOV R0, R0\n");
     }
-    fprintf (stdout, "[asm] 0x%.8X <- 0x%.8X", address, words[0]);
+    status_printf ("[asm] 0x%.8X <- 0x%.8X", address, words[0]);
     if (count == 2)
     {
-        fprintf (stdout, " 0x%.8X", words[1]);
+        status_printf (" 0x%.8X", words[1]);
     }
-    fprintf (stdout, "\n");
+    status_printf ("\n");
     if (address == rom_offset)
     {
         asm_refresh_ir ();
@@ -1475,6 +1619,10 @@ static void  exec_help (cmd_t *c)
         case CMD_UNWATCH:     help (INPUT_UNWATCH);    break;
         case CMD_VERSION:     help (INPUT_VERSION);    break;
         case CMD_WATCH:       help (INPUT_WATCH);      break;
+        case CMD_RUN:         help (INPUT_RUN);        break;
+        case CMD_UNTIL:       help (INPUT_UNTIL);      break;
+        case CMD_EXPECT:      help (INPUT_EXPECT);     break;
+        case CMD_EXAMINE:     help (INPUT_EXAMINE);    break;
         case CMD_WATCHLIST:   help (INPUT_WATCHLIST);  break;
     }
 }
@@ -1508,7 +1656,18 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_NEXT:        action = INPUT_NEXT;                  break;
         case CMD_PRINT:       exec_print (c);                       break;
         case CMD_PROFILE:     show_profile ();                      break;
-        case CMD_QUIT:        action = INPUT_QUIT;                  break;
+        case CMD_QUIT:
+            action = INPUT_QUIT;
+            if (c -> has_num == TRUE)
+            {
+                quit_status_set  = TRUE;
+                quit_status      = (uint8_t) (c -> num & 0xFF);
+            }
+            break;
+        case CMD_RUN:         exec_run (c);                         break;
+        case CMD_UNTIL:       exec_until (c);                       break;
+        case CMD_EXPECT:      exec_expect (c);                      break;
+        case CMD_EXAMINE:     exec_examine (c);                     break;
         case CMD_REPLACE:     exec_replace (c);                     break;
         case CMD_SCREENSHOT:  exec_screenshot (c);                  break;
         case CMD_SAVE:        exec_save (c);                        break;

@@ -51,6 +51,10 @@ void  process_args (int32_t  argc, int8_t **argv)
        { "profile-format", required_argument, 0, 35  },
        { "profile-top",    required_argument, 0, 36  },
        { "fixed-cycles",   no_argument,       0, 37  },
+       { "batch",          no_argument,       0, 'q' },
+       { "quiet",          no_argument,       0, 'q' },
+       { "profile-by",     required_argument, 0, 38  },
+       { "symbol-file",    required_argument, 0, 39  },
        { "exit-status",    no_argument,       0, 'x' },
        { "help",           no_argument,       0, 'h' },
        { 0,                0,                 0,  0  }
@@ -61,7 +65,7 @@ void  process_args (int32_t  argc, int8_t **argv)
     // Process command-line arguments, via getopt(3)
     //
     opt                            = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:L:M:nprSw:vVhx", long_options,
+                                                  "B:b:C:cdDeE:L:M:nqprSw:vVhx", long_options,
                                                   &option_index);
     while (opt                    != -1)
     {
@@ -268,6 +272,30 @@ void  process_args (int32_t  argc, int8_t **argv)
                 fixed_cycles       = TRUE;
                 break;
 
+            case 'q': // batch
+                batchflag          = TRUE;
+                break;
+
+            case 38: // profile-by
+                if (0             == strcmp (optarg, "function"))
+                {
+                    profile_by_function = TRUE;
+                }
+                else if (0        != strcmp (optarg, "address"))
+                {
+                    fprintf (stderr, "[ERROR] --profile-by: use address or function\n");
+                    exit (1);
+                }
+                else
+                {
+                    profile_by_function = FALSE;
+                }
+                break;
+
+            case 39: // symbol-file
+                symbolfile         = optarg;
+                break;
+
             case 33: // seed
                 rng_seed_set       = TRUE;
                 rng_seed           = (uint32_t) strtoul (optarg, NULL, 0);
@@ -316,7 +344,7 @@ void  process_args (int32_t  argc, int8_t **argv)
                 break;
         }
         opt                        = getopt_long ((int) argc, (char **) argv,
-                                                  "B:b:C:cdDeE:L:M:nprSw:vVhx", long_options,
+                                                  "B:b:C:cdDeE:L:M:nqprSw:vVhx", long_options,
                                                   &option_index);
     }
 

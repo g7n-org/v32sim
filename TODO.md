@@ -28,6 +28,10 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
   * **GPU** - scale/angle ports were set from the register's bits converted as
     an integer; zoomed and rotated draws were wrong for real programs.
   * **Tests** - `tests/run_tests.sh` (v32dev suite, v32kbd, persistence).
+  * **Scripting (V32DOS proposal VS-1..VS-8)** - symbols in `print`/`display`/`watch`/
+    `expect`/`x`, `run N`, `until`, `--batch`, `expect`, exit statuses, `quit N`,
+    `console FILE`/`--attrs`, `--profile-by=function`, signed `watch/d`;
+    `tests/run_batch_tests.sh`.
   * **TIM leap years**.
   * **Debug file location** - directory of the V32 file, current directory,
     `obj/`, `../obj/`, and `--debug-dir`; loaded automatically (`-n` disables).
@@ -44,6 +48,10 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
 
 ## STILL LACKING
 
+  * **Symbols** - only variables with a numeric address (v32cc globals) are data
+    symbols; function-local variables and struct members have no names, and a
+    `.asm.sym` entry without a size counts as one word.
+  * **`until`** - needs the screen to change; it matches text, not colours.
   * **Audio** - the SPU has no output; a WAV capture of the mixed channels
     would be a natural first step.
   * **Debug-file loader** - `load_labels()` is hand-rolled; it could be moved
