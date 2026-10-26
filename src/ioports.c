@@ -1,4 +1,48 @@
 #include "defines.h"
+#include <math.h>
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// RNG_CurrentValue, as the console implements it (V32RNG.cpp): a linear congruential
+// generator with the constants of C++11's minstd_rand. The port holds the value the next
+// read will return; a read returns it and moves on to
+//
+//     next = (current * 48271) % 0x7FFFFFFF
+//
+// The generator starts at 1 (and again at every reset). A write of 0 is ignored, any
+// other value is stored with its sign bit cleared. Note that 0x80000000 therefore stores
+// 0, which the console does not guard against: the generator then returns 0 forever.
+// That is reproduced on purpose (v32sim matches the DesktopEmulator, quirks included).
+//
+////////////////////////////////////////////////////////////////////////////////////////
+#define  GPU_POINT_MAX_X         1640        // screen width 640 + 1000
+#define  GPU_POINT_MAX_Y         1360        // screen height 360 + 1000
+#define  RNG_MULTIPLIER          48271
+#define  RNG_MODULUS             0x7FFFFFFF
+#define  PORT_MASK               0x7FF       // the control bus decodes 11 bits (G13)
+
+static int32_t  rng_next  (int32_t  current)
+{
+    return ((int32_t) (((int64_t) current * RNG_MULTIPLIER) % RNG_MODULUS));
+}
+
+static int32_t  rng_stored  (int32_t  written,  int32_t  current)
+{
+    if (written == 0)
+    {
+        return (current);                      // ignored
+    }
+    return ((int32_t) ((uint32_t) written & 0x7FFFFFFF));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// clamping as V32GPUWriters.cpp does it: out-of-range values are accepted, but corrected
+//
+static int32_t  clamp_i32  (int32_t  value,  int32_t  low,  int32_t  high)
+{
+    return ((value < low) ? low : ((value > high) ? high : value));
+}
 
 void  init_ioports  (void)
 {
@@ -64,11 +108,6 @@ void  init_ioports  (void)
 
     current_time_raw                       = time (NULL); // obtain current time (raw)
     current_time_tm                        = localtime (&current_time_raw);
-    if (rng_seed_set                      == TRUE)
-    {
-        srand (rng_seed);
-    }
-
     for (index                             = 0;
          index                            <  NUM_TIM_PORTS;
          index                             = index + 1)
@@ -86,7 +125,7 @@ void  init_ioports  (void)
             case TIM_CurrentDate:
                 value                      = current_time_tm -> tm_year + 1900;
                 value                      = value << 16;
-                value                     |= current_time_tm -> tm_yday + 1;
+                value                     |= current_time_tm -> tm_yday;      // days count from 0
                 if (fixed_clock           == TRUE)
                 {
                     value                  = (fixed_year << 16) | (fixed_day & 0xFFFF);
@@ -129,7 +168,11 @@ void  init_ioports  (void)
     pptr                                   = *(ioports+RNG_PORT);
     pptr -> qty                            = NUM_RNG_PORTS;
 
-    (pptr+0) -> value.i32                  = 0x00000000; //rand ();
+    (pptr+0) -> value.i32                  = 1;       // the generator never holds 0
+    if (rng_seed_set                      == TRUE)    // --seed=N is a write of N to the port
+    {
+        (pptr+0) -> value.i32              = rng_stored ((int32_t) rng_seed, 1);
+    }
     (pptr+0) -> flag                       = FLAG_READ | FLAG_WRITE;
     (pptr+0) -> fmt                        = FORMAT_SIGNED;
     len                                    = 32;
@@ -488,6 +531,13 @@ void  init_ioports  (void)
     pptr -> name                           = (int8_t *) ralloc (size, len, FLAG_NONE);
     nptr                                   = pptr -> name;
     sprintf (nptr, "MEM_Connected");
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // the console's first frame starts with the timer's change-of-frame step, so a
+    // program sees TIM_FrameCounter = 1 in its first frame
+    //
+    timer_change_frame ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -685,9 +735,10 @@ word_t  ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
     uint8_t   check                       = FALSE;  // valid port status
     word_t    result;
 
+    portaddr                              = portaddr & PORT_MASK;
     result.raw                            = 0x00000000;
 
-    check                                 = ioports_chk (portaddr, FLAG_READ, TRUE);
+    check                                 = ioports_chk (portaddr, FLAG_READ, sys_force);
     if (check                            == TRUE)
     {
         type                              = (portaddr & 0x0700) >> 8;
@@ -708,8 +759,11 @@ word_t  ioports_get  (uint16_t  portaddr, uint8_t  sys_force)
                 result.f32                = (pptr+attr) -> value.f32;
                 break;
 
-            case RNG_CurrentValue: // obtain pseudorandom value, place in port
-                (pptr+attr) -> value.i32  = rand ();
+            case RNG_CurrentValue: // return the current value, then step the generator
+                result.i32                = (pptr+attr) -> value.i32;
+                (pptr+attr) -> value.i32  = rng_next (result.i32);
+                break;
+
             default:
                 result.i32                = (pptr+attr) -> value.i32;
                 break;
@@ -737,6 +791,10 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
     int32_t  *bptr                     = NULL;                      // button ptr (int)
     float    *fptr                     = NULL;                      // float pointer
 
+    portaddr                           = portaddr & PORT_MASK;
+    type                               = (portaddr & 0x0700) >> 8;
+    attr                               = (portaddr & 0x00FF);
+    pptr                               = *(ioports+type);
     check                              = ioports_chk (portaddr, FLAG_WRITE, sys_force);
     if (check                         == TRUE)
     {
@@ -745,7 +803,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
         switch (portaddr)
         {
             case RNG_CurrentValue:
-                srand (i32);
+                *iptr                  = rng_stored (i32, *iptr);
                 break;
 
             case GPU_Command:
@@ -980,7 +1038,47 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
             case GPU_DrawingScaleX:
             case GPU_DrawingScaleY:
             case GPU_DrawingAngle:
-                *fptr             = f32;
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // NaN and infinity are ignored, anything else is clamped to +-1024
+                //
+                if ((isnan (f32) != 0) || (isinf (f32) != 0))
+                {
+                    break;
+                }
+                *fptr             = (f32 < -1024.0f) ? -1024.0f : ((f32 > 1024.0f) ? 1024.0f : f32);
+                break;
+
+            case GPU_ActiveBlending:
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // only the three blending modes (0x20 alpha, 0x21 add, 0x22 subtract)
+                // are accepted; any other value is ignored, not stored
+                //
+                if ((i32 >= 0x20) && (i32 <= 0x22))
+                {
+                    *iptr         = i32;
+                }
+                break;
+
+            case GPU_DrawingPointX:
+                *iptr             = clamp_i32 (i32, -1000, GPU_POINT_MAX_X);
+                break;
+
+            case GPU_DrawingPointY:
+                *iptr             = clamp_i32 (i32, -1000, GPU_POINT_MAX_Y);
+                break;
+
+            case GPU_RegionMinX:
+            case GPU_RegionMinY:
+            case GPU_RegionMaxX:
+            case GPU_RegionMaxY:
+                *iptr             = clamp_i32 (i32, 0, 1023);        // inside the texture
+                break;
+
+            case GPU_RegionHotspotX:
+            case GPU_RegionHotspotY:
+                *iptr             = clamp_i32 (i32, -1024, 2047);    // one texture either side
                 break;
 
             ////////////////////////////////////////////////////////////////////////////

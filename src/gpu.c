@@ -115,7 +115,7 @@ static uint32_t  gpu_texel (vtex_t *tex, int x, int y)
     {
         return (0);
     }
-    w  = memory_get (tex -> offset + (uint32_t) y * tex -> wide + (uint32_t) x, TRUE);
+    w  = memory_texel (tex -> offset + (uint32_t) y * tex -> wide + (uint32_t) x);
     return ((w == NULL) ? 0 : w -> raw);
 }
 

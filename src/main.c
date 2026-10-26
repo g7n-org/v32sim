@@ -68,6 +68,11 @@ uint32_t  profcount;
 uint32_t  profcountsub;
 uint32_t  profcountopcode[64];
 uint32_t  rom_offset;
+uint32_t  cpu_instruction;      // the console's Instruction register: what the last fetch left there
+uint32_t  cpu_immediate;        // and ImmediateValue, which an instruction without an immediate keeps
+uint8_t   fetch_fault;          // the next instruction cannot be fetched: 1 its word, 2 its immediate word
+uint32_t  sys_error_ip;         // IP as the console had it when an error was raised, when not IP+1/+2
+uint8_t   sys_error_ip_set;
 uint32_t  seek_word;
 uint32_t  watch_word;
 linked_l *bpoint; // breakpoint list
@@ -113,17 +118,51 @@ static uint8_t  decodeflags         = FLAG_NONE;
 static void  fetch_instruction (void)
 {
     REG(IP)                            = rom_offset;
+    fetch_fault                        = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // An unreadable address is not an error until the CPU tries to FETCH from it (jumps
+    // do not check their target). The console then reports the error on that fetch:
+    // R1 = the address after the failed word, R2 and R3 = the instruction and immediate
+    // registers as the PREVIOUS instruction left them. Here the fault is only noted; it
+    // is raised when the instruction would run. IR and IV show those registers meanwhile.
+    //
+    if (memory_chk (REG(IP), FLAG_READ, TRUE) == FALSE)
+    {
+        fetch_fault                    = 1;
+        REG(IR)                        = cpu_instruction;
+        REG(IV)                        = cpu_immediate;
+        decodeflags                    = FLAG_NONE;
+        return;
+    }
+
     REG(IR)                            = IMEMGET(REG(IP)); // current instruction
     if ((REG(IR) & IMMVAL_MASK)       == IMMVAL_MASK)
     {
-        REG(IV)                        = IMEMGET(REG(IP) + 1);
         decodeflags                    = FLAG_IMMEDIATE;
+        if (memory_chk (REG(IP) + 1, FLAG_READ, TRUE) == FALSE)
+        {
+            fetch_fault                = 2;
+            REG(IV)                    = cpu_immediate;
+            return;
+        }
+        REG(IV)                        = IMEMGET(REG(IP) + 1);
     }
     else
     {
         REG(IV)                        = 0x00000000;
         decodeflags                    = FLAG_NONE;
     }
+}
+
+//
+// show_fetch_fault(): what the debugger shows for an instruction that cannot be fetched
+//
+static void  show_fetch_fault (void)
+{
+    fprintf (stdout, "<cannot fetch: 0x%.8X is not readable (InvalidMemoryRead when it runs)>\n",
+                     REG(IP) + fetch_fault - 1);
 }
 
 int32_t   main (int32_t  argc, char **argv)
@@ -150,6 +189,10 @@ int32_t   main (int32_t  argc, char **argv)
     memcfile                        = NULL;
     commandfile                     = NULL;
     rom_offset                      = BIOS_START_OFFSET;
+    cpu_instruction                 = 0;
+    cpu_immediate                   = 0;
+    fetch_fault                     = 0;
+    sys_error_ip_set                = FALSE;
     modeflag                        = FLAG_ASM;
     sourceflag                      = FALSE;
     branchflag                      = FALSE;
@@ -289,6 +332,10 @@ int32_t   main (int32_t  argc, char **argv)
     // Initialize BIOS (load contents into memory), optionally loading any debug data
     //
     chk                             = load_memory (V32_PAGE_BIOS, biosfile);
+    if ((chk == FALSE) && (biosfile != NULL))
+    {
+        exit (ROM_FORMAT_ERROR);        // the console refuses a malformed BIOS; the reason is on stderr
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -319,6 +366,10 @@ int32_t   main (int32_t  argc, char **argv)
     // Initialize CART (load contents into memory), optionally loading any debug data
     //
     chk                             = load_memory (V32_PAGE_CART, cartfile);
+    if ((chk == FALSE) && (cartfile != NULL))
+    {
+        exit (ROM_FORMAT_ERROR);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
@@ -608,7 +659,8 @@ int32_t   main (int32_t  argc, char **argv)
             //
             // If enabled, check for error generating instruction
             //
-            if (errorcheck            == TRUE)
+            if ((errorcheck           == TRUE) &&
+                (fetch_fault          == 0))
             {
                 errorflag              = decode (REG(IR), REG(IV), FREG(IV),
                                                  decodeflags    | FLAG_ERROR);
@@ -624,13 +676,26 @@ int32_t   main (int32_t  argc, char **argv)
                     decodeflags        = decodeflags            | FLAG_ERROR;
                 }
             }
+            else if ((errorcheck      == TRUE) &&
+                     (fetch_fault     != 0))
+            {
+                runflag                = FALSE;   // the error check stops before a failing fetch too
+            }
 
             ////////////////////////////////////////////////////////////////////////////
             //
             // Display the current instruction
             //
-            decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
-            if (FLAG_IMMEDIATE        == (decodeflags & FLAG_IMMEDIATE))
+            if (fetch_fault           != 0)
+            {
+                show_fetch_fault ();
+            }
+            else
+            {
+                decode   (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
+            }
+            if ((FLAG_IMMEDIATE       == (decodeflags & FLAG_IMMEDIATE)) &&
+                (fetch_fault          == 0))
             {
                 put_word (REG(IV), FLAG_DISPLAY);
                 fprintf  (stdout, "\n");
@@ -707,7 +772,8 @@ int32_t   main (int32_t  argc, char **argv)
                     //
                     // If enabled, check for error generating instruction
                     //
-                    if (errorcheck        == TRUE)
+                    if ((errorcheck       == TRUE) &&
+                        (fetch_fault      == 0))
                     {
                         errorflag          = decode (REG(IR), REG(IV), FREG(IV),
                                                      decodeflags    | FLAG_ERROR);
@@ -717,9 +783,17 @@ int32_t   main (int32_t  argc, char **argv)
                             decodeflags    = decodeflags            | FLAG_ERROR;
                         }
                     }
-                    decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
+                    if (fetch_fault       != 0)
+                    {
+                        show_fetch_fault ();
+                    }
+                    else
+                    {
+                        decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_DISPLAY);
+                    }
 
-                    if (FLAG_IMMEDIATE    == (decodeflags & FLAG_IMMEDIATE))
+                    if ((FLAG_IMMEDIATE   == (decodeflags & FLAG_IMMEDIATE)) &&
+                        (fetch_fault      == 0))
                     {
                         if (sys_reg_show  == TRUE)
                         {
@@ -792,18 +866,46 @@ int32_t   main (int32_t  argc, char **argv)
             // Clear the system error variable
             //
             sys_error                  = ERROR_NONE;
+            sys_error_ip_set           = FALSE;
 
             ////////////////////////////////////////////////////////////////////////////
             //
-            // Execute the current instruction
+            // The console counts the cycle first, then fetches and runs the instruction
             //
-            addrprof_count (REG(IP));
-            decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_PROCESS);
+            cycle_begin ();
 
-            // Check for watchpoint triggers
-            if (wpoint_check ()       == TRUE)
+            if (fetch_fault           != 0)
             {
-                runflag                = FALSE;
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // The fetch fails: InvalidMemoryRead, with the instruction register
+                // updated only if its own word was read (fault 2)
+                //
+                sys_error              = ERROR_MEMORY_READ;
+                if (fetch_fault       == 2)
+                {
+                    cpu_instruction    = REG(IR);
+                }
+            }
+            else
+            {
+                ////////////////////////////////////////////////////////////////////////
+                //
+                // Execute the current instruction
+                //
+                cpu_instruction        = REG(IR);
+                if (decodeflags & FLAG_IMMEDIATE)
+                {
+                    cpu_immediate      = REG(IV);
+                }
+                addrprof_count (REG(IP));
+                decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_PROCESS);
+
+                // Check for watchpoint triggers
+                if (wpoint_check ()   == TRUE)
+                {
+                    runflag            = FALSE;
+                }
             }
         }
 
@@ -822,8 +924,8 @@ int32_t   main (int32_t  argc, char **argv)
             // BP registers wiped, and flow  redirected to the BIOS error
             // handler at 0x10000000.
             //
-            // To check: does  the cycle counter of  the instruction that
-            // the error occurred on get incremented?
+            // (The instruction that raised the error has been counted as a
+            // cycle, as on the console; the frame then ends, see below.)
             //
             if (exitflag               == TRUE)
             {
@@ -832,10 +934,28 @@ int32_t   main (int32_t  argc, char **argv)
                 haltflag               = TRUE;
                 continue;
             }
+            // R1 is the IP as the CPU has it when the error is raised: just past the
+            // instruction (and its immediate) or, for a failed fetch, past the word
+            // that could not be read; a RET that underflows has already loaded IP.
+            // R2 and R3 are the console's instruction and immediate registers, so R3
+            // is whatever immediate was fetched last (an instruction without one
+            // does not clear it).
+            //
             REG(R0)                    = sys_error;
-            REG(R1)                    = REG(IP) + (((REG(IR) & IMMVAL_MASK) != 0) ? 2 : 1);
-            REG(R2)                    = REG(IR);
-            REG(R3)                    = REG(IV);
+            if (sys_error_ip_set      == TRUE)
+            {
+                REG(R1)                = sys_error_ip;
+            }
+            else if (fetch_fault      != 0)
+            {
+                REG(R1)                = REG(IP) + fetch_fault;
+            }
+            else
+            {
+                REG(R1)                = REG(IP) + (((REG(IR) & IMMVAL_MASK) != 0) ? 2 : 1);
+            }
+            REG(R2)                    = cpu_instruction;
+            REG(R3)                    = cpu_immediate;
 
             REG(SP)                    = 0x003FFFFF;   // the last word of RAM, as at reset
             REG(BP)                    = 0x003FFFFF;
@@ -844,7 +964,17 @@ int32_t   main (int32_t  argc, char **argv)
             rom_offset                 = BIOS_ERROR_OFFSET;
 
             sys_error                  = ERROR_NONE;
+            sys_error_ip_set           = FALSE;
+            branchflag                 = FALSE;        // an aborted RET/CALL leaves nothing pending
+            retflag                    = FALSE;
             runflag                    = FALSE;
+
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // An error ends the frame (the console unwinds out of its cycle loop): the
+            // handler's first instruction runs at the start of the next frame
+            //
+            update_frame ();
 
             continue; // kick to next iteration
         }

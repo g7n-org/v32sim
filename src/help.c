@@ -34,8 +34,8 @@ void  usage (int8_t *program)
     fprintf (stdout, "     --fast                do not throttle to real time (frames run as fast as possible)\n");
     fprintf (stdout, "     --frame-us=N          wall-clock microseconds per frame (default 16666; 0 = --fast)\n");
     fprintf (stdout, "     --max-frames=N        stop after N frames\n");
-    fprintf (stdout, "     --fixed-clock[=Y,D,S] TIM_CurrentDate/Time start at year Y, day-of-year D, S seconds\n");
-    fprintf (stdout, "                           (default 2026,1,0) instead of the host clock (reproducible runs)\n");
+    fprintf (stdout, "     --fixed-clock[=Y,D,S] TIM_CurrentDate/Time start at year Y, day D (0 = Jan 1st), S seconds\n");
+    fprintf (stdout, "                           (default 2026,0,0) instead of the host clock (reproducible runs)\n");
     fprintf (stdout, "     --seed=N              seed the RNG_CurrentValue generator with N at startup\n");
     fprintf (stdout, "     --tty                 full-screen interactive mode: the text console on this terminal, keys\n");
     fprintf (stdout, "                           to a v32kbd (port 0 unless --v32kbd=N); Ctrl-] = debugger\n");

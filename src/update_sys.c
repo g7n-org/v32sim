@@ -27,56 +27,74 @@ static uint64_t frame_start_ns = 0;
 uint32_t  frame_us      = 1000000 / V32_FRAMES_PER_SECOND;
 uint32_t  max_frames    = 0;       // 0 = no limit
 uint8_t   fixed_clock   = 0;       // --fixed-clock
-uint32_t  fixed_year    = 2026, fixed_day = 1, fixed_secs = 0;
+uint32_t  fixed_year    = 2026, fixed_day = 0, fixed_secs = 0;   // days count from 0, as on the console
 uint8_t   rng_seed_set  = 0;       // --seed
 uint32_t  rng_seed      = 0;
 uint32_t  frames_run    = 0;       // frames completed since start
 uint8_t   frame_limit   = FALSE;   // set when max_frames was reached
 
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// cycle_begin(): the console counts an instruction's cycle BEFORE it runs
+// (V32Console::RunNextFrame calls Timer.RunNextCycle() and then CPU.RunNextCycle()), so
+// the first instruction of a frame reads TIM_CycleCounter = 1 and an instruction that
+// raises a hardware error has already been counted.
+//
+void cycle_begin(void) {
+    SYSPORTSET(TIM_CycleCounter, IPORTGET(TIM_CycleCounter) + 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// update_cycle(): run after each executed instruction. The frame ends when the cycle
+// budget is used up, or when the instruction was a WAIT (it is still counted as a cycle,
+// the console just stops running the frame)
+//
 void update_cycle(void) {
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Declare and initialize variables
-    //
-    uint32_t cycles = 0;
+    uint32_t cycles = IPORTGET(TIM_CycleCounter);
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Obtain the current number of cycles from the system's cycle counter port
-    //
-    cycles = IPORTGET(TIM_CycleCounter);
+    if ((waitflag == TRUE) || (cycles >= CYCLES_PER_FRAME)) {
+        update_frame();
+    }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // If we are not WAITing, increment TIM_CycleCounter
-    //
-    if (waitflag == FALSE) {
-        cycles = cycles + 1;
-    } else {
-        // Force frame completion on WAIT
-        cycles = CYCLES_PER_FRAME;
-        waitflag = FALSE;
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// timer_change_frame(): V32Timer::ChangeFrame. The console does this at the START of a
+// frame, before the program runs: the cycle counter returns to 0, the frame counter goes
+// up (so the first frame runs with TIM_FrameCounter = 1), the clock advances once a second
+// and the date once a day. Days are numbered from 0 (tm_yday), as on the console.
+//
+void timer_change_frame(void) {
+    uint32_t value = 0;
+
+    SYSPORTSET(TIM_CycleCounter, 0);
+
+    value = IPORTGET(TIM_FrameCounter) + 1;
+    SYSPORTSET(TIM_FrameCounter, value);
+
+    if ((value % 60) == 0) {
+        SYSPORTSET(TIM_CurrentTime, IPORTGET(TIM_CurrentTime) + 1);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Check for frame roll-over
-    //
-    if (cycles >= CYCLES_PER_FRAME) {
-        update_frame();
-    } else {
-        SYSPORTSET(TIM_CycleCounter, cycles);
+    if (IPORTGET(TIM_CurrentTime) >= 86400) {
+        uint32_t date, year, days, daysinyear;
+
+        SYSPORTSET(TIM_CurrentTime, 0);
+
+        date  = IPORTGET(TIM_CurrentDate) + 1;
+        year  = date >> 16;
+        days  = date & 0xFFFF;
+        daysinyear = ((((year % 4) == 0) && ((year % 100) != 0)) ||
+                      ((year % 400) == 0)) ? 366 : 365;
+        if (days >= daysinyear) {
+            date = (year + 1) << 16;         // new year, back to day 0
+        }
+        SYSPORTSET(TIM_CurrentDate, date);
     }
 }
 
 void update_frame(void) {
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Declare and initialize variables
-    //
-    uint32_t value = 0;
-    uint32_t upper = 0;
-
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // profiler stats update
@@ -86,62 +104,13 @@ void update_frame(void) {
         csub->FRAMES = csub->CYCLES / CYCLES_PER_FRAME;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // increment frame counter
-    //
-    value = IPORTGET(TIM_FrameCounter);
-    value = value + 1;
-    SYSPORTSET(TIM_FrameCounter, value);
-    waitflag = FALSE;  // reset waitflag
+    waitflag = FALSE;  // a WAIT has had its effect: the frame ends here
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
-    // reset TIM_CycleCounter to 0 with the new frame
+    // the next frame starts: the console's timer changes frame before the CPU runs again
     //
-    SYSPORTSET(TIM_CycleCounter, 0);
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    //
-    // adjust TIM_CurrentTime, if enough frames have elapsed
-    //
-    if ((value % 60) == 0) {
-        value = IPORTGET(TIM_CurrentTime);
-        value = value + 1;
-
-        ////////////////////////////////////////////////////////////////////////////////
-        //
-        // adjust TIM_CurrentDate, if enough seconds have elapsed in TIM_CurrentTime
-        //
-        if (value >= 86400) {
-            value = IPORTGET(TIM_CurrentDate);
-            upper = value & 0xFFFF0000; // isolate year from TIM_CurrentDate
-            value = value & 0x0000FFFF; // isolate day from TIM_CurrentDate
-            value = value + 1;          // increment the day
-
-            ////////////////////////////////////////////////////////////////////////////
-            //
-            // larger adjustment of TIM_CurrentDate if year needs incrementing
-            //
-            {
-                uint32_t  year       = upper >> 16;
-                uint32_t  daysinyear = ((((year % 4) == 0) && ((year % 100) != 0)) ||
-                                        ((year % 400) == 0)) ? 366 : 365;
-
-                if (value > daysinyear)          // days are numbered from 1
-                {
-                    value  = 1;                  // new year, back to day 1
-                    upper  = upper + 0x00010000; // increment the year
-                }
-                value = upper | value;           // recombine YEAR and DAY
-            }
-            SYSPORTSET(TIM_CurrentDate, value);
-
-            value = 0; // TIM_CurrentTime resets to 0
-        }
-
-        SYSPORTSET(TIM_CurrentTime, value);
-    }
+    timer_change_frame();
 
     ////////////////////////////////////////////////////////////////////////////////////
     //

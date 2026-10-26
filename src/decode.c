@@ -900,8 +900,7 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case WAIT:
-            waitflag        = TRUE; // triggers TIM_CycleCounter to reset
-            update_frame ();        // update Frame Counter
+            waitflag        = TRUE; // the frame ends once this instruction has been counted
             break;
 
         case JMP:
@@ -911,9 +910,25 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case CALL:
-            REG(SP)                    = REG(SP) - 1;   // PUSH REG(IP) value to stack
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // push the return address, as the console's Push() does: SP goes down
+            // first; below RAM that is a StackOverflow, otherwise the write may still
+            // fail (InvalidMemoryWrite). IP only changes when the push worked, and the
+            // target register is read after SP moved (so CALL SP calls SP-1)
+            //
+            REG(SP)                    = REG(SP) - 1;
             value                      = (immflag == TRUE)   ? 2          : 1;
+            if (REG(SP)               <  RAM_FIRST_ADDR)
+            {
+                sys_error              = ERROR_STACK_OVERFLOW;
+                break;
+            }
             memory_set (REG(SP), (REG(IP) + value), FALSE);
+            if (sys_error             != ERROR_NONE)
+            {
+                break;
+            }
             REG(IP)                    = (immflag == TRUE)   ? immediate  : DSTREG;
             rom_offset                 = REG(IP);
             branchflag                 = TRUE;
@@ -966,9 +981,27 @@ void  decode_process (uint32_t  instruction,
             break;
 
         case RET:
-            REG(IP)                    = IMEMGET(REG(SP));
-            rom_offset                 = REG(IP);  // POP REG(IP) off stack
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // the console's Pop() into IP: read the word (a failure changes nothing),
+            // load IP with it, then SP goes up; past the end of RAM that is a
+            // StackUnderflow, reported with the IP just popped
+            //
+            value                      = IMEMGET(REG(SP));
+            if (sys_error             != ERROR_NONE)
+            {
+                break;
+            }
+            REG(IP)                    = value;
+            rom_offset                 = REG(IP);
             REG(SP)                    = REG(SP) + 1;
+            if (REG(SP)               >  RAM_FINAL_ADDR)
+            {
+                sys_error              = ERROR_STACK_UNDERFLOW;
+                sys_error_ip           = REG(IP);
+                sys_error_ip_set       = TRUE;
+                break;
+            }
             branchflag                 = TRUE;
             retflag                    = TRUE;
 
@@ -1095,19 +1128,31 @@ void  decode_process (uint32_t  instruction,
                 case 02: // MOV DSTREG, [Immediate]
                     fprintf (debug, "[decode_process] MOV(2): memory_get (0x%.8X)\n",
                             immediate);
-                    DSTREG  = IMEMGET(immediate);
+                    value   = IMEMGET(immediate);
+                    if (sys_error == ERROR_NONE)       // a failed read leaves the register alone
+                    {
+                        DSTREG  = value;
+                    }
                     break;
 
                 case 03: // MOV DSTREG, [SRCREG]
                     fprintf (debug, "[decode_process] MOV(3): memory_get (0x%.8X)\n",
                             SRCREG);
-                    DSTREG  = IMEMGET(SRCREG);
+                    value   = IMEMGET(SRCREG);
+                    if (sys_error == ERROR_NONE)
+                    {
+                        DSTREG  = value;
+                    }
                     break;
 
                 case 04: // MOV DSTREG, [SRCREG+Immediate]
                     fprintf (debug, "[decode_process] MOV(4): memory_get (0x%.8X)\n",
                             (SRCREG + immediate));
-                    DSTREG  = IMEMGET(SRCREG + immediate);
+                    value   = IMEMGET(SRCREG + immediate);
+                    if (sys_error == ERROR_NONE)
+                    {
+                        DSTREG  = value;
+                    }
                     break;
 
                 case 05: // MOV [Immediate], SRCREG
@@ -1132,25 +1177,59 @@ void  decode_process (uint32_t  instruction,
 
         case PUSH:
             fprintf (debug, "[decode_process] PUSH: memory_set (0x%.8X, 0x%.8X)\n", REG(SP), DSTREG);
-            REG(SP)         = REG(SP) - 1; // adjust top of stack
-            MEMSET(REG(SP), DSTREG);      // place on top of stack
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // the console's Push(): the value is taken BEFORE SP moves (PUSH SP pushes
+            // the old SP); SP < 0 is a StackOverflow; the write can still fail
+            // (InvalidMemoryWrite, e.g. SP in ROM)
+            //
+            value           = DSTREG;
+            REG(SP)         = REG(SP) - 1;
+            if (REG(SP)    <  RAM_FIRST_ADDR)
+            {
+                sys_error   = ERROR_STACK_OVERFLOW;
+                break;
+            }
+            MEMSET(REG(SP), value);       // place on top of stack
             break;
 
         case POP:
             fprintf (debug, "[decode_process] POP: memory_get (0x%.8X)\n", REG(SP));
-            DSTREG          = IMEMGET(REG(SP));
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // the console's Pop(): the read can fail (InvalidMemoryRead, nothing
+            // changes); the register is loaded, then SP goes up (POP SP ends up one
+            // above the popped value); past the end of RAM that is a StackUnderflow,
+            // raised after the register was written
+            //
+            value           = IMEMGET(REG(SP));
+            if (sys_error  != ERROR_NONE)
+            {
+                break;
+            }
+            DSTREG          = value;
             REG(SP)         = REG(SP) + 1;
+            if (REG(SP)    >  RAM_FINAL_ADDR)
+            {
+                sys_error   = ERROR_STACK_UNDERFLOW;
+            }
             break;
 
         case IN:
             fprintf (debug, "[decode_process] IN: ioports_get (0x%.3X)\n", port);
-            DSTREG          = ((fixed_cycles == TRUE) && (port == TIM_CycleCounter)) ? 0 : IPORTGET(port);
+            port            = port & 0x7FF;
+            value           = ((fixed_cycles == TRUE) && (port == TIM_CycleCounter)) ? 0 : IPORTGET(port);
+            if (sys_error  == ERROR_NONE)          // a failed read leaves the register alone
+            {
+                DSTREG      = value;
+            }
             break;
 
         case OUT:
             value           = (immflag == TRUE)  ? immediate  : SRCREG;
             fprintf (debug, "[decode_process] OUT: ioports_set (0x%.3X, 0x%.8X)\n",
                             port, value);
+            port            = port & 0x7FF;
             switch (port)
             {
                 case GPU_DrawingScaleX:
@@ -1166,50 +1245,88 @@ void  decode_process (uint32_t  instruction,
             }
             break;
 
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // MOVS, SETS and CMPS move ONE word per execution, as on the console: when the
+        // count has not run out the instruction pointer stays on the instruction, so
+        // the next cycle does the next word. A string operation of N words therefore
+        // costs N cycles, the frame can end in the middle of it, and an error part way
+        // leaves the words already done in place with SR/DR/CR showing the progress.
+        // CR <= 0 does one word and stops.
+        //
         case MOVS:
-            do
+            value           = IMEMGET(REG(SR));
+            if (sys_error  != ERROR_NONE)
             {
-                value       = IMEMGET(REG(SR));
-                MEMSET(REG(DR), value);
-                REG(DR)     = REG(DR) + 1;
-                REG(SR)     = REG(SR) + 1;
-                if (REG(CR) >  0)       // as on the console: CR counts down to 0,
-                {                       // and a CR that starts at <= 0 runs once
-                    REG(CR) = REG(CR) - 1;
-                }
+                break;
             }
-            while (REG(CR) >  0);
+            MEMSET(REG(DR), value);
+            if (sys_error  != ERROR_NONE)
+            {
+                break;
+            }
+            REG(DR)         = REG(DR) + 1;
+            REG(SR)         = REG(SR) + 1;
+            if (REG(CR)    >  0)
+            {
+                REG(CR)     = REG(CR) - 1;
+            }
+            if (REG(CR)    >  0)
+            {
+                branchflag  = TRUE;               // repeat: stay on this instruction
+            }
             break;
 
         case SETS:
-            do
+            MEMSET(REG(DR), REG(SR));             // the VALUE of the source register
+            if (sys_error  != ERROR_NONE)
             {
-                MEMSET(REG(DR), REG(SR));          // the VALUE of the source register
-                REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
-                if (REG(CR) >  0)
-                {
-                    REG(CR) = REG(CR) - 1; // CR: Count Register (R11)
-                }
+                break;
             }
-            while (REG(CR) >  0);
+            REG(DR)         = REG(DR) + 1;        // DR: Destination Register (R13)
+            if (REG(CR)    >  0)
+            {
+                REG(CR)     = REG(CR) - 1;        // CR: Count Register (R11)
+            }
+            if (REG(CR)    >  0)
+            {
+                branchflag  = TRUE;
+            }
             break;
 
         case CMPS:
-            do
+            ////////////////////////////////////////////////////////////////////////////
+            //
+            // the result register receives [DR] first (and keeps it if reading [SR]
+            // fails), then [DR] - [SR]; a difference ends the comparison at once,
+            // without touching DR, SR or CR
+            //
+            value           = IMEMGET(REG(DR));
+            if (sys_error  != ERROR_NONE)
             {
-                DSTREG      = IMEMGET(REG(DR)) - IMEMGET(REG(SR));
-                if (DSTREG != 0)
-                {
-                    break;
-                }
-                REG(DR)     = REG(DR) + 1; // DR: Destination Register (R13)
-                REG(SR)     = REG(SR) + 1; // SR: Source Register (R12)
-                if (REG(CR) >  0)
-                {
-                    REG(CR) = REG(CR) - 1; // CR: Count Register (R11)
-                }
+                break;
             }
-            while (REG(CR) >  0);
+            DSTREG          = value;
+            value           = IMEMGET(REG(SR));
+            if (sys_error  != ERROR_NONE)
+            {
+                break;
+            }
+            DSTREG          = DSTREG - value;
+            if (DSTREG     != 0)
+            {
+                break;
+            }
+            REG(DR)         = REG(DR) + 1;        // DR: Destination Register (R13)
+            REG(SR)         = REG(SR) + 1;        // SR: Source Register (R12)
+            if (REG(CR)    >  0)
+            {
+                REG(CR)     = REG(CR) - 1;        // CR: Count Register (R11)
+            }
+            if (REG(CR)    >  0)
+            {
+                branchflag  = TRUE;
+            }
             break;
 
         case CIF:
@@ -1304,9 +1421,9 @@ void  decode_process (uint32_t  instruction,
         case IMIN:
             if (immflag    == TRUE)
             {
-                if (DSTREG >  immediate)
+                if (DSTREG >  (int32_t) immediate)
                 {
-                    DSTREG  = immediate;
+                    DSTREG  = (int32_t) immediate;
                 }
             }
             else
@@ -1321,9 +1438,9 @@ void  decode_process (uint32_t  instruction,
         case IMAX:
             if (immflag    == TRUE)
             {
-                if (DSTREG <  immediate)
+                if (DSTREG <  (int32_t) immediate)
                 {
-                    DSTREG  = immediate;
+                    DSTREG  = (int32_t) immediate;
                 }
             }
             else
@@ -1524,37 +1641,31 @@ uint8_t  decode_check (uint32_t  instruction,
         case SIN:
             break;
 
+        // a jump to a bad address is not an error of the jump: the console faults when it
+        // fetches the instruction there, which is the next cycle
         case JMP:
-            data            = (immflag == TRUE)   ? immediate  : DSTREG;
-            result          = memory_chk  (data,               FLAG_READ,  FALSE);
-            break;
-
-        case CALL:
-            data            = (immflag == TRUE)   ? immediate  : DSTREG;
-            result          = memory_chk  (REG(SP)-1,          FLAG_WRITE, FALSE);
-            if (result     == TRUE)
-            {
-                result      = memory_chk  (data,               FLAG_READ,  FALSE);
-            }
-            break;
-
-        case RET:
-            result          = memory_chk  (REG(SP),            FLAG_READ,  FALSE);
-            break;
-
         case JT:
-            if (DSTREG     != FALSE)
+        case JF:
+            break;
+
+        case CALL:                   // pushes the return address (see decode_process)
+            if (REG(SP)    <= RAM_FIRST_ADDR)
             {
-                data        = (immflag == TRUE)   ? immediate  : SRCREG;
-                result      = memory_chk  (data,               FLAG_READ,  FALSE);
+                result      = FALSE;
+                sys_error   = ERROR_STACK_OVERFLOW;
+            }
+            else
+            {
+                result      = memory_chk  (REG(SP)-1,          FLAG_WRITE, FALSE);
             }
             break;
 
-        case JF:
-            if (DSTREG     == FALSE)
+        case RET:                    // pops into IP
+            result          = memory_chk  (REG(SP),            FLAG_READ,  FALSE);
+            if ((result    == TRUE) && ((REG(SP) + 1) > RAM_FINAL_ADDR))
             {
-                data        = (immflag == TRUE)   ? immediate  : SRCREG;
-                result      = memory_chk  (data,               FLAG_READ,  FALSE);
+                result      = FALSE;
+                sys_error   = ERROR_STACK_UNDERFLOW;
             }
             break;
 
@@ -1592,10 +1703,14 @@ uint8_t  decode_check (uint32_t  instruction,
             break;
 
         case PUSH:
-            result          = memory_chk  ((REG(SP)-1),        FLAG_WRITE, FALSE);
-            if (result     == FALSE)
+            if (REG(SP)    <= RAM_FIRST_ADDR)
             {
+                result      = FALSE;
                 sys_error   = ERROR_STACK_OVERFLOW;
+            }
+            else
+            {
+                result      = memory_chk  ((REG(SP)-1),        FLAG_WRITE, FALSE);
             }
             break;
 
@@ -1619,38 +1734,24 @@ uint8_t  decode_check (uint32_t  instruction,
             result          = ioports_chk (port,               FLAG_WRITE, FALSE);
             break;
 
+        // a string operation moves one word per cycle: only the next one is checked
         case MOVS:
-            for (value      = 0;
-                 ((value   <  ((REG(CR) > 0) ? REG(CR) : 1)) && (result == TRUE));   // CR <= 0 runs once
-                 value      = value + 1)
+            result      = memory_chk  (REG(SR),   FLAG_READ,  FALSE);
+            if (result == TRUE)
             {
-                result      = memory_chk  ((REG(SR)+value),   FLAG_READ,  FALSE);
-                if (result == TRUE)
-                {
-                    result  = memory_chk  ((REG(DR)+value),   FLAG_WRITE, FALSE);
-                }
+                result  = memory_chk  (REG(DR),   FLAG_WRITE, FALSE);
             }
             break;
 
         case SETS:
-            for (value      = 0;
-                 ((value   <  ((REG(CR) > 0) ? REG(CR) : 1)) && (result == TRUE));   // CR <= 0 runs once
-                 value      = value + 1)
-            {
-                result      = memory_chk  ((REG(DR)+value),   FLAG_WRITE, FALSE);
-            }
+            result      = memory_chk  (REG(DR),   FLAG_WRITE, FALSE);
             break;
 
         case CMPS:
-            for (value      = 0;
-                 ((value   <  ((REG(CR) > 0) ? REG(CR) : 1)) && (result == TRUE));   // CR <= 0 runs once
-                 value      = value + 1)
+            result      = memory_chk  (REG(DR),   FLAG_READ,  FALSE);
+            if (result == TRUE)
             {
-                result      = memory_chk  ((REG(DR)+value),   FLAG_READ,  FALSE);
-                if (result == TRUE)
-                {
-                    result  = memory_chk  ((REG(SR)+value),   FLAG_READ,  FALSE);
-                }
+                result  = memory_chk  (REG(SR),   FLAG_READ,  FALSE);
             }
             break;
 

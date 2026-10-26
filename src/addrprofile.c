@@ -60,7 +60,7 @@ uint8_t  addrprof_enabled (void)
 
 void  addrprof_count (uint32_t  address)
 {
-    uint32_t  page   = (address & 0xF0000000) >> 28;
+    uint32_t  page   = (address & V32_PAGE_MASK) >> 28;    // the bus ignores bits 30-31
     uint32_t  offset = (address & 0x0FFFFFFF);
 
     if ((page < NUM_MEMORY_PAGES) && (counts[page] != NULL) &&

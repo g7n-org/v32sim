@@ -119,6 +119,7 @@ struct memory_type
     uint32_t  firstaddr;
     uint32_t  last_addr;
     uint32_t  size;
+    uint32_t  extra;       // words allocated beyond size (a ROM's texture pixels)
     uint32_t  checksum;
 };
 typedef struct memory_type mem_t;
@@ -202,6 +203,11 @@ extern uint32_t   profcount;
 extern uint32_t   profcountsub;
 extern uint32_t   profcountopcode[64];
 extern uint32_t   rom_offset;
+extern uint32_t   cpu_instruction;             // the console's Instruction / ImmediateValue registers
+extern uint32_t   cpu_immediate;
+extern uint8_t    fetch_fault;                 // 0 none, 1 instruction word, 2 immediate word unreadable
+extern uint32_t   sys_error_ip;                // R1 override for the error being raised
+extern uint8_t    sys_error_ip_set;
 extern uint32_t   seek_word;
 extern uint32_t   watch_word;
 extern linked_l  *bpoint; // breakpoint list
@@ -240,7 +246,8 @@ uint8_t   load_memory    (uint32_t,    int8_t *);             // load file into 
 uint8_t   unload_memory  (uint32_t);
 uint8_t   memory_chk     (uint32_t,    uint8_t,     uint8_t);
 void      dump_words    (int8_t *);                                  // --dump=N[@ADDR|@LABEL]
-word_t   *memory_get     (uint32_t,    uint8_t);              // get value from memory
+word_t   *memory_get     (uint32_t,    uint8_t);
+word_t   *memory_texel   (uint32_t);                            // ROM texture pixel (beyond the CPU-visible size)
 void      memory_set     (uint32_t,    uint32_t,    uint8_t); // set value to memory
 void      fmemory_set    (uint32_t,    float,       uint8_t);
 void      init_registers (void);
@@ -289,7 +296,9 @@ void      output_iop     (uint32_t,    uint8_t,     uint8_t *);
 void      output_mem_named (const char *, uint32_t,   uint8_t,  uint8_t,  uint8_t *);
 void      output_val     (const char *, uint32_t,     uint8_t);
 word_t   *new_word_i32   (uint32_t *,  uint8_t);
-void      update_cycle   (void);                              // updating CycleCounter
+void      cycle_begin    (void);                              // count an instruction's cycle (before it runs)
+void      update_cycle   (void);                              // end the frame when its cycles are used up
+void      timer_change_frame (void);                          // the timer's start-of-frame step
 void      addrprof_init  (void);                               // address profile (addrprofile.c)
 uint8_t   addrprof_enabled (void);
 void      addrprof_count (uint32_t);

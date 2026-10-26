@@ -63,5 +63,5 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
     what the guest draws (recolorable); text drawn with a program's own font is
     not captured.
   * **v32mouse** - the protocol is not emulated (only the keyboard).
-  * **Cycle accuracy** - `MOVS`/`SETS`/`CMPS` run to completion as one step
-    (the console runs one word per cycle).
+  * **Rendering fidelity** - the software renderer's rasterization of rotated and
+    scaled quads has not been compared with the OpenGL output (V32SIMGAPS G14).

@@ -15,9 +15,12 @@ software — and to automate cart testing.
 
 ## Current State
 
-- All 64 CPU instructions are implemented and have been checked against the
-  DesktopEmulator sources (repeat counts of `MOVS`/`SETS`/`CMPS`, logical right
-  shifts in `SHL`, and the `ACOS`/`ATAN2`/`LOG`/`POW` errors follow the console)
+- All 64 CPU instructions are implemented and are checked by running the same
+  cartridges on v32sim and on the stock console logic (`tests/run_gaps.sh`,
+  `run_fuzz.sh`, `run_romcheck.sh`; see `V32SIMGAPS.md`): the timer and RNG, the
+  stack, the memory bus, error timing, one word per cycle for `MOVS`/`SETS`/`CMPS`,
+  GPU port clamping and ROM validation match the console. Only host-undefined
+  behavior (shift counts >= 32, `INT_MIN / -1`) and pixel-level rendering differ
 - Registers (R0-R15 with their aliases, plus system registers IP/IR/IV) and
   the four memory pages (RAM, BIOS, CART, MEMCARD) behave as the hardware does
 - System errors (invalid memory/port access, division by zero, etc.) record
@@ -180,7 +183,7 @@ Mandatory arguments to long options are mandatory for short options too.
  --fast                    do not throttle to real time
  --frame-us=N              wall-clock microseconds per frame (default 16666)
  --max-frames=N            stop after N frames
- --fixed-clock[=Y,D,S]     start TIM_CurrentDate/Time at year Y, day D, S seconds (default 2026,1,0)
+ --fixed-clock[=Y,D,S]     start TIM_CurrentDate/Time at year Y, day D (0 = Jan 1st), S seconds (default 2026,0,0)
  --seed=N                  seed the RNG_CurrentValue generator with N
  -x, --exit-status         exit status tells how the program ended
  -q, --batch               scripting mode: no prompt, banners or instruction lines; stderr for diagnostics

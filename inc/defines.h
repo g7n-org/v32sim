@@ -68,6 +68,7 @@
 #define  STRING_ALLOC_FAIL       13
 #define  DATA_ALLOC_FAIL         14
 #define  LIST_ALLOC_FAIL         15
+#define  ROM_FORMAT_ERROR        21
 
 #define  BIOS_START_OFFSET       0x10000004
 #define  BIOS_ERROR_OFFSET       0x10000000

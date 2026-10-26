@@ -1512,6 +1512,10 @@ static void  exec_asm (cmd_t *c)
         memcpy (&fimm, &REG(IV), sizeof (fimm));
         branchflag  = FALSE;
         decode (words[0], REG(IV), fimm, flags | FLAG_PROCESS);
+        if (waitflag == TRUE)
+        {
+            update_frame ();            // a WAIT ends the frame (main loop does it for real runs)
+        }
         if (branchflag == TRUE)
         {
             branchflag  = FALSE;

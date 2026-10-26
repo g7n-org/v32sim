@@ -49,7 +49,7 @@ void  init_memory (void)
             case V32_PAGE_BIOS:
                 (memory+page) -> type       = V32_PAGE_BIOS;
                 (memory+page) -> firstaddr  = BIOS_FIRST_ADDR;
-                (memory+page) -> size       = get_filesize (biosfile);
+                (memory+page) -> size       = 0;     // sized by load_memory() from the ROM header
                 (memory+page) -> flag       = FLAG_READ;
                 (memory+page) -> data       = NULL;
                 break;
@@ -57,7 +57,7 @@ void  init_memory (void)
             case V32_PAGE_CART:
                 (memory+page) -> type       = V32_PAGE_CART;
                 (memory+page) -> firstaddr  = CART_FIRST_ADDR;
-                (memory+page) -> size       = get_filesize (cartfile);
+                (memory+page) -> size       = 0;
                 (memory+page) -> flag       = FLAG_READ;
                 (memory+page) -> data       = NULL;
                 break;
@@ -102,7 +102,7 @@ uint8_t  alloc_memory (int32_t  page)
         //
         // determine size of page
         //
-        len                                 = (memory+page) -> size;
+        len                                 = (memory+page) -> size + (memory+page) -> extra;
 
         ////////////////////////////////////////////////////////////////////////////////
         //
@@ -148,7 +148,16 @@ uint8_t  alloc_memory (int32_t  page)
 //
 uint8_t  memory_chk (uint32_t  address, uint8_t  flag, uint8_t  sys_force)
 {
-    uint32_t  page             = (address & 0xF0000000) >> 28;
+    ////////////////////////////////////////////////////////////////////////////////////
+    //
+    // The memory bus decodes only bits 28-29 of an address as the device and the low 28
+    // bits as the address inside it (V32MemoryBus): bits 30 and 31 are ignored, so
+    // 0x40000000 is RAM, 0x90000000 is the BIOS, 0xE0000000 the cartridge and -1 is
+    // the last word of the memory card's range. There is no "invalid page"; an access
+    // is refused only by the device itself (outside its size, or a write to ROM)
+    //
+    uint32_t  page             = (address & V32_PAGE_MASK) >> 28;
+    uint32_t  offset           = (address & 0x0FFFFFFF);
     uint8_t   type[5];
     uint8_t   action[6];
     uint8_t   attr             = 0;
@@ -180,19 +189,8 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  flag, uint8_t  sys_force)
             sprintf (type, "CART");
             break;
 
-        case V32_PAGE_MEMC:
+        default:    // V32_PAGE_MEMC
             sprintf (type, "MEMC");
-            break;
-
-        default:
-            type[0]            = '\0';
-            if (sys_force     == FALSE)
-            {
-                fprintf (verbose, "[ERROR] invalid memory %s at 0x%.8X\n",
-                                  action, address);
-                sys_error      = error;
-            }
-            result             = FALSE;
             break;
     }
 
@@ -200,34 +198,54 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  flag, uint8_t  sys_force)
     //
     // report the error, set system error
     //
-    if (result                == TRUE)
+    attr                       = (memory+page) -> flag;
+    if ((offset               >= (memory+page) -> size) ||
+        ((sys_force           == FALSE) &&
+         (flag                != (flag & attr))))
     {
-        attr                   = (memory+page) -> flag;
-        if ((address          >= (memory+page) -> last_addr) ||
-            ((sys_force       == FALSE) &&
-             (flag            != (flag & attr))))
+        if (sys_force         == FALSE)
         {
-            if (sys_force     == FALSE)
-            {
-                fprintf (verbose, "[ERROR] invalid %s %s at 0x%.8X\n",
-                                  type, action, address);
-                sys_error      = error;
-            }
-            result             = FALSE;
+            fprintf (verbose, "[ERROR] invalid %s %s at 0x%.8X\n",
+                              type, action, address);
+            sys_error          = error;
         }
+        result                 = FALSE;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //
     // memory not loaded (so any access would be an error)
     //
-    if ((page                 >= NUM_MEMORY_PAGES) ||
-        ((memory+page) -> data == NULL))
+    if ((memory+page) -> data == NULL)
     {
+        if ((result           == TRUE) &&
+            (sys_force        == FALSE))
+        {
+            sys_error          = error;
+        }
         result                 = FALSE;
     }
 
     return (result);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// memory_texel(): a pixel of a ROM texture. Pixels are kept after the program ROM in the
+// page's storage but are not part of the CPU-visible memory (the program ROM alone is
+// what the console maps), so they are reached by this, not by memory_get()
+//
+word_t *memory_texel (uint32_t  address)
+{
+    uint32_t  page   = (address & V32_PAGE_MASK) >> 28;
+    uint32_t  offset = (address & 0x0FFFFFFF);
+
+    if ((memory+page) -> data == NULL ||
+        offset >= (memory+page) -> size + (memory+page) -> extra)
+    {
+        return (NULL);
+    }
+    return (&(((memory+page) -> data) + offset) -> value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +257,7 @@ uint8_t  memory_chk (uint32_t  address, uint8_t  flag, uint8_t  sys_force)
 word_t *memory_get (uint32_t  address, uint8_t  sys_force)
 {
     data_t   *dptr                 = NULL;
-    uint32_t  page                 = (address & 0xF0000000) >> 28;
+    uint32_t  page                 = (address & V32_PAGE_MASK) >> 28;
     uint32_t  offset               = (address & 0x0FFFFFFF);
     uint8_t   check                = FLAG_NONE;
     word_t   *wptr                 = NULL;
@@ -257,7 +275,7 @@ word_t *memory_get (uint32_t  address, uint8_t  sys_force)
 void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
 {
     data_t   *dptr                  = NULL;
-    uint32_t  page                  = (address & 0xF0000000) >> 28;
+    uint32_t  page                  = (address & V32_PAGE_MASK) >> 28;
     uint32_t  offset                = (address & 0x0FFFFFFF);
     uint8_t   check                 = TRUE;
 
@@ -276,7 +294,7 @@ void    memory_set (uint32_t  address, uint32_t  dataword, uint8_t  sys_force)
 void    fmemory_set (uint32_t  address, float  dataword, uint8_t  sys_force)
 {
     data_t   *dptr                  = NULL;
-    uint32_t  page                  = (address & 0xF0000000) >> 28;
+    uint32_t  page                  = (address & V32_PAGE_MASK) >> 28;
     uint32_t  offset                = (address & 0x0FFFFFFF);
     uint8_t   check                 = TRUE;
 

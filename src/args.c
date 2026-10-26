@@ -232,15 +232,19 @@ void  process_args (int32_t  argc, int8_t **argv)
             case 32: // fixed-clock[=YEAR,DAY,SECONDS]
                 fixed_clock        = TRUE;
                 fixed_year         = 2026;
-                fixed_day          = 1;
+                fixed_day          = 0;              // days count from 0 (January 1st), as on the console
                 fixed_secs         = 0;
                 if (optarg        != NULL)
                 {
                     if (sscanf (optarg, "%u,%u,%u", &fixed_year, &fixed_day, &fixed_secs) != 3)
                     {
-                        fprintf (stderr, "[ERROR] --fixed-clock: use YEAR,DAY,SECONDS (e.g. 2026,1,0)\n");
+                        fprintf (stderr, "[ERROR] --fixed-clock: use YEAR,DAY,SECONDS (e.g. 2026,0,0)\n");
                         exit (1);
                     }
+                    // the console's own limits (V32Console::SetCurrentDate / SetCurrentTime)
+                    if (fixed_year    >  32767) fixed_year = 32767;
+                    if (fixed_day     >  365)   fixed_day  = 365;
+                    if (fixed_secs    >  86399) fixed_secs = 86399;
                 }
                 break;
 
