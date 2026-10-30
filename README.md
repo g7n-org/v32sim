@@ -46,7 +46,10 @@ software — and to automate cart testing.
 - **Save / restore** of the whole machine state
 - **Live assembler**: `asm` assembles one instruction and patches it into
   memory, or runs it once
-- **Source overlay**: the assembly (or C) source line for the current IP is
+- **Source-level debugging** (V32DBG): `sstep`/`snext`/`finish`/`until` step by source
+  line, `break`/`tbreak FILE:LINE`, `list`, and `bt` with function names and lines, for
+  Lua, C and assembly; see [Source-Level Debugging](#source-level-debugging)
+- **Source overlay**: the assembly, C or Lua source line for the current IP is
   printed at the prompt
 - Command front end built on **flex/bison** (`lexer.l`, `parser.y`), and a second
   flex/bison pair for the assembler (`asm_lexer.l`, `asm_parser.y`): commands may
@@ -74,6 +77,7 @@ software — and to automate cart testing.
 - [Memory Map](#memory-map)
 - [The Debugger](#the-debugger)
 - [Commands](#commands)
+- [Source-Level Debugging](#source-level-debugging)
 - [Memory Card and v32dev](#memory-card-and-v32dev)
 - [The v32io Keyboard](#the-v32io-keyboard)
 - [The Text Console](#the-text-console)
@@ -101,7 +105,9 @@ software — and to automate cart testing.
 │   ├── gpu.c             software GPU, framebuffer, PNG screenshot
 │   ├── spu.c             SPU channel / sound model, VSND loading
 │   ├── savestate.c       save / restore of the machine state
-│   ├── source.c          assembly / C source-line overlay
+│   ├── source.c          assembly / C / Lua source-line overlay
+│   ├── srcdebug.c        source-level debugging: line table, sstep/snext/finish/until,
+│                         frames and bt, break FILE:LINE, list
 │   ├── watchpoint.c      register / IOPort / memory watchpoints
 │   └── input.c           prompt loop, readline, command-file input, debug files
 ├── inc/                  all headers (command.h, version.h, ...)
@@ -255,11 +261,17 @@ prefix (`s` = step, `n` = next, `c` = continue, `b` = break, `p` = print,
 
 | Command    | Description |
 | ---------- | ----------- |
-| `break [0xMEM\|LABEL]` | set an execution breakpoint (address or label) |
+| `break [0xMEM\|LABEL\|FILE:LINE\|LINE]` | set an execution breakpoint (address, label, function or source line; no argument: list them) |
+| `tbreak ...` | the same, removed when hit |
 | `unbreak #` | remove breakpoint by index |
 | `continue` | resume execution until next trigger |
 | `step` | execute current instruction, stop at next |
 | `next` | execute current instruction, step over subroutines |
+| `sstep` / `snext` | run to the next *source line* (`snext` runs calls to their return) |
+| `finish` | run until the selected frame's function returns |
+| `until [FILE:LINE\|LINE]` | run to a later line of the function (leave a loop), or to that line |
+| `list [FILE:LINE\|LINE\|FUNCTION]` | show source around the current line (or that one) |
+| `frame [N]` / `up [N]` / `down [N]` | select a stack frame |
 | `print/fmt XYZ` | one-time display of XYZ (register, memory, IOPort, symbol) |
 | `x/fmt SYMBOL\|0xADDR [COUNT]` | show COUNT words from a symbol (default: the whole C variable) |
 | `display/fmt XYZ [LABEL]` | add a displaylist item shown at each stop |
@@ -273,7 +285,7 @@ prefix (`s` = step, `n` = next, `c` = continue, `b` = break, `p` = print,
 | `expect [print] LOC OP VALUE` / `expect console "TEXT"` | check a value or the screen; failure sets exit status 1 |
 | `console [FILE]` / `console --attrs[=fg\|bg\|all] [FILE]` | show or write the text screen (with color grids) |
 | `unwatch #\|LABEL` | remove a watchpoint |
-| `backtrace` | list subroutine calls, most recent first |
+| `backtrace` | list subroutine calls, most recent first; with Lua/C line information, the BP frames as `#0 f (file:line)` |
 | `profile` | show the profiling report (requires `-p`) |
 | `inventory` | system resource overview |
 | `gamepad [# [COMMAND]]` | view/select/simulate gamepad state (`gamepad 1` selects pad 1) |
@@ -386,8 +398,10 @@ explicitly. `-n` disables all of this. Debug files hold one `OFFSET,FILE,LINE[,L
 entry per instruction.
 
 With `--source` (or `set source=true`) the source line of the current
-instruction is printed at each stop: assembly lines by default, C lines with
-`-L C` or `set mode=C`. File names in debug files are relative to the directory
+instruction is printed at each stop: assembly lines by default, the C or Lua
+lines with `-L src` (any language; `-L C` and `-L lua` are aliases that also keep
+their old extra effects) or `set mode = src`. The language label (`ASM`, `C`, `LUA`)
+comes from the file's extension. File names in debug files are relative to the directory
 the program was built in, so they are tried as given and relative to the
 directories the debug and V32 files were found in (and their parents).
 
@@ -412,6 +426,60 @@ lists the current settings. Memory and IOPort targets are validated.
 page. `load` checks the file can be opened first, and `unload` refuses a page
 that is not loaded. `load bios:path` replaces the BIOS (its labels are
 reloaded and the fetched instruction is refreshed).
+
+## Source-Level Debugging
+
+The debug files carry the source file and line of every instruction (see the V32DBG notes):
+`v32as -g` writes `ADDRESS,FILE,LINE[,FUNCTION]` from the `;@src FILE:LINE` markers of a
+Lua (`v32lua -g`) or C program, and the C compiler's side file is matched to addresses as
+before. v32sim keeps one sorted line table from whichever it finds and builds the line-level
+commands on it. `step` and `next` stay instruction steps; a blank line repeats the last
+source step.
+
+| Command | Does |
+| ------- | ---- |
+| `sstep` | run until the source line changes (a different file, line or function, or a jump back to the start of a line: a new pass of a loop), going **into** calls |
+| `snext` | the same, but a `CALL` runs to its return (the stack pointer must be back where it was: recursion safe; no `RET` needs to be seen) |
+| `finish` | run until the selected frame returns; works at the first instruction of a function too (see *Frames*) |
+| `until` | like `snext`, but only stops on a **later** line of this function (or when it returns): leaves a loop |
+| `until FILE:LINE` | run to that line, or until the current function returns |
+| `break FILE:LINE`, `break LINE` | the lowest address of the line; `break -a` all of them. A line with no code moves to the next line that has some, and says so |
+| `tbreak ...` | one-shot |
+| `list`, `list LINE`, `list FILE:LINE`, `list FUNCTION` | ten lines of source, `=>` marking the current one; `list` again continues |
+| `bt`, `frame N`, `up`, `down` | the frames, selected frame (used by `list` and `finish`) |
+
+`break LINE` is a **decimal** number below `0x10000000` when line information is loaded;
+addresses are written in hex (`break 0x20000012`), as before. `break FUNCTION` sets the
+breakpoint on the function's first instruction (not on every line, although the assembler's
+entries all carry the function name). FILE may be a base name (`bench.lua`) or any tail of
+the path.
+
+Each stop prints one line, `[sstep] bench.lua:4 in add:   local s = a + b` (to stderr in
+`--batch` mode, like the other stop reasons; `bt`, `list` and `frame` print to stdout).
+
+### Frames
+
+Both v32cc and v32lua use `PUSH BP; MOV BP,SP` frames, so after the prologue the return
+address is at `[BP+1]` and the caller's BP at `[BP]`. The frame of the running function is
+recognized from its instructions, so it is also right at its first instruction (nothing
+pushed yet), after `PUSH BP`, and at `POP BP; RET`. Code with no source (see below) is
+assumed frameless and entered by a `CALL`: the return address is on top of the stack, if
+the word there is the address after a `CALL`. The walk ends at an address that is not code,
+or at an unreadable or non-increasing BP.
+
+`backtrace` uses these frames when the debug data is about Lua or C (a file that is not
+`.asm`); for assembly programs it keeps listing the `CALL` targets, as it always did.
+Code built with `-O2` and `omit-frame-pointers` has no chain: `snext` and `until` do not
+need one (they use the `CALL` instruction and SP), `finish` and `bt` do.
+
+### Code without source
+
+An entry whose file is `-` (or whose line is 0), e.g. `0x20000060,-,0`, says that the
+instructions from that address up to the next entry have no source: a runtime library. It
+is what `;@src -` means. `sstep` runs through such code without stopping, `bt` shows
+`?? [0x...]` and `finish` returns from it. **`v32as` does not write this entry today** (it
+writes nothing for a `;@src -` range), so the last line before the runtime is taken to extend
+to the next entry; one line per `;@src -` marker would fix that (see the notes in TODO.md).
 
 ## Memory Card and v32dev
 
@@ -657,6 +725,10 @@ checks the scripting features: symbols, `x`, `run`, `until`, `expect`, `quit N`,
 statuses, signed watch, `console FILE`/`--attrs`, `--profile-by=function`, and that the
 interactive prompt is unchanged.
 
+`tests/run_src_tests.sh [V32AS_DIR]` checks the source-level commands (49 checks) on
+`tests/src/bench.asm`, assembly written the way `v32lua -g` writes it, with `v32as` only: the
+cartridge is made by `tests/mkcart.py`, and the BIOS is `tests/gaps/bios.asm`.
+
 ## IOPORTS
 
 All IOPorts exist and follow the DesktopEmulator implementation:
@@ -684,7 +756,8 @@ them. From the prompt, ports can be manipulated via `set` and inspected via
 
 - **SPU**: no audio output (no WAV capture either)
 
-- Lua and C display modes (`-L`) are experimental
+- Lua and C display modes (`-L`) are experimental; locals and values (`info locals`, `print NAME` in a frame,
+  needing the `;@var` records of V32DBG) are not implemented
 - The debug-file reader is hand-written (it could move onto flex)
 
 See TODO.md for the open items.

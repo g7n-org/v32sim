@@ -198,6 +198,20 @@ uint8_t  prompt (uint32_t  word)
             nextflag                    = FALSE;
             break;
 
+        case INPUT_SRCSTEP:
+            if (*input                 == '\0')    // a blank line repeats the previous source step
+            {
+                if (srcdebug_rearm ()  == FALSE)
+                {
+                    processflag        = FALSE;
+                    break;
+                }
+            }
+            processflag                = TRUE;
+            runflag                    = TRUE;
+            nextflag                   = FALSE;
+            break;
+
         case INPUT_QUIT:
             processflag                = 2;
             break;
@@ -358,6 +372,13 @@ static char  *next_field (char **cursor)
     return (start);
 }
 
+static const char  *base_of (const char *path)
+{
+    const char  *slash  = strrchr (path, '/');
+
+    return ((slash == NULL) ? path : slash + 1);
+}
+
 static char  *copy_string (const char *text)
 {
     size_t  len   = strlen (text) + 1;
@@ -496,12 +517,22 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
             ltmp -> cname   = copy_string (f2);
             ltmp -> LINE    = (uint32_t) strtoul (f3, NULL, 10);
 
-            // find the matching assembler entry (same page, same asm line) for the offset
+            if ((f4 != NULL) && (*f4 != '\0'))
+            {
+                ltmp -> pointer  = (void *) copy_string (f4);     // the function (srcdebug.c)
+            }
+
+            // find the matching assembler entry (same page, same asm line, same asm file) for
+            // the offset. The file matters: the assembler entries of a ;@src program name the
+            // source file (a Lua file), not the assembly, and their line numbers are not the
+            // compiler's assembly lines.
             for (ltmp2  = lpoint; ltmp2 != NULL; ltmp2 = ltmp2 -> next)
             {
                 if ((ltmp2 -> NUMBER == ltmp -> NUMBER) &&
                     (ltmp2 -> type   == page)           &&
-                    (ltmp2 -> cname  == NULL))
+                    (ltmp2 -> cname  == NULL)           &&
+                    (ltmp2 -> name   != NULL)           &&
+                    (0 == strcmp (base_of (ltmp2 -> name), base_of (ltmp -> name))))
                 {
                     ltmp -> RAW  = ltmp2 -> RAW;
                     break;
@@ -512,6 +543,7 @@ uint32_t  load_labels (uint8_t *datafile, uint8_t  page, uint8_t  flag)
         }
     }
     fclose (fptr);
+    srcdebug_invalidate ();
 
     return (tally);
 }
@@ -561,6 +593,11 @@ void load_command(void)
                 case INPUT_NEXT:
                     next_tpoint = tpoint;
                     nextflag = TRUE;
+                    break;
+
+                case INPUT_SRCSTEP:
+                    runflag = TRUE;      // srcdebug_check() ends the run at the new line
+                    nextflag = FALSE;
                     break;
 
                 case INPUT_QUIT:

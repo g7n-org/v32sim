@@ -74,6 +74,14 @@ static const struct
     { "until",       3, CMD_UNTIL     },
     { "expect",      2, CMD_EXPECT    },
     { "x",           1, CMD_EXAMINE   },
+    { "sstep",       2, CMD_SSTEP     },
+    { "snext",       2, CMD_SNEXT     },
+    { "finish",      3, CMD_FINISH    },
+    { "tbreak",      2, CMD_TBREAK    },
+    { "list",        2, CMD_LIST      },
+    { "frame",       2, CMD_FRAME     },
+    { "up",          2, CMD_UP        },
+    { "down",        3, CMD_DOWN      },
     { NULL,          0, CMD_NONE      }
 };
 
@@ -382,26 +390,105 @@ static void  show_profile (void)
 //
 // break / backtrace / label / unbreak ...
 //
+//
+// add_break(): put a breakpoint at an address (once: a second one for the same address is not added)
+//
+static linked_l  *add_break (uint32_t addr, uint8_t temp)
+{
+    linked_l  *tmp  = NULL;
+
+    for (tmp = bpoint; tmp != NULL; tmp = tmp -> next)
+    {
+        if (tmp -> RAW == addr)
+        {
+            if (temp == FALSE)
+            {
+                tmp -> space  = 7;              // a plain break turns a one-shot into a permanent one
+            }
+            return (tmp);
+        }
+    }
+    tmp = listnode (LIST_MEM, addr);
+    if (temp == TRUE)
+    {
+        tmp -> space  = BP_TEMP;
+    }
+    bpoint = list_add (bpoint, tmp);
+    return (tmp);
+}
+
 static void  exec_break (cmd_t *c)
 {
     linked_l  *tmp    = NULL;
     linked_l  *ltmp   = NULL;
     int32_t    count  = 0;
+    uint8_t    temp   = (c -> id == CMD_TBREAK) ? TRUE : FALSE;
+    uint32_t   addrs[64];
+    uint32_t   actual = 0;
+    uint32_t   faddr  = 0;
+    int        n      = 0;
+    int        k      = 0;
+    char       where[600];
 
+    // 'break 25' is a line when there is line information and the number is a decimal one
+    // (an address is written in hex); 'break FILE:LINE' always is
+    if ((c -> has_num == TRUE) && (c -> num_dec == TRUE) && (c -> num < BIOS_FIRST_ADDR) &&
+        (srcdebug_have () == TRUE))
+    {
+        c -> line      = c -> num;
+        c -> has_line  = TRUE;
+        c -> has_num   = FALSE;
+    }
+
+    if (c -> has_line == TRUE)
+    {
+        n = srcdebug_resolve (c -> file, c -> line, c -> all, addrs, 64, &actual);
+        if (n <= 0)
+        {
+            if (srcdebug_have () == FALSE)
+            {
+                fprintf (stderr, "[ERROR] break: no source line information is loaded "
+                                 "(assemble with v32as -g, or give the debug file)\n");
+            }
+            else
+            {
+                fprintf (stderr, "[ERROR] break: no code at or after %s%s%u\n",
+                                 (c -> file != NULL) ? c -> file : "", (c -> file != NULL) ? ":" : "line ", c -> line);
+            }
+            return;
+        }
+        if (actual != c -> line)
+        {
+            status_printf ("[%s] line %u has no code; using line %u\n", temp ? "tbreak" : "break", c -> line, actual);
+        }
+        for (k = 0; k < n; k = k + 1)
+        {
+            add_break (addrs[k], temp);
+            srcdebug_describe (addrs[k], where, sizeof (where), TRUE);
+            status_printf ("[%s] 0x%.8X (%s)\n", temp ? "tbreak" : "break", addrs[k], where);
+        }
+        return;
+    }
     if (c -> has_num == TRUE)
     {
         fprintf (debug, "[break] adding the offset 0x%.8X\n", c -> num);
-        bpoint = list_add (bpoint, listnode (LIST_MEM, c -> num));
+        add_break (c -> num, temp);
     }
     else if (c -> name != NULL)
     {
+        if (srcdebug_function (c -> name, &faddr) == TRUE)       // a function: its first instruction
+        {
+            fprintf (debug, "[break] adding the function '%s' (0x%.8X)\n", c -> name, faddr);
+            add_break (faddr, temp);
+            return;
+        }
         for (ltmp = lpoint; ltmp != NULL; ltmp = ltmp -> next)
         {
             if ((ltmp -> label != NULL) &&
                 (0 == strcasecmp (ltmp -> label, c -> name)))
             {
                 fprintf (debug, "[break] adding the label '%s' (0x%.8X)\n", ltmp -> label, ltmp -> I32);
-                bpoint = list_add (bpoint, listnode (LIST_MEM, ltmp -> I32));
+                add_break (ltmp -> I32, temp);
                 count  = count + 1;
             }
         }
@@ -415,7 +502,13 @@ static void  exec_break (cmd_t *c)
         count = 0;
         for (tmp = bpoint; tmp != NULL; tmp = tmp -> next)
         {
-            fprintf (stdout, "[%u] 0x%.8X\n", count, tmp -> RAW);
+            srcdebug_describe (tmp -> RAW, where, sizeof (where), FALSE);
+            fprintf (stdout, "[%u] 0x%.8X%s%s%s\n", count, tmp -> RAW,
+                             (where[0] != '\0') ? " (" : "", where, (where[0] != '\0') ? ")" : "");
+            if (tmp -> space == BP_TEMP)
+            {
+                fprintf (stdout, "      (one-shot)\n");
+            }
             count = count + 1;
         }
     }
@@ -425,6 +518,11 @@ static void  exec_backtrace (void)
 {
     linked_l  *tmp    = tpoint;
     int32_t    count  = 0;
+
+    if (srcdebug_backtrace () == TRUE)              // names and lines, from the BP frames
+    {
+        return;
+    }
 
     while (tmp != NULL)
     {
@@ -463,7 +561,7 @@ static void  exec_label (cmd_t *c)
                              count, ltmp -> label, ltmp -> RAW);
         }
         else if ((ltmp -> cname != NULL) &&
-                 (modeflag      == FLAG_C))
+                 (modeflag      != FLAG_ASM))
         {
             fprintf (stdout, "[%u] ASM:%u -> C:%s:%u -> offset:0x%.8X\n",
                              count, ltmp -> NUMBER, ltmp -> cname, ltmp -> LINE, ltmp -> RAW);
@@ -505,6 +603,10 @@ static void  exec_undo (cmd_t *c)
     }
 
     tmp = list_grab (list, tmp);
+    if (c -> id == CMD_UNLABEL)
+    {
+        srcdebug_invalidate ();        // line entries may have been removed
+    }
     if (tmp != NULL)
     {
         if (tmp -> label != NULL)
@@ -972,6 +1074,37 @@ static void  exec_gamepad (cmd_t *c)
 //
 // set
 //
+////////////////////////////////////////////////////////////////////////////////////////
+//
+// source-level debugging: sstep snext finish until list frame up down
+//
+static void  exec_srcstep (cmd_t *c)
+{
+    int  armed  = FALSE;
+
+    switch (c -> id)
+    {
+        case CMD_SSTEP:     armed = srcdebug_step (FALSE);                                  break;
+        case CMD_SNEXT:     armed = srcdebug_step (TRUE);                                   break;
+        case CMD_FINISH:    armed = srcdebug_finish ();                                     break;
+        case CMD_UNTILSRC:  armed = srcdebug_until (c -> file, c -> line, c -> has_line);   break;
+    }
+    if (armed == TRUE)
+    {
+        action  = INPUT_SRCSTEP;
+    }
+}
+
+static void  exec_list (cmd_t *c)
+{
+    srcdebug_list (c -> file, c -> line, c -> has_line, c -> name);
+}
+
+static void  exec_frame (cmd_t *c)
+{
+    srcdebug_frame ((c -> id == CMD_UP) ? 1 : (c -> id == CMD_DOWN) ? -1 : 0, c -> num, c -> has_num);
+}
+
 static void  exec_set_list (void)
 {
     fprintf (stdout, "v32sim settings\n");
@@ -983,7 +1116,8 @@ static void  exec_set_list (void)
     fprintf (stdout, "profile: %s\n", (profileflag == TRUE)   ? "TRUE" : "FALSE");
     fprintf (stdout, "verbose: %s\n", (verbose     == stderr) ? "TRUE" : "FALSE");
     fprintf (stdout, "source:  %s\n", (sourceflag  == TRUE)   ? "TRUE" : "FALSE");
-    fprintf (stdout, "mode:    %s\n", (modeflag == FLAG_C) ? "C" : (modeflag == FLAG_LUA) ? "lua" : "asm");
+    fprintf (stdout, "mode:    %s\n", (modeflag == FLAG_C) ? "C" : (modeflag == FLAG_LUA) ? "lua" :
+                                      (modeflag == FLAG_SRC) ? "src" : "asm");
 }
 
 static void  exec_set_option (cmd_t *c)
@@ -995,9 +1129,10 @@ static void  exec_set_option (cmd_t *c)
         if      ((c -> word != NULL) && (0 == strcasecmp (c -> word, "asm")))  modeflag = FLAG_ASM;
         else if ((c -> word != NULL) && (0 == strcasecmp (c -> word, "c")))    modeflag = FLAG_C;
         else if ((c -> word != NULL) && (0 == strcasecmp (c -> word, "lua")))  modeflag = FLAG_LUA;
+        else if ((c -> word != NULL) && (0 == strcasecmp (c -> word, "src")))  modeflag = FLAG_SRC;
         else
         {
-            fprintf (stderr, "[ERROR] set mode: value must be asm, C, or lua\n");
+            fprintf (stderr, "[ERROR] set mode: value must be asm, src, C, or lua\n");
         }
         return;
     }
@@ -1616,6 +1751,14 @@ static void  exec_help (cmd_t *c)
         case CMD_RESTORE:     help (INPUT_RESTORE);    break;
         case CMD_SET:         help (INPUT_SET);        break;
         case CMD_STEP:        help (INPUT_STEP);       break;
+        case CMD_SSTEP:       help (INPUT_SSTEP);      break;
+        case CMD_SNEXT:       help (INPUT_SNEXT);      break;
+        case CMD_FINISH:      help (INPUT_FINISH);     break;
+        case CMD_TBREAK:      help (INPUT_TBREAK);     break;
+        case CMD_LIST:        help (INPUT_LIST);       break;
+        case CMD_FRAME:
+        case CMD_UP:
+        case CMD_DOWN:        help (INPUT_FRAME);      break;
         case CMD_UNBREAK:
         case CMD_UNDISPLAY:
         case CMD_UNLABEL:     help (INPUT_UNDO);       break;
@@ -1678,6 +1821,15 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_RESTORE:     exec_restore (c);                     break;
         case CMD_SET:         exec_set (c);                         break;
         case CMD_STEP:        action = INPUT_STEP;                  break;
+        case CMD_SSTEP:
+        case CMD_SNEXT:
+        case CMD_FINISH:
+        case CMD_UNTILSRC:    exec_srcstep (c);                     break;
+        case CMD_TBREAK:      exec_break (c);                       break;
+        case CMD_LIST:        exec_list (c);                        break;
+        case CMD_FRAME:
+        case CMD_UP:
+        case CMD_DOWN:        exec_frame (c);                       break;
         case CMD_UNBREAK:
         case CMD_UNDISPLAY:
         case CMD_UNLABEL:     exec_undo (c);                        break;

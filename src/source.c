@@ -151,6 +151,10 @@ static srcfile_t  *get_file (const char *name)
                     k             = k + 1;
                 }
             }
+            if ((k > 1) && (c -> line[k - 1][0] == '\0') && (c -> line[k - 1] == p))
+            {
+                k  = k - 1;                 // the text ends with a newline: no line after it
+            }
             c -> nlines  = k;
         }
     }
@@ -187,16 +191,67 @@ static const char  *base_name (const char *path)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
+// the language of a source file, from its extension (what V32DBG's ;@lang says)
+//
+const char  *source_lang (const char *path)
+{
+    const char  *dot  = strrchr (path, '.');
+
+    if (dot != NULL)
+    {
+        if (0 == strcasecmp (dot, ".lua"))                                  return ("LUA");
+        if ((0 == strcasecmp (dot, ".c"))   || (0 == strcasecmp (dot, ".h"))   ||
+            (0 == strcasecmp (dot, ".cc"))  || (0 == strcasecmp (dot, ".cpp")) ||
+            (0 == strcasecmp (dot, ".cxx")) || (0 == strcasecmp (dot, ".hpp")))  return ("C");
+    }
+    return ("ASM");
+}
+
+static uint32_t  suppress_ip  = 0xFFFFFFFF;
+
+//
+// source_suppress(): a source-level step has just printed the line for this IP; the
+// overlay at the prompt must not print it again
+//
+void  source_suppress (uint32_t ip)
+{
+    suppress_ip  = ip;
+}
+
+static void  print_line (const char *lang, const char *file, uint32_t line)
+{
+    const char  *text  = source_line (file, line);
+
+    if (colorflag == TRUE) fprintf (stdout, "\e[1;36m");
+    fprintf (stdout, "  %s %s:%u: %s\n", lang, base_name (file), line,
+                     (text != NULL) ? text : "(source not found)");
+    if (colorflag == TRUE) fprintf (stdout, "\e[m");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
 // source_overlay(): print the source line for the instruction at 'ip' (if the overlay
 // is enabled and the debug data has an entry for it)
+//
+//   mode asm            the assembly line of the assembler's entries
+//   mode src            the source line, whatever the language: the compiler's entry, or
+//                       else the assembler's (which names the source file when the
+//                       program was assembled from ;@src markers)
+//   mode C | lua        the same as src (kept for old command lines); C still skips
+//                       entries that are assembly
 //
 void  source_overlay (uint32_t ip)
 {
     linked_l    *asmnode  = NULL;
     linked_l    *cnode    = NULL;
     linked_l    *tmp      = NULL;
-    const char  *text     = NULL;
 
+    if (suppress_ip == ip)
+    {
+        suppress_ip  = 0xFFFFFFFF;
+        return;
+    }
+    suppress_ip  = 0xFFFFFFFF;
     if (sourceflag != TRUE)
     {
         return;
@@ -216,27 +271,26 @@ void  source_overlay (uint32_t ip)
             asmnode  = tmp;
         }
     }
-
-    if (modeflag == FLAG_C)
+    if ((asmnode != NULL) && (0 == strcmp (asmnode -> name, "-")))
     {
-        if (cnode != NULL)
-        {
-            text  = source_line (cnode -> cname, cnode -> LINE);
-            if (colorflag == TRUE) fprintf (stdout, "\e[1;36m");
-            fprintf (stdout, "  C %s:%u: %s\n", base_name (cnode -> cname), cnode -> LINE,
-                             (text != NULL) ? text : "(source not found)");
-            if (colorflag == TRUE) fprintf (stdout, "\e[m");
-        }
+        asmnode  = NULL;                // an entry that says "no source here"
     }
-    else if (modeflag == FLAG_ASM)
+
+    if (modeflag == FLAG_ASM)
     {
         if (asmnode != NULL)
         {
-            text  = source_line (asmnode -> name, asmnode -> NUMBER);
-            if (colorflag == TRUE) fprintf (stdout, "\e[1;36m");
-            fprintf (stdout, "  ASM %s:%u: %s\n", base_name (asmnode -> name), asmnode -> NUMBER,
-                             (text != NULL) ? text : "(source not found)");
-            if (colorflag == TRUE) fprintf (stdout, "\e[m");
+            print_line (source_lang (asmnode -> name), asmnode -> name, asmnode -> NUMBER);
         }
+        return;
+    }
+    if (cnode != NULL)
+    {
+        print_line (source_lang (cnode -> cname), cnode -> cname, cnode -> LINE);
+    }
+    else if ((asmnode != NULL) &&
+             ((modeflag != FLAG_C) || (0 != strcmp (source_lang (asmnode -> name), "ASM"))))
+    {
+        print_line (source_lang (asmnode -> name), asmnode -> name, asmnode -> NUMBER);
     }
 }

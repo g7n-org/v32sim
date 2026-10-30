@@ -169,6 +169,8 @@ extern uint8_t    retflag;
 extern uint8_t    derefaddr;
 extern uint8_t    errorcheck;
 extern uint8_t    nextflag;
+extern uint64_t   insn_count;
+#define  BP_TEMP    9           // linked_l.space of a one-shot breakpoint (tbreak)
 extern uint8_t    haltflag;
 extern uint8_t    turboflag;
 extern uint8_t    waitflag;
@@ -346,5 +348,21 @@ void      gamepad_connect (uint8_t,    uint8_t);
 void     *ralloc         (size_t,      size_t,      uint8_t);
 void      rfree          (void     *);
 void      sigint         (int32_t);
+void      srcdebug_invalidate (void);                          // srcdebug.c: source-level debugging (V32DBG)
+int       srcdebug_have  (void);
+int       srcdebug_describe (uint32_t, char *, size_t, int);
+int       srcdebug_backtrace (void);
+void      srcdebug_frame (int, uint32_t, int);
+void      srcdebug_cancel (void);
+int       srcdebug_step  (int);
+int       srcdebug_finish (void);
+int       srcdebug_until (const char *, uint32_t, int);
+int       srcdebug_rearm (void);
+int       srcdebug_check (void);
+int       srcdebug_resolve (const char *, uint32_t, int, uint32_t *, int, uint32_t *);
+int       srcdebug_function (const char *, uint32_t *);
+void      srcdebug_list  (const char *, uint32_t, int, const char *);
+const char *source_lang  (const char *);                       // "LUA", "C" or "ASM", by the file's extension
+void      source_suppress (uint32_t);                          // source.c: do not print the overlay at this IP once
 
 #endif

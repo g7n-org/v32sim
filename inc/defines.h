@@ -136,6 +136,13 @@
 #define  INPUT_UNTIL             38
 #define  INPUT_EXPECT            39
 #define  INPUT_EXAMINE           40
+#define  INPUT_SRCSTEP           41     // sstep / snext / finish / until LOC: srcdebug.c decides when to stop
+#define  INPUT_SSTEP             42     // (help topics)
+#define  INPUT_SNEXT             43
+#define  INPUT_FINISH            44
+#define  INPUT_TBREAK            45
+#define  INPUT_LIST              46
+#define  INPUT_FRAME             47
 
 #define  PARSE_IMMEDIATE         0x79
 #define  PARSE_REGISTER          0x7A
@@ -278,6 +285,7 @@
 #define  FLAG_ASM                2
 #define  FLAG_C                  4
 #define  FLAG_LUA                8
+#define  FLAG_SRC                16
 
 #define  FLAG_READ               4
 #define  FLAG_WRITE              2

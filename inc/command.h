@@ -60,7 +60,16 @@ enum cmd_id
     CMD_RUN,
     CMD_UNTIL,
     CMD_EXPECT,
-    CMD_EXAMINE
+    CMD_EXAMINE,
+    CMD_SSTEP,
+    CMD_SNEXT,
+    CMD_FINISH,
+    CMD_TBREAK,
+    CMD_LIST,
+    CMD_FRAME,
+    CMD_UP,
+    CMD_DOWN,
+    CMD_UNTILSRC
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -198,6 +207,13 @@ typedef struct cmd
     char      *text;                 // until, expect console: the text
     uint8_t    expect_kind;          // EXPECT_*
     uint32_t   x_words;              // x: words a symbol covers (the default count)
+
+    // source-level debugging: break/tbreak/list/until FILE:LINE, break -a, frame N
+    char      *file;                 // FILE of FILE:LINE (NULL: the current file)
+    uint32_t   line;                 // LINE
+    uint8_t    has_line;
+    uint8_t    all;                  // break -a: every address of the line
+    uint8_t    num_dec;              // break N: N was written in decimal (a line number, not an address)
 
     // parsing bookkeeping
     char     **pool;                 // every string allocated while parsing

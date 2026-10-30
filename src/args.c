@@ -165,6 +165,11 @@ void  process_args (int32_t  argc, int8_t **argv)
                 {
                     modeflag       = FLAG_LUA;
                 }
+                else if (0        == strcmp (optarg, "src"))
+                {
+                    modeflag       = FLAG_SRC;
+                    sourceflag     = TRUE;
+                }
                 break;
 
             case 'M':

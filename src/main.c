@@ -50,6 +50,7 @@ uint8_t   branchflag;
 uint8_t   ignoreflag;
 uint8_t   retflag;
 uint8_t   nextflag;
+uint64_t  insn_count;          // instructions executed (the source-level steps tell progress by it)
 uint8_t   derefaddr;
 uint8_t   errorcheck;
 uint8_t   haltflag;
@@ -583,21 +584,40 @@ int32_t   main (int32_t  argc, char **argv)
         btmp                           = bpoint;
         while (btmp                   != NULL)
         {
+            linked_l  *bnext           = btmp -> next;      // a one-shot (tbreak) leaves the list
+
             value                      = btmp -> RAW;
             if (rom_offset            == value)
             {
+                char  where[600];
+
+                srcdebug_describe (value, where, sizeof (where), TRUE);
                 if (colorflag         == TRUE)
                 {
                     fprintf (stdout, "\e[1;31m");
                 }
-                status_printf ("[breakpoint] triggered on 0x%.8X\n", value);
+                if (where[0]          != '\0')
+                {
+                    status_printf ("[%s] triggered on 0x%.8X (%s)\n",
+                                   (btmp -> space == BP_TEMP) ? "tbreak" : "breakpoint", value, where);
+                }
+                else
+                {
+                    status_printf ("[%s] triggered on 0x%.8X\n",
+                                   (btmp -> space == BP_TEMP) ? "tbreak" : "breakpoint", value);
+                }
                 if (colorflag         == TRUE)
                 {
                     fprintf (stdout, "\e[m");
                 }
                 runflag                = FALSE;
+                if (btmp -> space     == BP_TEMP)
+                {
+                    list_grab (&bpoint, btmp);
+                    rfree (btmp);
+                }
             }
-            btmp                       = btmp -> next;
+            btmp                       = bnext;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -644,6 +664,16 @@ int32_t   main (int32_t  argc, char **argv)
             fprintf (verbose, "LOADING COMMAND-FILE\n");
             load_command ();
             fetch_instruction ();
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+        //
+        // Source-level stepping (sstep, snext, finish, until): the engine looks at the
+        // instruction about to run and says whether the line has changed
+        //
+        if (srcdebug_check ()         == TRUE)
+        {
+            runflag                    = FALSE;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -734,8 +764,10 @@ int32_t   main (int32_t  argc, char **argv)
 
             ////////////////////////////////////////////////////////////////////////////
             //
-            // Display the prompt
+            // Display the prompt (a source-level step that a breakpoint or watchpoint
+            // interrupted is over)
             //
+            srcdebug_cancel ();
             do
             {
                 if (batchflag         == FALSE)
@@ -899,6 +931,7 @@ int32_t   main (int32_t  argc, char **argv)
                     cpu_immediate      = REG(IV);
                 }
                 addrprof_count (REG(IP));
+                insn_count             = insn_count + 1;
                 decode (REG(IR), REG(IV), FREG(IV), decodeflags | FLAG_PROCESS);
 
                 // Check for watchpoint triggers

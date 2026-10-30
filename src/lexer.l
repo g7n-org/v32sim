@@ -31,6 +31,7 @@ static int  lex_number  (int base, const char *digits, int ndigits, uint8_t kind
 static int  lex_float   (void);
 static int  lex_value   (int token, uint32_t u);
 static int  lex_command (void);
+static int  lex_fileline (void);
 %}
 
 %option noyywrap nounput noinput 8bit case-insensitive nodefault
@@ -55,6 +56,8 @@ WORD     [A-Za-z_.$@][A-Za-z0-9_.$@]*
 "#".*                       { /* trailing comment */ }
 
 "/"[A-Za-z]                 { yylval.ch = yytext[1]; return T_FMT; }
+
+[A-Za-z0-9_$@~+/\\-]*[./\\][A-Za-z0-9_.$@~+/\\-]*":"[0-9]+  { return lex_fileline (); }
 
 0b[01]{1,32}                { return lex_number (2,  yytext + 2, yyleng - 2, TOK_BIN); }
 0x[0-9a-f]{1,8}h?           { return lex_number (16, yytext + 2, yyleng - 2 - (yytext[yyleng-1] == 'h' || yytext[yyleng-1] == 'H'), TOK_HEX); }
@@ -161,6 +164,22 @@ static int  lex_number (int base, const char *digits, int ndigits, uint8_t kind)
 }
 
 /*
+ * lex_fileline(): FILE:LINE (the file has a '.' or a '/', so IP:0x10 and the like never match).
+ * 'text' is the file name and 'u' the line.
+ */
+static int  lex_fileline (void)
+{
+    char  *colon  = strrchr (yytext, ':');
+
+    yylval.t.text   = cmd_strdup (yytext, (size_t) (colon - yytext));
+    yylval.t.u      = (uint32_t) strtoul (colon + 1, NULL, 10);
+    yylval.t.kind   = TOK_DEC;
+    yylval.t.digits = 0;
+    yylval.t.f      = 0.0;
+    return (T_FILELINE);
+}
+
+/*
  * lex_float(): floating point literal; 'u' carries the IEEE-754 bit pattern
  */
 static int  lex_float (void)
@@ -223,6 +242,14 @@ static int  lex_command (void)
         case CMD_UNTIL:       return (T_UNTIL);
         case CMD_EXPECT:      return (T_EXPECT);
         case CMD_EXAMINE:     return (T_EXAMINE);
+        case CMD_SSTEP:       return (T_SSTEP);
+        case CMD_SNEXT:       return (T_SNEXT);
+        case CMD_FINISH:      return (T_FINISH);
+        case CMD_TBREAK:      return (T_TBREAK);
+        case CMD_LIST:        return (T_LIST);
+        case CMD_FRAME:       return (T_FRAME);
+        case CMD_UP:          return (T_UP);
+        case CMD_DOWN:        return (T_DOWN);
         default:
             snprintf (cmd -> badword, sizeof (cmd -> badword), "%s", yytext);
             return (T_BADCMD);

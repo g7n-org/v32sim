@@ -20,7 +20,8 @@ void  usage (int8_t *program)
     fprintf (stdout, "     --debug-dir=DIR       also look for debug files in DIR (first)\n");
     fprintf (stdout, "     --source              show the source line for each stop (asm; C with -L C)\n");
     fprintf (stdout, " -E, --entry-point=OFFSET  set simulator entry point\n");
-    fprintf (stdout, " -L, --langmode=MODE       label/source mode: C or lua (experimental)\n");
+    fprintf (stdout, " -L, --langmode=MODE       label/source mode: C, lua (Lua values in memory dumps) or src (any\n");
+    fprintf (stdout, "                           language); the source line is shown at each stop with --source\n");
     fprintf (stdout, " -M, --memcfile=FILE       load this file as a MEMCARD\n");
     fprintf (stdout, " -n, --no-debug            do not process any debug files\n");
     fprintf (stdout, " -p, --profile             enable instruction profiling\n");
@@ -76,7 +77,7 @@ void  help  (uint8_t  item)
             fprintf (stdout, "v32sim commands           description\n");
             fprintf (stdout, "========================= ============================\n");
             fprintf (stdout, "  asm [@ADDR|-x] INSTR    assemble an instruction (patch memory or run once)\n");
-            fprintf (stdout, "  break [0xMEM|LABEL]     set breakpoint (or list them)\n");
+            fprintf (stdout, "  break [0xMEM|LABEL|FILE:LINE]  set breakpoint (or list them)\n");
             fprintf (stdout, "  unbreak #               remove breakpoint #\n");
             fprintf (stdout, "  continue                resume execution\n");
             fprintf (stdout, "  run N                   resume for N frames (also: wait N)\n");
@@ -84,8 +85,14 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  expect ...              check a value or the text console (exit status 1 if it fails)\n");
             fprintf (stdout, "  step                    step to next instruction\n");
             fprintf (stdout, "  next                    next (skip subroutines)\n");
+            fprintf (stdout, "  sstep | snext           step to the next source line (snext: skip calls)\n");
+            fprintf (stdout, "  finish                  run until the current function returns\n");
+            fprintf (stdout, "  until [FILE:LINE]       run to a later line (leave a loop), or to FILE:LINE\n");
+            fprintf (stdout, "  tbreak FILE:LINE        one-shot breakpoint   (break FILE:LINE | LINE | -a: see help break)\n");
+            fprintf (stdout, "  list [FILE:LINE|FUNC]   show source around the current line, or that line\n");
+            fprintf (stdout, "  frame|up|down [N]       select a stack frame (see backtrace)\n");
             fprintf (stdout, "  ignore                  ignore this instruction\n");
-            fprintf (stdout, "  backtrace               display list of calls\n");
+            fprintf (stdout, "  backtrace               display list of calls (with source lines when known)\n");
             fprintf (stdout, "  print[/F] XYZ           one-time display of XYZ (register, address, label, C global)\n");
             fprintf (stdout, "  x[/F] XYZ [COUNT]       display COUNT words from XYZ\n");
             fprintf (stdout, "  display[/F] XYZ [LABEL] add displaylist item\n");
@@ -225,11 +232,72 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    subroutine is called, based on its label, which exists at an offset\n\n");
             break;
 
+        case INPUT_SSTEP:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    sstep\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Run until the source line changes (a different line, file or function,\n");
+            fprintf (stdout, "    or a jump back to the start of a line), going into calls. Code without\n");
+            fprintf (stdout, "    line information (a runtime library) is run through. Needs line entries\n");
+            fprintf (stdout, "    from the debug files (v32as -g). 'step' and 'next' remain instruction\n");
+            fprintf (stdout, "    steps. A blank line repeats the previous source-level step.\n\n");
+            break;
+
+        case INPUT_SNEXT:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    snext\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Like sstep, but a CALL runs until it returns (recursion safe: the stack\n");
+            fprintf (stdout, "    pointer must be back where it was). Needs no RET to be seen, so a manual\n");
+            fprintf (stdout, "    return (JMP) works too.\n\n");
+            break;
+
+        case INPUT_FINISH:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    finish\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Run until the function of the selected frame (see frame, up, down)\n");
+            fprintf (stdout, "    returns to its caller. The return address is found from the BP frame\n");
+            fprintf (stdout, "    (PUSH BP / MOV BP,SP), also at the first instruction of the function.\n\n");
+            break;
+
+        case INPUT_TBREAK:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    tbreak FILE:LINE | LINE | 0xMEM_ADDR | LABEL\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    A breakpoint that is removed when it is hit. See also: break.\n");
+            fprintf (stdout, "    break FILE:LINE uses the lowest address of the line (break -a FILE:LINE:\n");
+            fprintf (stdout, "    all of them). A line with no code moves to the next line that has some.\n");
+            fprintf (stdout, "    A plain decimal number is a line (an address is written in hex).\n");
+            fprintf (stdout, "    A function name sets the breakpoint on its first instruction.\n\n");
+            break;
+
+        case INPUT_LIST:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    list\n");
+            fprintf (stdout, "    list LINE | FILE:LINE | FUNCTION\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Show ten lines of source around the current line (=> marks it); a second\n");
+            fprintf (stdout, "    'list' continues where the last one ended.\n\n");
+            break;
+
+        case INPUT_FRAME:
+            fprintf (stdout, "SYNOPSIS:\n");
+            fprintf (stdout, "    frame [N]\n");
+            fprintf (stdout, "    up [N]\n");
+            fprintf (stdout, "    down [N]\n\n");
+            fprintf (stdout, "DESCRIPTION:\n");
+            fprintf (stdout, "    Select a frame of the backtrace and show its source line. 'list' and\n");
+            fprintf (stdout, "    'finish' then use that frame.\n\n");
+            break;
+
         case INPUT_BTRACE:
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    backtrace\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
-			fprintf (stdout, "    Display a most recent to least recent list of subroutine calls\n\n");
+			fprintf (stdout, "    Display a most recent to least recent list of subroutine calls. With line\n");
+            fprintf (stdout, "    information the frames are found from BP (return address at [BP+1], the\n");
+            fprintf (stdout, "    caller's BP at [BP]) and shown as '#0 function (file:line)'.\n\n");
             break;
 
         case INPUT_LABEL:

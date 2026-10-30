@@ -39,6 +39,7 @@ static int   operand_number (tok_t *t, uint32_t *value);
 static int   operand_iosym  (tok_t *t);
 static void  set_fmt        (char ch);
 static int   set_lhs_word   (tok_t *t);
+static int   break_all      (tok_t *t);
 static int   loc_number     (tok_t *t, wloc_t *loc);
 static int   loc_iosym      (tok_t *t, wloc_t *loc);
 static int   sym_resolve    (tok_t *t, int sign, tok_t *offset, symv_t *out);
@@ -57,7 +58,7 @@ static int   check_signed   (void);
     symv_t  s;
 }
 
-%token <t>   T_NUM T_REG T_IOSYM T_WORD T_PATH
+%token <t>   T_NUM T_REG T_IOSYM T_WORD T_PATH T_FILELINE
 %token <ch>  T_FMT
 %token       T_REGS
 %token       T_EQEQ T_NE T_LE T_GE
@@ -67,6 +68,7 @@ static int   check_signed   (void);
 %token       T_UNWATCH T_VERSION T_WATCH T_WATCHLIST
 %token       T_KBD T_MAILBOX T_CONSOLE
 %token       T_RUN T_UNTIL T_EXPECT T_EXAMINE
+%token       T_SSTEP T_SNEXT T_FINISH T_TBREAK T_LIST T_FRAME T_UP T_DOWN
 %token       T_BADCMD T_BAD
 
 %type  <t>   name
@@ -85,6 +87,16 @@ command
     | T_CONTINUE                        { CMD -> id = CMD_CONTINUE;  }
     | T_NEXT                            { CMD -> id = CMD_NEXT;      }
     | T_STEP                            { CMD -> id = CMD_STEP;      }
+    | T_SSTEP                           { CMD -> id = CMD_SSTEP;     }
+    | T_SNEXT                           { CMD -> id = CMD_SNEXT;     }
+    | T_FINISH                          { CMD -> id = CMD_FINISH;    }
+    | T_FRAME                           { CMD -> id = CMD_FRAME;     }
+    | T_FRAME T_NUM                     { CMD -> id = CMD_FRAME;     CMD -> has_num = TRUE; CMD -> num = $2.u; }
+    | T_UP                              { CMD -> id = CMD_UP;        }
+    | T_UP T_NUM                        { CMD -> id = CMD_UP;        CMD -> has_num = TRUE; CMD -> num = $2.u; }
+    | T_DOWN                            { CMD -> id = CMD_DOWN;      }
+    | T_DOWN T_NUM                      { CMD -> id = CMD_DOWN;      CMD -> has_num = TRUE; CMD -> num = $2.u; }
+    | list_cmd
     | T_IGNORE                          { CMD -> id = CMD_IGNORE;    }
     | T_QUIT                            { CMD -> id = CMD_QUIT;      }
     | T_QUIT T_NUM                      { CMD -> id = CMD_QUIT;      CMD -> has_num = TRUE; CMD -> num = $2.u; }
@@ -145,8 +157,31 @@ name
 
 break_cmd
     : T_BREAK                           { CMD -> id = CMD_BREAK; }
-    | T_BREAK T_NUM                     { CMD -> id = CMD_BREAK; CMD -> has_num = TRUE; CMD -> num = $2.u; }
+    | T_BREAK T_NUM                     { CMD -> id = CMD_BREAK; CMD -> has_num = TRUE; CMD -> num = $2.u;
+                                          CMD -> num_dec = ($2.kind == TOK_DEC); }
     | T_BREAK name                      { CMD -> id = CMD_BREAK; CMD -> name = $2.text; }
+    | T_BREAK T_FILELINE                { CMD -> id = CMD_BREAK; CMD -> file = $2.text; CMD -> line = $2.u;
+                                          CMD -> has_line = TRUE; }
+    | T_BREAK '-' T_WORD T_FILELINE     { if (break_all (&$3)) YYERROR;
+                                          CMD -> id = CMD_BREAK; CMD -> file = $4.text; CMD -> line = $4.u;
+                                          CMD -> has_line = TRUE; }
+    | T_BREAK '-' T_WORD T_NUM          { if (break_all (&$3)) YYERROR;
+                                          CMD -> id = CMD_BREAK; CMD -> line = $4.u; CMD -> has_line = TRUE; }
+    | T_TBREAK T_NUM                    { CMD -> id = CMD_TBREAK; CMD -> has_num = TRUE; CMD -> num = $2.u;
+                                          CMD -> num_dec = ($2.kind == TOK_DEC); }
+    | T_TBREAK name                     { CMD -> id = CMD_TBREAK; CMD -> name = $2.text; }
+    | T_TBREAK T_FILELINE               { CMD -> id = CMD_TBREAK; CMD -> file = $2.text; CMD -> line = $2.u;
+                                          CMD -> has_line = TRUE; }
+    ;
+
+/* ------------------------------------------------------------------- list */
+
+list_cmd
+    : T_LIST                            { CMD -> id = CMD_LIST; }
+    | T_LIST T_NUM                      { CMD -> id = CMD_LIST; CMD -> line = $2.u; CMD -> has_line = TRUE; }
+    | T_LIST T_FILELINE                 { CMD -> id = CMD_LIST; CMD -> file = $2.text; CMD -> line = $2.u;
+                                          CMD -> has_line = TRUE; }
+    | T_LIST name                       { CMD -> id = CMD_LIST; CMD -> name = $2.text; }
     ;
 
 /* ------------------------------------------------------------------ label */
@@ -334,7 +369,11 @@ run_cmd
 /* ----------------------------------------------------------------- until */
 
 until_cmd
-    : T_UNTIL name until_opts           { CMD -> id = CMD_UNTIL; CMD -> text = $2.text;
+    : T_UNTIL                           { CMD -> id = CMD_UNTILSRC; }
+    | T_UNTIL T_NUM                     { CMD -> id = CMD_UNTILSRC; CMD -> line = $2.u; CMD -> has_line = TRUE; }
+    | T_UNTIL T_FILELINE                { CMD -> id = CMD_UNTILSRC; CMD -> file = $2.text; CMD -> line = $2.u;
+                                          CMD -> has_line = TRUE; }
+    | T_UNTIL name until_opts           { CMD -> id = CMD_UNTIL; CMD -> text = $2.text;
                                           if ($2.text[0] == '\0') { cmd_seterr ("until: the text is empty"); YYERROR; } }
     ;
 
@@ -549,6 +588,17 @@ static void  set_fmt (char ch)
 /*
  * set_lhs_word(): the left side of 'set NAME = VALUE' is a simulator setting
  */
+static int  break_all (tok_t *t)
+{
+    if (0 != strcasecmp (t -> text, "a"))
+    {
+        cmd_seterr ("break: unknown option '-%s' (only -a: every address of the line)", t -> text);
+        return (1);
+    }
+    CMD -> all  = TRUE;
+    return (0);
+}
+
 static int  set_lhs_word (tok_t *t)
 {
     static const struct { const char *name; uint8_t opt; } options[] =

@@ -132,7 +132,8 @@ archive: clean
 
 clean:
 	@rm -vf .*.sw[op] *.save* *~ core errors *.patch *.zip ../v32sim-project.zip
-	@rm -vf $(OBJ)/* $(DEPS) $(GENSRC) $(GENHDR) $(BINDIR)/$(TARGET)
+	@rm -vf $(DEPS) $(GENSRC) $(GENHDR) $(BINDIR)/$(TARGET)
+	@rm -rf $(OBJDIR)
 
 .PHONY: all debug asan version install sysinstall clean archive
 

@@ -36,6 +36,10 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
   * **Debug file location** - directory of the V32 file, current directory,
     `obj/`, `../obj/`, and `--debug-dir`; loaded automatically (`-n` disables).
   * **Assembly and C overlay** - `--source`, `set source`, `set mode`.
+  * **Source-level debugging (V32DBG sections 1-3, 5)** - `mode src` (and `lua`/`C` as aliases) for
+    the overlay in any language; `sstep`, `snext`, `finish`, `until [LOC]`, `break`/`tbreak
+    FILE:LINE`, `list`, `bt` with function names and lines, `frame`/`up`/`down`; `-` entries for
+    code with no source; `tests/run_src_tests.sh`.
   * **SIGSEGV** (and SIGBUS/SIGFPE/SIGABRT) state dump.
   * **Save / restore**.
   * **Live assembly** - `asm` (flex/bison, verified against the whole BIOS).
@@ -47,6 +51,14 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
     converted instead of reinterpreted.
 
 ## STILL LACKING
+
+  * **Locals and values (V32DBG section 4)** - `info locals`, `print NAME`/`display NAME` in the
+    selected frame, `type=lua` rendering of boxed values and table walking. Needs the compilers to
+    write `;@var`/`;@scope` and a decision on where they go (the proposal suggests `NAME.vbin.vars`).
+    `frame`/`up`/`down` already keep the selected frame; its BP is `frm[n].bp` in srcdebug.c.
+  * **`;@src -` ranges** - `v32as -g` writes no entry for them, so the sim cannot tell where the last
+    source line ends and the runtime begins (a stop in the runtime shows the line before it). One
+    entry per such marker, `ADDRESS,-,0`, is understood already (see README, *Code without source*).
 
   * **Symbols** - only variables with a numeric address (v32cc globals) are data
     symbols; function-local variables and struct members have no names, and a
