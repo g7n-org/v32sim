@@ -668,7 +668,7 @@ int32_t   main (int32_t  argc, char **argv)
 
         ////////////////////////////////////////////////////////////////////////////////
         //
-        // Source-level stepping (sstep, snext, finish, until): the engine looks at the
+        // Source-level stepping (step and next in the source modes, finish, until): the engine looks at the
         // instruction about to run and says whether the line has changed
         //
         if (srcdebug_check ()         == TRUE)

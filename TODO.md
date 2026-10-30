@@ -37,7 +37,7 @@ Status as of version `20261018-dev` plus the v32dev / v32io work.
     `obj/`, `../obj/`, and `--debug-dir`; loaded automatically (`-n` disables).
   * **Assembly and C overlay** - `--source`, `set source`, `set mode`.
   * **Source-level debugging (V32DBG sections 1-3, 5)** - `mode src` (and `lua`/`C` as aliases) for
-    the overlay in any language; `sstep`, `snext`, `finish`, `until [LOC]`, `break`/`tbreak
+    the overlay in any language; `step`/`next` by line in the source modes, `finish`, `until [LOC]`, `break`/`tbreak
     FILE:LINE`, `list`, `bt` with function names and lines, `frame`/`up`/`down`; `-` entries for
     code with no source; `tests/run_src_tests.sh`.
   * **SIGSEGV** (and SIGBUS/SIGFPE/SIGABRT) state dump.

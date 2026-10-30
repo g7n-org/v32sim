@@ -721,7 +721,7 @@ static int  no_table (void)
 int  srcdebug_step (int over)
 {
     if (no_table ())  return (FALSE);
-    begin (over ? SS_NEXT : SS_STEP, over ? "snext" : "sstep");
+    begin (over ? SS_NEXT : SS_STEP, over ? "next" : "step");
     if ((over == TRUE) && (OP_OF ((uint32_t) REG(IR)) == CALL))
     {
         arm_over ((uint32_t) REG(IP), (uint32_t) REG(IR));

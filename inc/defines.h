@@ -136,7 +136,7 @@
 #define  INPUT_UNTIL             38
 #define  INPUT_EXPECT            39
 #define  INPUT_EXAMINE           40
-#define  INPUT_SRCSTEP           41     // sstep / snext / finish / until LOC: srcdebug.c decides when to stop
+#define  INPUT_SRCSTEP           41     // step / next (source modes) / finish / until LOC: srcdebug.c decides when to stop
 #define  INPUT_SSTEP             42     // (help topics)
 #define  INPUT_SNEXT             43
 #define  INPUT_FINISH            44

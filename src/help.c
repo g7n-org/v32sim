@@ -83,9 +83,8 @@ void  help  (uint8_t  item)
             fprintf (stdout, "  run N                   resume for N frames (also: wait N)\n");
             fprintf (stdout, "  until \"TEXT\" [timeout N]  resume until the text console shows TEXT\n");
             fprintf (stdout, "  expect ...              check a value or the text console (exit status 1 if it fails)\n");
-            fprintf (stdout, "  step                    step to next instruction\n");
-            fprintf (stdout, "  next                    next (skip subroutines)\n");
-            fprintf (stdout, "  sstep | snext           step to the next source line (snext: skip calls)\n");
+            fprintf (stdout, "  step | next             step to next instruction (next: skip subroutines); in the source\n");
+            fprintf (stdout, "                          modes (set mode = src|C|lua) they go by source line instead\n");
             fprintf (stdout, "  finish                  run until the current function returns\n");
             fprintf (stdout, "  until [FILE:LINE]       run to a later line (leave a loop), or to FILE:LINE\n");
             fprintf (stdout, "  tbreak FILE:LINE        one-shot breakpoint   (break FILE:LINE | LINE | -a: see help break)\n");
@@ -232,26 +231,6 @@ void  help  (uint8_t  item)
             fprintf (stdout, "    subroutine is called, based on its label, which exists at an offset\n\n");
             break;
 
-        case INPUT_SSTEP:
-            fprintf (stdout, "SYNOPSIS:\n");
-            fprintf (stdout, "    sstep\n\n");
-            fprintf (stdout, "DESCRIPTION:\n");
-            fprintf (stdout, "    Run until the source line changes (a different line, file or function,\n");
-            fprintf (stdout, "    or a jump back to the start of a line), going into calls. Code without\n");
-            fprintf (stdout, "    line information (a runtime library) is run through. Needs line entries\n");
-            fprintf (stdout, "    from the debug files (v32as -g). 'step' and 'next' remain instruction\n");
-            fprintf (stdout, "    steps. A blank line repeats the previous source-level step.\n\n");
-            break;
-
-        case INPUT_SNEXT:
-            fprintf (stdout, "SYNOPSIS:\n");
-            fprintf (stdout, "    snext\n\n");
-            fprintf (stdout, "DESCRIPTION:\n");
-            fprintf (stdout, "    Like sstep, but a CALL runs until it returns (recursion safe: the stack\n");
-            fprintf (stdout, "    pointer must be back where it was). Needs no RET to be seen, so a manual\n");
-            fprintf (stdout, "    return (JMP) works too.\n\n");
-            break;
-
         case INPUT_FINISH:
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    finish\n\n");
@@ -355,7 +334,10 @@ void  help  (uint8_t  item)
             fprintf (stdout, "SYNOPSIS:\n");
             fprintf (stdout, "    step\n\n");
             fprintf (stdout, "DESCRIPTION:\n");
-            fprintf (stdout, "    Single-step execution of current instruction.\n\n");
+            fprintf (stdout, "    Single-step execution of current instruction. In the source\n");
+            fprintf (stdout, "    modes (set mode = src, C or lua; -L) it runs to the next source line instead, going\n");
+            fprintf (stdout, "    into calls; next runs calls to their return. 'set mode = asm' goes back to\n");
+            fprintf (stdout, "    instruction steps. Needs line information (v32as -g); without it, one instruction.\n\n");
             break;
 
         case INPUT_NEXT:

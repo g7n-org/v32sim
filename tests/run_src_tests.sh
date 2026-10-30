@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tests of source-level debugging (V32DBG): sstep, snext, finish, until, break/tbreak FILE:LINE,
+# Tests of source-level debugging (V32DBG): step and next in the source modes, finish, until, break/tbreak FILE:LINE,
 # list, bt/frame/up/down, the Lua/src overlay, and the fallbacks without line information.
 #
 #   tests/run_src_tests.sh [dir with v32as]       (v32as in the PATH when no directory is given)
@@ -27,9 +27,9 @@ python3 "$HERE/mkcart.py" "$W/bench.vbin" "$W/bench.v32"
 v32as -b "$HERE/gaps/bios.asm" -o "$W/bios.vbin" && python3 "$HERE/mkcart.py" --bios "$W/bios.vbin" "$W/bios.v32" || exit 2
 
 # sim ARGS : the script on stdin; stdout and stderr (the stop lines are on stderr in batch mode) together
-sim() { timeout 30 "$SIM" -q -B "$W/bios.v32" --fast "$@" "$W/bench.v32" 2>&1; }
-# lines THE-OUTPUT : just the "FILE:LINE" of each [sstep]/[snext]/[until]/[finish] stop, one line each
-stops() { sed -n 's/^\[\(sstep\|snext\|until\|finish\)\] \([^ :]*:[0-9]*\).*/\2/p' | tr '\n' ' ' | sed 's/ $//'; }
+sim() { { echo "set mode = src"; cat; } | timeout 30 "$SIM" -q -B "$W/bios.v32" --fast "$@" "$W/bench.v32" 2>&1; }
+# lines THE-OUTPUT : just the "FILE:LINE" of each [step]/[next]/[until]/[finish] stop, one line each
+stops() { sed -n 's/^\[\(step\|next\|until\|finish\)\] \([^ :]*:[0-9]*\).*/\2/p' | tr '\n' ' ' | sed 's/ $//'; }
 
 echo "== the line table: break FILE:LINE"
 out=$(printf 'break bench.lua:8\nbreak 9\nbreak -a bench.lua:7\nbreak fact.lua:3\nbreak add\nbreak 0x20000000\nbreak\nquit\n' | sim)
@@ -48,20 +48,20 @@ out=$(printf 'tbreak bench.lua:8\ncontinue\nbreak\nquit\n' | sim)
 has "tbreak triggers"        "$out" "[tbreak] triggered on 0x20000012 (bench.lua:8 in main)"
 hasnt "tbreak is removed"    "$(printf 'tbreak bench.lua:8\ncontinue\nbreak\nquit\n' | sim | tail -1)" "[0]"
 
-echo "== sstep"
-out=$(printf 'tbreak 2\ncontinue\nsstep\nsstep\nsstep\nsstep\nsstep\nsstep\nsstep\nsstep\nquit\n' | sim)
+echo "== step in the source modes"
+out=$(printf 'tbreak 2\ncontinue\nstep\nstep\nstep\nstep\nstep\nstep\nstep\nstep\nquit\n' | sim)
 check "order (into calls, loop header again)" "$(echo "$out" | stops)" \
       "bench.lua:7 bench.lua:8 bench.lua:3 bench.lua:4 bench.lua:5 bench.lua:6 bench.lua:7 bench.lua:8"
-has "text of the line" "$out" "[sstep] bench.lua:4 in add:   local s = a + b"
-out=$(printf 'tbreak 11\ncontinue\nsstep\nquit\n' | sim)
+has "text of the line" "$out" "[step] bench.lua:4 in add:   local s = a + b"
+out=$(printf 'tbreak 11\ncontinue\nstep\nquit\n' | sim)
 check "through code without source" "$(echo "$out" | stops)" "bench.lua:12"
 
-echo "== snext"
-out=$(printf 'tbreak 8\ncontinue\nsnext\nsnext\nsnext\nsnext\nsnext\nsnext\nquit\n' | sim)
+echo "== next in the source modes"
+out=$(printf 'tbreak 8\ncontinue\nnext\nnext\nnext\nnext\nnext\nnext\nquit\n' | sim)
 check "skips the call (and the loop back edge stops)" "$(echo "$out" | stops)" \
       "bench.lua:7 bench.lua:8 bench.lua:7 bench.lua:8 bench.lua:7 bench.lua:10"
-out=$(printf 'break fact.lua:5\ncontinue\nunbreak 0\nsnext\nbt\nquit\n' | sim)
-has "recursion: the same frame" "$out" "[snext] fact.lua:6 in fact:   return n * m"
+out=$(printf 'break fact.lua:5\ncontinue\nunbreak 0\nnext\nbt\nquit\n' | sim)
+has "recursion: the same frame" "$out" "[next] fact.lua:6 in fact:   return n * m"
 check "recursion: depth unchanged" "$(echo "$out" | grep -c '^#')" "2"
 
 echo "== finish"
@@ -104,20 +104,31 @@ out=$(printf 'tbreak 8\ncontinue\nquit\n' | timeout 30 "$SIM" --source -L lua -B
 has "lua overlay" "$out" "  LUA bench.lua:8:   t = add(t, i)"
 out=$(printf 'tbreak 8\ncontinue\nquit\n' | timeout 30 "$SIM" --source -L src -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
 has "src overlay" "$out" "  LUA bench.lua:8:   t = add(t, i)"
-out=$(printf 'tbreak 8\ncontinue\nsstep\nquit\n' | timeout 30 "$SIM" --source -L lua -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
+out=$(printf 'tbreak 8\ncontinue\nstep\nquit\n' | timeout 30 "$SIM" --source -L lua -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
 check "a source step prints its line once" "$(echo "$out" | grep -c 'bench.lua:3')" "1"
 out=$(printf 'set mode = src\nset\nquit\n' | sim)
 has "set mode = src" "$out" "mode:    src"
-out=$(printf 'tbreak 2\ncontinue\nsstep\n\n\nquit\n' | timeout 30 "$SIM" -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
-check "a blank line repeats sstep" "$(echo "$out" | stops)" "bench.lua:7 bench.lua:8 bench.lua:3"
+out=$(printf 'tbreak 2\ncontinue\nstep\n\n\nquit\n' | timeout 30 "$SIM" -L src -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
+check "a blank line repeats the line step" "$(echo "$out" | stops)" "bench.lua:7 bench.lua:8 bench.lua:3"
+
+echo "== step and next follow the mode: asm = one instruction, src/C/lua = one source line"
+out=$(printf 'tbreak 2\ncontinue\nstep\nprint IP\nquit\n' | timeout 30 "$SIM" -q -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
+has "asm mode: step is one instruction" "$out" "0x20000001"
+out=$(printf 'tbreak 2\ncontinue\nset mode = asm\ns\nprint IP\nset mode = lua\ns\nn\nquit\n' | timeout 30 "$SIM" -q -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
+has "switching back to asm" "$out" "0x20000001"
+check "s and n by line in lua mode" "$(echo "$out" | stops)" "bench.lua:7 bench.lua:8"
+out=$(printf 'tbreak 2\ncontinue\ns\n\n\nquit\n' | timeout 30 "$SIM" -L src -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
+check "-L src: blank line repeats" "$(echo "$out" | stops)" "bench.lua:7 bench.lua:8 bench.lua:3"
+out=$(printf 'set mode = src\nstep\nprint IP\nquit\n' | timeout 30 "$SIM" -q -n -B "$W/bios.v32" --fast "$W/bench.v32" 2>&1)
+has "no line information: still one instruction" "$out" "IP:"
 
 echo "== a breakpoint ends a source step"
-out=$(printf 'break fact.lua:3\ncontinue\nbreak bench.lua:11\nsnext\nquit\n' | sim)
+out=$(printf 'break fact.lua:3\ncontinue\nbreak bench.lua:11\nnext\nquit\n' | sim)
 has "breakpoint wins" "$out" "[breakpoint] triggered on"
 
 echo "== no source information"
-out=$(printf 'sstep\nsnext\nfinish\nlist\nbreak 25\nbreak\nquit\n' | sim -n)
-has "sstep refuses"   "$out" "no source line information is loaded"
+out=$(printf 'step\nnext\nfinish\nlist\nbreak 25\nbreak\nquit\n' | sim -n)
+has "line commands refuse"   "$out" "no source line information is loaded"
 has "decimal break stays an address without lines" "$out" "[0] 0x00000019"
 check "bt keeps the call list" "$(printf 'bt\nquit\n' | sim -n)" ""
 

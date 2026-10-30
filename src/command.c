@@ -74,8 +74,6 @@ static const struct
     { "until",       3, CMD_UNTIL     },
     { "expect",      2, CMD_EXPECT    },
     { "x",           1, CMD_EXAMINE   },
-    { "sstep",       2, CMD_SSTEP     },
-    { "snext",       2, CMD_SNEXT     },
     { "finish",      3, CMD_FINISH    },
     { "tbreak",      2, CMD_TBREAK    },
     { "list",        2, CMD_LIST      },
@@ -1076,8 +1074,15 @@ static void  exec_gamepad (cmd_t *c)
 //
 ////////////////////////////////////////////////////////////////////////////////////////
 //
-// source-level debugging: sstep snext finish until list frame up down
+// source-level debugging: step next finish until list frame up down
 //
+// step and next follow the display mode: in asm mode they are instruction steps, in any of the
+// source modes (src, C, lua) they go by source line, if line information is loaded
+static int  by_line (void)
+{
+    return ((modeflag != FLAG_ASM) && (srcdebug_have () == TRUE));
+}
+
 static void  exec_srcstep (cmd_t *c)
 {
     int  armed  = FALSE;
@@ -1751,8 +1756,6 @@ static void  exec_help (cmd_t *c)
         case CMD_RESTORE:     help (INPUT_RESTORE);    break;
         case CMD_SET:         help (INPUT_SET);        break;
         case CMD_STEP:        help (INPUT_STEP);       break;
-        case CMD_SSTEP:       help (INPUT_SSTEP);      break;
-        case CMD_SNEXT:       help (INPUT_SNEXT);      break;
         case CMD_FINISH:      help (INPUT_FINISH);     break;
         case CMD_TBREAK:      help (INPUT_TBREAK);     break;
         case CMD_LIST:        help (INPUT_LIST);       break;
@@ -1800,7 +1803,16 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_INVENTORY:   display_config (INPUT_INVENTORY);     break;
         case CMD_LABEL:       exec_label (c);                       break;
         case CMD_LOAD:        exec_load (c);                        break;
-        case CMD_NEXT:        action = INPUT_NEXT;                  break;
+        case CMD_NEXT:
+            if (by_line () == TRUE)
+            {
+                c -> id = CMD_SNEXT;  exec_srcstep (c);                  // next, by source line
+            }
+            else
+            {
+                action = INPUT_NEXT;
+            }
+            break;
         case CMD_PRINT:       exec_print (c);                       break;
         case CMD_PROFILE:     show_profile ();                      break;
         case CMD_QUIT:
@@ -1820,7 +1832,16 @@ uint8_t  cmd_execute (cmd_t *c)
         case CMD_SAVE:        exec_save (c);                        break;
         case CMD_RESTORE:     exec_restore (c);                     break;
         case CMD_SET:         exec_set (c);                         break;
-        case CMD_STEP:        action = INPUT_STEP;                  break;
+        case CMD_STEP:
+            if (by_line () == TRUE)
+            {
+                c -> id = CMD_SSTEP;  exec_srcstep (c);                  // step, by source line
+            }
+            else
+            {
+                action = INPUT_STEP;
+            }
+            break;
         case CMD_SSTEP:
         case CMD_SNEXT:
         case CMD_FINISH:

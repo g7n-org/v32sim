@@ -46,7 +46,7 @@ software — and to automate cart testing.
 - **Save / restore** of the whole machine state
 - **Live assembler**: `asm` assembles one instruction and patches it into
   memory, or runs it once
-- **Source-level debugging** (V32DBG): `sstep`/`snext`/`finish`/`until` step by source
+- **Source-level debugging** (V32DBG): `step`/`next` (in the source modes), `finish` and `until` step by source
   line, `break`/`tbreak FILE:LINE`, `list`, and `bt` with function names and lines, for
   Lua, C and assembly; see [Source-Level Debugging](#source-level-debugging)
 - **Source overlay**: the assembly, C or Lua source line for the current IP is
@@ -106,7 +106,7 @@ software — and to automate cart testing.
 │   ├── spu.c             SPU channel / sound model, VSND loading
 │   ├── savestate.c       save / restore of the machine state
 │   ├── source.c          assembly / C / Lua source-line overlay
-│   ├── srcdebug.c        source-level debugging: line table, sstep/snext/finish/until,
+│   ├── srcdebug.c        source-level debugging: line table, line steps/finish/until,
 │                         frames and bt, break FILE:LINE, list
 │   ├── watchpoint.c      register / IOPort / memory watchpoints
 │   └── input.c           prompt loop, readline, command-file input, debug files
@@ -265,9 +265,8 @@ prefix (`s` = step, `n` = next, `c` = continue, `b` = break, `p` = print,
 | `tbreak ...` | the same, removed when hit |
 | `unbreak #` | remove breakpoint by index |
 | `continue` | resume execution until next trigger |
-| `step` | execute current instruction, stop at next |
-| `next` | execute current instruction, step over subroutines |
-| `sstep` / `snext` | run to the next *source line* (`snext` runs calls to their return) |
+| `step` | execute current instruction, stop at next; in the source modes (`set mode = src\|C\|lua`) run to the next source line, going into calls |
+| `next` | step over subroutines; in the source modes run to the next source line, calls run to their return |
 | `finish` | run until the selected frame's function returns |
 | `until [FILE:LINE\|LINE]` | run to a later line of the function (leave a loop), or to that line |
 | `list [FILE:LINE\|LINE\|FUNCTION]` | show source around the current line (or that one) |
@@ -433,15 +432,17 @@ The debug files carry the source file and line of every instruction (see the V32
 `v32as -g` writes `ADDRESS,FILE,LINE[,FUNCTION]` from the `;@src FILE:LINE` markers of a
 Lua (`v32lua -g`) or C program, and the C compiler's side file is matched to addresses as
 before. v32sim keeps one sorted line table from whichever it finds and builds the line-level
-commands on it. `step` and `next` stay instruction steps; a blank line repeats the last
-source step.
+commands on it. `set mode = asm` (the default) keeps `step` and `next` as instruction steps. In the
+source modes (`set mode = src|C|lua`, or `-L src|C|lua`) the same `step`, `next`, `s`, `n` and the
+blank-line repeat go by **source line** instead; with no line information loaded they stay instruction
+steps.
 
 | Command | Does |
 | ------- | ---- |
-| `sstep` | run until the source line changes (a different file, line or function, or a jump back to the start of a line: a new pass of a loop), going **into** calls |
-| `snext` | the same, but a `CALL` runs to its return (the stack pointer must be back where it was: recursion safe; no `RET` needs to be seen) |
+| `step` (source modes) | run until the source line changes (a different file, line or function, or a jump back to the start of a line: a new pass of a loop), going **into** calls |
+| `next` (source modes) | the same, but a `CALL` runs to its return (the stack pointer must be back where it was: recursion safe; no `RET` needs to be seen) |
 | `finish` | run until the selected frame returns; works at the first instruction of a function too (see *Frames*) |
-| `until` | like `snext`, but only stops on a **later** line of this function (or when it returns): leaves a loop |
+| `until` | like `next`, but only stops on a **later** line of this function (or when it returns): leaves a loop |
 | `until FILE:LINE` | run to that line, or until the current function returns |
 | `break FILE:LINE`, `break LINE` | the lowest address of the line; `break -a` all of them. A line with no code moves to the next line that has some, and says so |
 | `tbreak ...` | one-shot |
@@ -454,7 +455,7 @@ breakpoint on the function's first instruction (not on every line, although the 
 entries all carry the function name). FILE may be a base name (`bench.lua`) or any tail of
 the path.
 
-Each stop prints one line, `[sstep] bench.lua:4 in add:   local s = a + b` (to stderr in
+Each stop prints one line, `[step] bench.lua:4 in add:   local s = a + b` (to stderr in
 `--batch` mode, like the other stop reasons; `bt`, `list` and `frame` print to stdout).
 
 ### Frames
@@ -469,14 +470,14 @@ or at an unreadable or non-increasing BP.
 
 `backtrace` uses these frames when the debug data is about Lua or C (a file that is not
 `.asm`); for assembly programs it keeps listing the `CALL` targets, as it always did.
-Code built with `-O2` and `omit-frame-pointers` has no chain: `snext` and `until` do not
+Code built with `-O2` and `omit-frame-pointers` has no chain: `next` and `until` do not
 need one (they use the `CALL` instruction and SP), `finish` and `bt` do.
 
 ### Code without source
 
 An entry whose file is `-` (or whose line is 0), e.g. `0x20000060,-,0`, says that the
 instructions from that address up to the next entry have no source: a runtime library. It
-is what `;@src -` means. `sstep` runs through such code without stopping, `bt` shows
+is what `;@src -` means. `step` runs through such code without stopping, `bt` shows
 `?? [0x...]` and `finish` returns from it. **`v32as` does not write this entry today** (it
 writes nothing for a `;@src -` range), so the last line before the runtime is taken to extend
 to the next entry; one line per `;@src -` marker would fix that (see the notes in TODO.md).
@@ -725,7 +726,7 @@ checks the scripting features: symbols, `x`, `run`, `until`, `expect`, `quit N`,
 statuses, signed watch, `console FILE`/`--attrs`, `--profile-by=function`, and that the
 interactive prompt is unchanged.
 
-`tests/run_src_tests.sh [V32AS_DIR]` checks the source-level commands (49 checks) on
+`tests/run_src_tests.sh [V32AS_DIR]` checks the source-level commands (54 checks) on
 `tests/src/bench.asm`, assembly written the way `v32lua -g` writes it, with `v32as` only: the
 cartridge is made by `tests/mkcart.py`, and the BIOS is `tests/gaps/bios.asm`.
 
