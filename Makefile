@@ -127,8 +127,8 @@ sysinstall: $(BIN)
 		echo "Skipping: /usr/local/bin does not exist"; \
 	fi
 
-archive:
-	@zip -r ../v32sim-project.zip inc/ Makefile *.md src/ tests/
+archive: clean
+	@zip -r ../v32sim-project.zip *
 
 clean:
 	@rm -vf .*.sw[op] *.save* *~ core errors *.patch *.zip ../v32sim-project.zip
