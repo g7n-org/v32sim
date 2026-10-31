@@ -854,7 +854,7 @@ uint8_t  ioports_set (uint16_t  portaddr, int32_t  i32, float  f32, uint8_t  sys
                 // range will result in a silent fail (transaction is ignored)
                 //
                 if ((cart_vtex        != NULL) &&
-                    (i32              >= (cart_vtex)  -> qty))
+                    (i32              >= (int32_t) (cart_vtex)  -> qty))
                 {
                     fprintf (debug, "[ioports_set] invalid CART texture id (%d)\n", i32);
                     break;
